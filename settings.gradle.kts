@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "FromSUB"
+rootProject.name = "SubLater"
 include(":app")

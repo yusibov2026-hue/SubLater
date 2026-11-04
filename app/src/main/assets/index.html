@@ -1,0 +1,2877 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#121212">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GROQ SUBS">
+  <title>GROQ SUBS</title>
+
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='26' fill='%23181818' stroke='%2300e5ff' stroke-width='6'/><text x='50' y='64' font-family='sans-serif' font-weight='900' font-size='38' fill='%2300e5ff' text-anchor='middle'>SUB</text></svg>">
+  <link rel="manifest" href='data:application/manifest+json,{"name":"GROQ SUBS","short_name":"GROQ SUBS","start_url":".","display":"standalone","background_color":"#121212","theme_color":"#00e5ff","icons":[{"src":"data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" rx=\"26\" fill=\"%23181818\"/><text x=\"50\" y=\"64\" font-family=\"sans-serif\" font-weight=\"900\" font-size=\"38\" fill=\"%2300e5ff\" text-anchor=\"middle\">SUB</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Unbounded:wght@800&family=Roboto:wght@500;700&family=Montserrat:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sub-color: #ffffff;
+      --sub-size: 18px;
+      --sub-width: 85%;
+      --sub-bottom: 12%;
+      --sub-font: 'Inter', -apple-system, sans-serif;
+      --bg-opacity: 62;
+      --accent: #00e5ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      outline: none !important;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background: #121212;
+      color: #fff;
+      padding: 20px;
+      max-width: 640px;
+      margin: auto;
+    }
+
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .app-header h2 {
+      font-family: 'Unbounded', sans-serif;
+      font-weight: 800;
+      font-size: 26px;
+      letter-spacing: 1px;
+      color: var(--accent);
+      text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 15%, transparent);
+      margin: 0;
+      transition: color 0.3s, text-shadow 0.3s;
+    }
+    
+    /* Кнопка настроек в правом верхнем углу с акцентной рамкой и пружиной */
+    #settingsToggle {
+      width: 44px; height: 44px;
+      border-radius: 13px;
+      background: #1e1e1e;
+      border: 1.5px solid var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 5px color-mix(in srgb, var(--accent) 10%, transparent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: 
+        transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), 
+        background 0.2s ease,
+        box-shadow 0.25s ease;
+    }
+    #settingsToggle:hover {
+      background: color-mix(in srgb, var(--accent) 14%, #1e1e1e);
+    }
+    #settingsToggle:active {
+      transform: scale(0.88) rotate(90deg);
+    }
+    #settingsToggle.open { 
+      transform: rotate(225deg); 
+      background: color-mix(in srgb, var(--accent) 18%, #1e1e1e);
+      box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 18%, transparent);
+    }
+    #settingsToggle svg { width: 22px; height: 22px; fill: currentColor; }
+
+    /* Модальное окно настроек */
+    #settingsBackdrop {
+      position: fixed; inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 99;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+    #settingsBackdrop.show { opacity: 1; pointer-events: auto; }
+
+    #globalSettings {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -46%) scale(0.92);
+      width: 92%; max-width: 400px;
+      max-height: 85vh; overflow-y: auto;
+      background: #181818;
+      border: 1px solid #2a2a2a;
+      border-radius: 20px;
+      padding: 20px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.85);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1), transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #globalSettings.show { 
+      opacity: 1; pointer-events: auto; 
+      transform: translate(-50%, -50%) scale(1); 
+    }
+    
+    #globalSettings::-webkit-scrollbar { width: 4px; }
+    #globalSettings::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+    .settings-header {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 16px; font-weight: 700; color: var(--accent);
+      border-bottom: 1px solid #2a2a2a; padding-bottom: 10px; margin-bottom: 4px;
+    }
+    .close-btn {
+      background: #2a2a2a; border: none; color: #ccc;
+      width: 30px; height: 30px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 16px;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s, color 0.2s;
+    }
+    .close-btn:hover { background: #ff6b6b; color: #fff; }
+    .close-btn:active { transform: scale(0.85); }
+
+    .global-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: #ccc;
+      font-weight: 500;
+    }
+    .global-row select {
+      width: auto; margin: 0; padding: 7px 10px;
+      font-size: 12px; border-radius: 8px;
+    }
+
+    input[type="color"] {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      width: 56px;
+      height: 36px;
+      border: 2px solid transparent;
+      border-radius: 10px;
+      background: transparent;
+      cursor: pointer;
+      padding: 0;
+      flex-shrink: 0;
+      transition: border-color 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    input[type="color"]::-webkit-color-swatch { border: none; border-radius: 8px; }
+    input[type="color"]::-moz-color-swatch { border: none; border-radius: 8px; }
+    input[type="color"]:hover { border-color: var(--accent); transform: scale(1.06); }
+    input[type="color"]:active { transform: scale(0.9); }
+
+    input:not([type="color"]):not([type="range"]):not([type="checkbox"]), select {
+      width: 100%; padding: 13px 14px; margin: 6px 0;
+      border-radius: 12px; border: 1px solid #2a2a2a;
+      background: #1e1e1e; color: #fff;
+      font-family: inherit; font-size: 14px;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+    select:active { transform: scale(0.98); }
+    input:not([type="color"]):not([type="range"]):not([type="checkbox"]):focus,
+    select:focus { border-color: var(--accent); }
+
+    input[type="range"] {
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* Живая плитка выбора файла */
+    .file-box {
+      display: flex; align-items: center; gap: 12px;
+      padding: 8px 12px; margin: 6px 0;
+      border-radius: 12px; border: 1px solid #2a2a2a; background: #1e1e1e;
+      cursor: pointer; user-select: none;
+      transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease;
+    }
+    .file-box:hover { border-color: color-mix(in srgb, var(--accent) 55%, #2a2a2a); }
+    .file-box:active {
+      transform: scale(0.97);
+      background: #252525;
+      border-color: var(--accent);
+    }
+
+    .file-pill {
+      background: var(--accent); color: #001014;
+      padding: 8px 20px; border-radius: 999px;
+      font-weight: 700; font-size: 14px; cursor: pointer;
+      white-space: nowrap; user-select: none;
+      transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease, box-shadow 0.2s ease;
+      flex-shrink: 0;
+    }
+    .file-pill:hover { filter: brightness(1.12); }
+    .file-pill:active { transform: scale(0.9); }
+    #fileName { color: #ccc; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Живая главная кнопка (таблетка) */
+    button#btn {
+      display: block; width: 92%; margin: 10px auto 6px; 
+      padding: 16px 20px;
+      border-radius: 999px;
+      font-family: inherit; font-weight: 700; font-size: 15px;
+      cursor: pointer;
+      background: var(--accent); color: #001014; border: none;
+      box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 12%, transparent);
+      transition: 
+        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
+        filter 0.2s ease, 
+        box-shadow 0.25s ease,
+        background 0.25s ease;
+    }
+    button#btn:hover:not(:disabled):not(.cancel-mode) {
+      filter: brightness(1.05);
+      box-shadow: 0 3px 8px color-mix(in srgb, var(--accent) 18%, transparent);
+    }
+    button#btn:active:not(:disabled):not(.cancel-mode) {
+      transform: scale(0.94);
+      box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 15%, transparent);
+    }
+    button#btn.cancel-mode,
+    button#btn.cancel-mode:hover,
+    button#btn.cancel-mode:active,
+    button#btn.cancel-mode:focus {
+      background: #2b1d1d; color: #ff6b6b; border: 1.5px solid #ff6b6b;
+      box-shadow: none !important; filter: none !important;
+    }
+    button#btn.cancel-mode:active {
+      transform: scale(0.96);
+    }
+
+    #progressWrap {
+      width: 92%; height: 5px; margin: 4px auto 8px;
+      background: #222; border-radius: 4px; overflow: hidden; display: none;
+    }
+    #progressBar {
+      width: 0%; height: 100%; background: var(--accent);
+      box-shadow: none; transition: width 0.25s ease;
+    }
+
+    /* Блок кнопок .VTT + Скачать .vtt (одинаковый дизайн) и Текст внизу */
+    .action-row {
+      display: none; width: 92%; margin: 10px auto; gap: 10px; flex-wrap: wrap;
+    }
+    .action-row select,
+    #dlBtn {
+      flex: 1;
+      min-width: 135px;
+      margin: 0;
+      padding: 13px 14px;
+      border-radius: 999px;
+      background: #1e1e1e;
+      color: var(--accent);
+      border: 1.5px solid var(--accent);
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      appearance: none;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 8%, transparent);
+      transition: 
+        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
+        background 0.2s ease, 
+        box-shadow 0.2s ease;
+    }
+    .action-row select option { background: #121212; color: #fff; }
+    .action-row select:hover,
+    #dlBtn:hover {
+      background: color-mix(in srgb, var(--accent) 14%, #1e1e1e);
+      box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 14%, transparent);
+    }
+    .action-row select:active,
+    #dlBtn:active {
+      transform: scale(0.93);
+      background: color-mix(in srgb, var(--accent) 22%, #1e1e1e);
+    }
+    
+    #openBtn {
+      flex: 1 1 100%;
+      width: 100%;
+      margin: 0;
+      padding: 13px 16px;
+      border-radius: 999px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent);
+      color: #001014;
+      border: none;
+      box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 12%, transparent);
+      transition: 
+        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
+        filter 0.2s ease, 
+        box-shadow 0.2s ease;
+    }
+    #openBtn:hover { filter: brightness(1.08); }
+    #openBtn:active { transform: scale(0.94); }
+
+    #status { color: #fff; font-size: 14px; line-height: 1.5; font-weight: 500; margin: 10px 0; }
+
+    /* Панель ИИ-видео в стиле YouTube (Вопросы по видео с Gemini) */
+    #aiSummaryBox {
+      background: #161616;
+      border: 1px solid #2c2c2c;
+      border-radius: 18px;
+      padding: 14px;
+      margin: 14px 0;
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+      animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #aiSummaryBox.show { display: flex; }
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .ai-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #262626;
+    }
+    .ai-title-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .ai-sparkle-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .ai-model-pill {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #242424;
+      color: #aaa;
+      border: 1px solid #333;
+    }
+    .ai-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .ai-clear-btn {
+      background: #242424;
+      border: 1px solid #333;
+      color: #bbb;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, transform 0.2s;
+    }
+    .ai-clear-btn:hover { background: #2f2f2f; color: #fff; }
+    .ai-clear-btn:active { transform: scale(0.93); }
+
+    .ai-Prompts-row {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .ai-Prompts-row::-webkit-scrollbar { display: none; }
+    .ai-prompt-chip {
+      background: #222;
+      border: 1px solid #333;
+      color: #e4e4e4;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    }
+    .ai-prompt-chip:hover {
+      background: color-mix(in srgb, var(--accent) 12%, #222);
+      border-color: color-mix(in srgb, var(--accent) 50%, #333);
+      color: #fff;
+    }
+    .ai-prompt-chip:active { transform: scale(0.95); }
+
+    #aiChatList {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 4px 2px;
+    }
+    #aiChatList::-webkit-scrollbar { width: 4px; }
+    #aiChatList::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+    .ai-msg {
+      max-width: 90%;
+      padding: 10px 13px;
+      border-radius: 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .ai-msg.user {
+      align-self: flex-end;
+      background: color-mix(in srgb, var(--accent) 18%, #222);
+      border: 1px solid color-mix(in srgb, var(--accent) 40%, #333);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .ai-msg.bot {
+      align-self: flex-start;
+      background: #202020;
+      border: 1px solid #2e2e2e;
+      color: #e8e8e8;
+      border-bottom-left-radius: 4px;
+    }
+    .ai-msg p { margin: 0 0 6px 0; }
+    .ai-msg p:last-child { margin-bottom: 0; }
+
+    .chapter-time {
+      display: inline-flex;
+      align-items: center;
+      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      color: var(--accent);
+      border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+      padding: 1px 7px;
+      margin: 0 2px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 11.5px;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+      transition: transform 0.18s ease, background 0.18s ease;
+    }
+    .chapter-time:hover {
+      background: color-mix(in srgb, var(--accent) 28%, transparent);
+      transform: scale(1.04);
+    }
+    .chapter-time:active { transform: scale(0.94); }
+
+    .ai-input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #202020;
+      border: 1px solid #333;
+      border-radius: 999px;
+      padding: 4px 6px 4px 14px;
+      transition: border-color 0.2s ease;
+    }
+    .ai-input-row:focus-within {
+      border-color: var(--accent);
+    }
+    #aiQuestionInput {
+      flex: 1;
+      border: none !important;
+      background: transparent !important;
+      color: #fff;
+      font-size: 13.5px;
+      padding: 7px 0 !important;
+      margin: 0 !important;
+    }
+    #aiSendBtn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: var(--accent);
+      color: #001014;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s;
+    }
+    #aiSendBtn:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+    #aiSendBtn:not(:disabled):active { transform: scale(0.88); }
+    #aiSendBtn svg { width: 17px; height: 17px; fill: currentColor; }
+
+    #vttPanel {
+      background: #181818; padding: 12px; border-radius: 14px; border: 1px solid #2a2a2a;
+      overflow-x: auto; max-height: 210px; font-size: 12px; white-space: pre-wrap;
+      font-family: 'Consolas', 'Monaco', monospace; color: #ddd; cursor: pointer; margin-bottom: 12px;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    #vttPanel:active { transform: scale(0.98); border-color: var(--accent); }
+
+    /* Плеер с идеально ровным центрированием в обычном и полноэкранном режиме */
+    #playerContainer {
+      position: relative;
+      display: none;
+      width: 100%;
+      margin: 14px auto 0;
+      padding: 0;
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid #1a1a1a;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      align-items: center;
+      justify-content: center;
+      aspect-ratio: 16/9;
+    }
+    
+    video {
+      width: 100%;
+      height: 100%;
+      max-height: 75vh;
+      margin: 0 auto;
+      padding: 0;
+      display: block;
+      background: #000;
+      object-fit: contain;
+      object-position: center center;
+      border: none;
+      outline: none;
+      transition: transform 0.2s ease;
+    }
+    video.fill-crop { object-fit: cover; }
+    video.fill-stretch { object-fit: fill; }
+    
+    #playerContainer:fullscreen,
+    #playerContainer:-webkit-full-screen {
+      width: 100vw;
+      height: 100vh;
+      max-width: none;
+      margin: 0;
+      padding: 0;
+      inset: 0;
+      aspect-ratio: auto;
+      border: none;
+      border-radius: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+    #playerContainer:fullscreen video,
+    #playerContainer:-webkit-full-screen video {
+      width: 100%;
+      height: 100%;
+      max-height: 100vh;
+      object-position: center center;
+    }
+
+    #subtitleOverlay {
+      position: absolute; display: flex; justify-content: center;
+      pointer-events: none; z-index: 10; will-change: top, left, width, bottom;
+      left: 0; right: 0; transition: bottom 0.1s ease;
+    }
+
+    #subtitleText {
+      max-width: var(--sub-width, 85%);
+      text-align: center;
+      font-family: var(--sub-font, 'Inter', sans-serif);
+      font-size: var(--sub-size, 18px);
+      line-height: 1.35;
+      font-weight: 600;
+      color: var(--sub-color, #fff);
+      padding: 0.24em 0.65em;
+      border-radius: 0.45em;
+      word-break: break-word;
+      opacity: 0;
+      transition: opacity 0.12s ease, background 0.2s ease;
+    }
+
+    #subtitleText.bg-on {
+      background: rgba(0, 0, 0, calc(var(--bg-opacity, 62) / 100));
+      backdrop-filter: blur(4px);
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    }
+    #subtitleText.bg-off {
+      background: transparent; backdrop-filter: none;
+      text-shadow: 0 2px 4px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,1);
+    }
+
+    .word { opacity: 0; color: inherit; transition: opacity 0.12s ease; }
+    #subtitleText.mode-karaoke .word { opacity: 0.38; }
+    #subtitleText.mode-full .word { opacity: 1; }
+    .word.spoken { opacity: 1 !important; }
+
+    #playerControls {
+      position: absolute; bottom: 0; left: 0; width: 100%;
+      background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+      display: flex; align-items: center; gap: 10px;
+      padding: 22px 14px 10px; z-index: 20; opacity: 1;
+      transition: opacity 0.3s ease; user-select: none;
+    }
+    #playerControls.hidden-controls { opacity: 0; pointer-events: none; }
+
+    .ctrl-btn {
+      background: transparent; border: none; color: #fff;
+      cursor: pointer; padding: 0; margin: 0; width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 9px;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s, background 0.2s;
+      flex-shrink: 0;
+    }
+    .ctrl-btn:hover { color: var(--accent); background: rgba(255,255,255,0.12); }
+    .ctrl-btn:active { transform: scale(0.82); background: rgba(255,255,255,0.2); }
+    .ctrl-btn svg { width: 20px; height: 20px; fill: currentColor; }
+
+    #seekBar {
+      flex: 1; height: 4px; margin: 0; padding: 0; cursor: pointer;
+      border: none; border-radius: 2px; -webkit-appearance: none;
+      background: linear-gradient(to right,
+        var(--accent) 0%, var(--accent) var(--progress, 0%),
+        rgba(255,255,255,0.22) var(--progress, 0%), rgba(255,255,255,0.22) 100%);
+      transition: height 0.15s ease;
+    }
+    #seekBar:hover { height: 6px; }
+    #seekBar::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 13px; height: 13px;
+      border-radius: 50%; background: var(--accent); cursor: pointer;
+      box-shadow: 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #seekBar:hover::-webkit-slider-thumb,
+    #seekBar:active::-webkit-slider-thumb { transform: scale(1.35); }
+    #seekBar::-moz-range-thumb {
+      width: 13px; height: 13px; border-radius: 50%; background: var(--accent);
+      cursor: pointer; border: none; box-shadow: 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+    }
+
+    #timeText { color: #ccc; font-size: 12px; font-variant-numeric: tabular-nums; margin: 0; white-space: nowrap; font-weight: 500; margin-right: 4px; }
+
+    #settingsMenu {
+      position: absolute; bottom: 50px; right: 10px;
+      background: rgba(18, 18, 18, 0.94); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 12px;
+      padding: 10px 12px; width: 224px; z-index: 30;
+      display: flex; flex-direction: column; gap: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.8);
+      opacity: 0; pointer-events: none; transform: translateY(8px) scale(0.95);
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #settingsMenu.show { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
+    
+    .setting-item label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 11px; color: #ccc; margin-bottom: 2px; font-weight: 500;
+    }
+    .setting-item input[type="range"] { width: 100%; height: 15px; margin: 0; padding: 0; border: none; background: transparent; cursor: pointer; }
+    .setting-item select { width: auto; margin: 0; padding: 3px 6px; font-size: 11px; border-radius: 6px; background: #262626; border: 1px solid #3a3a3a; color: #fff; }
+
+    .switch { position: relative; display: inline-block; width: 34px; height: 19px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #444;
+      transition: background-color 0.25s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border-radius: 19px;
+    }
+    .switch:active .slider { transform: scale(0.92); }
+    .slider:before {
+      position: absolute; content: ""; height: 13px; width: 13px; left: 3px; bottom: 3px;
+      background-color: white;
+      transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border-radius: 50%;
+    }
+    .switch input:checked + .slider { background-color: var(--accent); }
+    .switch input:checked + .slider:before { transform: translateX(15px); }
+
+    .seek-flash {
+      position: absolute; top: calc(50% - 42px); width: 84px; height: 84px;
+      border-radius: 50%; background: rgba(0, 0, 0, 0.68); border: 1.5px solid var(--accent);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff;
+      pointer-events: none; z-index: 18; opacity: 0; transform: scale(0.5);
+      animation: seekFlashAnim 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; will-change: transform, opacity;
+    }
+    .seek-flash.left { left: 8%; }
+    .seek-flash.right { right: 8%; }
+    .seek-flash svg { width: 24px; height: 24px; fill: var(--accent); margin-bottom: 2px; }
+    .seek-flash span { font-size: 12px; font-weight: 700; color: #fff; }
+
+    .play-flash {
+      position: absolute; top: calc(50% - 32px); left: calc(50% - 32px);
+      width: 64px; height: 64px; border-radius: 50%;
+      background: rgba(0, 0, 0, 0.65); border: 1.5px solid var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none; z-index: 17; opacity: 0;
+      animation: playFlashAnim 0.48s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .play-flash svg { width: 28px; height: 28px; fill: #fff; }
+
+    @keyframes seekFlashAnim {
+      0%   { opacity: 0; transform: scale(0.5); }
+      30%  { opacity: 1; transform: scale(1.06); }
+      70%  { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.15); }
+    }
+
+    @keyframes playFlashAnim {
+      0%   { opacity: 0; transform: scale(0.6); }
+      35%  { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.22); }
+    }
+
+    .hidden { display: none !important; }
+
+    html.native-exo-mode,
+    body.native-exo-mode {
+      background: transparent !important;
+    }
+    body.native-exo-mode #playerContainer {
+      background: transparent !important;
+      box-shadow: none;
+    }
+    body.native-exo-mode #playerContainer:fullscreen,
+    body.native-exo-mode #playerContainer:-webkit-full-screen {
+      background: transparent !important;
+    }
+    body.native-exo-mode video#videoPlayer {
+      opacity: 0 !important;
+      background: transparent !important;
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <h2>GROQ SUBS</h2>
+    <button id="settingsToggle" aria-label="Настройки">
+      <svg viewBox="0 0 24 24">
+        <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+      </svg>
+    </button>
+  </header>
+
+  <div id="settingsBackdrop"></div>
+
+  <div id="globalSettings">
+    <div class="settings-header">
+      <span>Настройки</span>
+      <button class="close-btn" id="closeSettingsBtn">✕</button>
+    </div>
+    
+    <div class="global-row">
+      <span>Цвет акцента</span>
+      <input type="color" id="accentColor" value="#00e5ff">
+    </div>
+    
+    <div class="global-row">
+      <span>Цвет текста субтитров</span>
+      <input type="color" id="subTextColor" value="#ffffff">
+    </div>
+    <div class="global-row">
+      <span>Шрифт субтитров</span>
+      <select id="subFontFamily">
+        <option value="'Inter', sans-serif">Inter (По умолчанию)</option>
+        <option value="'Roboto', sans-serif">Roboto</option>
+        <option value="'Montserrat', sans-serif">Montserrat</option>
+        <option value="Arial, sans-serif">Arial</option>
+        <option value="'Courier New', monospace">Courier</option>
+      </select>
+    </div>
+    <div class="global-row">
+      <span>Прозрачность фона субтитров</span>
+      <input type="range" id="bgOpacity" min="0" max="100" value="62" style="width: 100px;">
+    </div>
+    <div class="global-row">
+      <span>Автовоспроизведение</span>
+      <label class="switch">
+        <input type="checkbox" id="autoPlayToggle" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="global-row" style="margin-top: 10px; border-top: 1px solid #2a2a2a; padding-top: 14px;">
+      <span>API Ключи Groq (Субтитры)</span>
+    </div>
+    <input type="password" id="apiKey" placeholder="Ключ(и) Groq (gsk_1..., gsk_2...)" style="margin:0 0 6px 0;" />
+
+    <div class="global-row" style="margin-top: 6px; border-top: 1px solid #2a2a2a; padding-top: 12px;">
+      <span>API Ключ Gemini (ИИ-видео)</span>
+    </div>
+    <input type="password" id="geminiApiKey" placeholder="Ключ Gemini (AIzaSy...)" style="margin:0 0 6px 0;" />
+
+    <div class="global-row">
+      <span>Модель Gemini</span>
+      <select id="geminiModel">
+        <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+        <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+      </select>
+    </div>
+
+    <div class="global-row">
+      <span>Модель перевода</span>
+      <select id="llmModel">
+        <option value="openai/gpt-oss-120b">GPT-OSS 120B (Точная)</option>
+        <option value="openai/gpt-oss-20b">GPT-OSS 20B (Быстрая)</option>
+        <option value="qwen/qwen3.6-27b">Qwen 3.6 27B (Резервная)</option>
+      </select>
+    </div>
+    <div class="global-row">
+      <span>Фильтр галлюцинаций</span>
+      <label class="switch">
+        <input type="checkbox" id="hallucinationFilter" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="global-row">
+      <span>Авто-разбивка длинных фраз</span>
+      <label class="switch">
+        <input type="checkbox" id="smartSplitToggle" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="global-row">
+      <span>Быстрое сжатие аудио (&gt;10 МБ)</span>
+      <label class="switch">
+        <input type="checkbox" id="fastAudioCompress" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <input type="text" id="whisperPrompt" placeholder="Словарь / сложные имена (необязательно)" style="margin:2px 0; padding:10px 12px; font-size:12px;" />
+    <div class="global-row">
+      <span>Загрузить готовые (.vtt / .srt)</span>
+      <label for="subFile" class="file-pill" style="padding: 6px 14px; font-size: 12px;">Выбрать</label>
+      <input type="file" id="subFile" accept=".vtt,.srt" style="display:none" />
+    </div>
+  </div>
+
+  <select id="model">
+    <option value="whisper-large-v3-turbo">whisper-large-v3-turbo (Быстрая)</option>
+    <option value="whisper-large-v3">whisper-large-v3 (Точная)</option>
+  </select>
+
+  <select id="translateLang">
+    <option value="">Без перевода</option>
+    <option value="Russian">Перевести на русский</option>
+    <option value="English">Перевести на английский</option>
+    <option value="Turkish">Перевести на турецкий</option>
+    <option value="Azerbaijani">Перевести на азербайджанский</option>
+  </select>
+
+  <label class="file-box" for="mediaFile">
+    <span class="file-pill">Файл</span>
+    <span id="fileName">Не выбран</span>
+    <input type="file" id="mediaFile" accept="video/*,audio/*,.mkv" style="display:none" />
+  </label>
+
+  <button id="btn">Создать субтитры и открыть в плеере</button>
+  <div id="progressWrap"><div id="progressBar"></div></div>
+  
+  <div class="action-row" id="actionRow">
+    <select id="exportFormat">
+      <option value="vtt">.VTT (Стандарт)</option>
+      <option value="ass">.ASS (Караоке)</option>
+      <option value="srt">.SRT (Универсальный)</option>
+      <option value="txt">.TXT (Только текст)</option>
+    </select>
+    <button id="dlBtn">Скачать .vtt</button>
+    <button id="openBtn">Текст</button>
+  </div>
+
+  <p id="status"></p>
+
+  <!-- Панель ИИ-видео в стиле YouTube (Вопросы по видео через Gemini) -->
+  <div id="aiSummaryBox">
+    <div class="ai-title">
+      <div class="ai-title-left">
+        <span class="ai-sparkle-badge">✨ ИИ-видео</span>
+        <span class="ai-model-pill" id="aiActiveModelBadge">Gemini 3.8 Flash</span>
+      </div>
+      <div class="ai-header-actions">
+        <button type="button" class="ai-clear-btn" id="clearAiChatBtn">Очистить</button>
+        <button type="button" class="close-btn" id="closeAiBox" style="width:26px;height:26px;font-size:13px;">✕</button>
+      </div>
+    </div>
+
+    <div class="ai-Prompts-row" id="aiQuickPrompts">
+      <button type="button" class="ai-prompt-chip" data-q="О чём это видео? Расскажи кратко и понятно.">📝 О чём это видео?</button>
+      <button type="button" class="ai-prompt-chip" data-q="Выдели ключевые моменты видео с точными таймкодами в формате [ММ:СС].">⏱ Ключевые таймкоды</button>
+      <button type="button" class="ai-prompt-chip" data-q="Какие главные выводы и полезные мысли можно вынести из этого видео?">💡 Главные выводы</button>
+      <button type="button" class="ai-prompt-chip" data-q="Что сейчас происходит в видео и о чём говорится на этом моменте?">👁 Что сейчас в кадре?</button>
+    </div>
+
+    <div id="aiChatList">
+      <div class="ai-msg bot" id="aiSummaryText">Привет! Я ИИ-помощник по видео (как в YouTube). Задайте любой вопрос по видео ниже или выберите быстрый вопрос выше. Нажимайте на таймкоды в ответах для перехода к моменту.</div>
+    </div>
+    <div id="aiChaptersList" class="hidden"></div>
+
+    <div class="ai-input-row">
+      <input type="text" id="aiQuestionInput" placeholder="Спросите что угодно по видео..." autocomplete="off" />
+      <button type="button" id="aiSendBtn" aria-label="Отправить вопрос">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+  
+  <div id="vttPanelWrapper">
+    <pre id="vttPanel" class="hidden" title="Нажмите, чтобы скопировать текст"></pre>
+  </div>
+
+  <div id="playerContainer">
+    <video id="videoPlayer" playsinline></video>
+
+    <div id="subtitleOverlay">
+      <div id="subtitleText" class="bg-on"></div>
+    </div>
+
+    <div id="settingsMenu">
+      <div class="setting-item">
+        <label>Громкость <span id="volVal">100%</span></label>
+        <input type="range" id="volSlider" min="0" max="200" value="100">
+      </div>
+      <div class="setting-item">
+        <label>Скорость видео <span id="speedVal">1.0x</span></label>
+        <input type="range" id="speedSlider" min="0.5" max="2.0" step="0.25" value="1">
+      </div>
+      <div class="setting-item">
+        <label>Размер <span id="subSizeVal">18px</span></label>
+        <input type="range" id="subSize" min="12" max="48" step="1" value="18">
+      </div>
+      <div class="setting-item">
+        <label>Ширина <span id="subWidthVal">85%</span></label>
+        <input type="range" id="subWidth" min="30" max="100" step="1" value="85">
+      </div>
+      <div class="setting-item">
+        <label>Высота <span id="subBottomVal">12%</span></label>
+        <input type="range" id="subBottom" min="5" max="35" step="1" value="12">
+      </div>
+      <!-- НОВЫЕ НАСТРОЙКИ ТАЙМИНГОВ -->
+      <div class="setting-item">
+        <label>Сдвиг (появление) <span id="subOffsetVal">0 мс</span></label>
+        <input type="range" id="subOffset" min="-1000" max="1000" step="50" value="0">
+      </div>
+      <div class="setting-item">
+        <label>Задержка (исчезновение) <span id="subHoldVal">400 мс</span></label>
+        <input type="range" id="subHold" min="0" max="1500" step="50" value="400">
+      </div>
+      <!-- ----------------------- -->
+      <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
+        <label style="margin: 0;">Экран</label>
+        <select id="fitModeSelect">
+          <option value="contain">Вписать</option>
+          <option value="cover">Заполнить</option>
+          <option value="fill">Растянуть</option>
+        </select>
+      </div>
+      <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
+        <label style="margin: 0;">Режим слов</label>
+        <select id="wordModeSelect">
+          <option value="hidden">Пословно</option>
+          <option value="karaoke">Караоке</option>
+          <option value="full">Целиком</option>
+        </select>
+      </div>
+      <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
+        <label style="margin: 0;">Фон</label>
+        <label class="switch">
+          <input type="checkbox" id="bgToggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div id="playerControls">
+      <span id="timeText">0:00 / 0:00</span>
+      <input type="range" id="seekBar" min="0" max="100" value="0" step="0.1">
+      
+      <button class="ctrl-btn" id="settingsBtn">
+        <svg viewBox="0 0 24 24">
+          <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+        </svg>
+      </button>
+
+      <button class="ctrl-btn" id="fsBtn">
+        <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    const $ = (id) => document.getElementById(id);
+
+    /* ---------------- Wake Lock ---------------- */
+    let wakeLock = null;
+    async function requestWakeLock() {
+      if ('wakeLock' in navigator && !wakeLock) {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => { wakeLock = null; });
+        } catch (e) {}
+      }
+    }
+    function releaseWakeLock() {
+      if (wakeLock) {
+        wakeLock.release().catch(() => {});
+        wakeLock = null;
+      }
+    }
+
+    /* ---------------- Настройки и Модальное окно ---------------- */
+    const settingsToggle = $('settingsToggle');
+    const globalSettings = $('globalSettings');
+    const settingsBackdrop = $('settingsBackdrop');
+    const closeSettingsBtn = $('closeSettingsBtn');
+
+    function openSettings() {
+      globalSettings.classList.add('show');
+      settingsBackdrop.classList.add('show');
+      settingsToggle.classList.add('open');
+    }
+    function closeSettings() {
+      globalSettings.classList.remove('show');
+      settingsBackdrop.classList.remove('show');
+      settingsToggle.classList.remove('open');
+    }
+
+    settingsToggle.addEventListener('click', openSettings);
+    settingsBackdrop.addEventListener('click', closeSettings);
+    closeSettingsBtn.addEventListener('click', closeSettings);
+
+    function safeGetStorage(k, fallback = '') {
+      try { return localStorage.getItem(k) || fallback; } catch (e) { return fallback; }
+    }
+    function safeSetStorage(k, v) {
+      try { localStorage.setItem(k, v); } catch (e) {}
+    }
+
+    /* ---------------- Акцентный цвет ---------------- */
+    const accentColorEl = $('accentColor');
+    const savedAccent = safeGetStorage('groq_accent', '#00e5ff');
+    accentColorEl.value = savedAccent;
+    document.documentElement.style.setProperty('--accent', savedAccent);
+
+    /* ---------------- Мульти-ключ API Groq и Gemini ---------------- */
+    const keyInput = $('apiKey');
+    const geminiKeyInput = $('geminiApiKey');
+    const geminiModelSelect = $('geminiModel');
+    const aiActiveModelBadge = $('aiActiveModelBadge');
+    const defaultKeys = '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, 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';
+    
+    if (!safeGetStorage('groq_key')) {
+      safeSetStorage('groq_key', defaultKeys);
+    }
+    keyInput.value = safeGetStorage('groq_key', defaultKeys);
+    keyInput.addEventListener('input', () => safeSetStorage('groq_key', keyInput.value.trim()));
+
+    geminiKeyInput.value = safeGetStorage('gemini_key', '');
+    geminiKeyInput.addEventListener('input', () => safeSetStorage('gemini_key', geminiKeyInput.value.trim()));
+
+    const savedGeminiModel = safeGetStorage('gemini_model', 'gemini-3.8-flash');
+    if (savedGeminiModel) geminiModelSelect.value = savedGeminiModel;
+    function syncModelBadge() {
+      const opt = geminiModelSelect.options[geminiModelSelect.selectedIndex];
+      aiActiveModelBadge.textContent = opt ? opt.textContent : 'Gemini 3.8 Flash';
+      safeSetStorage('gemini_model', geminiModelSelect.value);
+    }
+    geminiModelSelect.addEventListener('change', syncModelBadge);
+    syncModelBadge();
+
+    let activeKeyIdx = 0;
+    function getApiKeys() {
+      return keyInput.value.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
+    }
+    function getCurrentKey() {
+      const keys = getApiKeys();
+      if (!keys.length) return '';
+      if (activeKeyIdx >= keys.length) activeKeyIdx = 0;
+      return keys[activeKeyIdx];
+    }
+    function rotateKey() {
+      const keys = getApiKeys();
+      if (keys.length <= 1) return false;
+      activeKeyIdx = (activeKeyIdx + 1) % keys.length;
+      return true;
+    }
+
+    const LANG_CODES = { Russian: 'ru', English: 'en', Turkish: 'tr', Azerbaijani: 'az' };
+
+    const videoEl = $('videoPlayer');
+    const playerBox = $('playerContainer');
+    const overlayEl = $('subtitleOverlay');
+    const subtitleEl = $('subtitleText');
+    const statusEl = $('status');
+    const btn = $('btn');
+    const progressWrap = $('progressWrap');
+    const progressBar = $('progressBar');
+    const actionRow = $('actionRow');
+    const exportFormat = $('exportFormat');
+    const dlBtn = $('dlBtn');
+    const openBtn = $('openBtn');
+    const vttPanel = $('vttPanel');
+    const aiSummaryBox = $('aiSummaryBox');
+    const aiSummaryText = $('aiSummaryText');
+    const aiChaptersList = $('aiChaptersList');
+
+    $('closeAiBox').addEventListener('click', () => aiSummaryBox.classList.remove('show'));
+
+    const sizeEl = $('subSize');
+    const widthEl = $('subWidth');
+    const bottomEl = $('subBottom');
+    const bgToggle = $('bgToggle');
+    const wordModeSelect = $('wordModeSelect');
+    const fitModeSelect = $('fitModeSelect');
+    const speedSlider = $('speedSlider');
+    const speedVal = $('speedVal');
+    
+    // Новые ползунки таймингов
+    const subOffsetEl = $('subOffset');
+    const subOffsetVal = $('subOffsetVal');
+    const subHoldEl = $('subHold');
+    const subHoldVal = $('subHoldVal');
+
+    const sizeVal = $('subSizeVal');
+    const widthVal = $('subWidthVal');
+    const bottomVal = $('subBottomVal');
+    const volSlider = $('volSlider');
+    const volVal = $('volVal');
+
+    const subTextColorEl = $('subTextColor');
+    const subFontFamilyEl = $('subFontFamily');
+    const bgOpacityEl = $('bgOpacity');
+    const autoPlayToggle = $('autoPlayToggle');
+    const llmModelEl = $('llmModel');
+    const hallucinationFilterEl = $('hallucinationFilter');
+    const smartSplitToggleEl = $('smartSplitToggle');
+    const fastAudioCompressEl = $('fastAudioCompress');
+    const whisperPromptEl = $('whisperPrompt');
+
+    /* ---------------- Состояние / Кэш / Форматы ---------------- */
+    let exportData = { vtt: '', srt: '', ass: '', txt: '' };
+    let currentFileName = 'subtitles';
+    let mediaObjectURL = null;
+    let cues = [];
+    let cachedWhisper = {
+      fileSig: '',
+      model: '',
+      rawSegments: [],
+      rawWords: [],
+      translations: {},
+      activeLang: null,
+      aiSummary: null
+    };
+    let activeAbortCtrl = null;
+    let wordSpans = [];
+    let currentCueIdx = -2;
+    let rafId = null;
+    let boxVisible = null;
+    let playerActive = false;
+
+    function setProgress(pct) {
+      if (pct === null) {
+        progressWrap.style.display = 'none';
+        progressBar.style.width = '0%';
+      } else {
+        progressWrap.style.display = 'block';
+        progressBar.style.width = Math.min(100, Math.max(0, pct)) + '%';
+      }
+    }
+
+    function applySettings() {
+      const size = Math.min(48, Math.max(12, parseInt(sizeEl.value, 10) || 18));
+      const width = Math.min(100, Math.max(30, parseInt(widthEl.value, 10) || 85));
+      const bottom = Math.min(35, Math.max(5, parseInt(bottomEl.value, 10) || 12));
+      const wordMode = wordModeSelect.value || 'hidden';
+      const fitMode = fitModeSelect.value || 'contain';
+      const textColor = subTextColorEl.value;
+      const fontFamily = subFontFamilyEl.value;
+      const bgOpacity = bgOpacityEl.value;
+
+      // Тайминги
+      const subOffset = parseInt(subOffsetEl.value, 10) || 0;
+      const subHold = parseInt(subHoldEl.value, 10) || 0;
+
+      const root = document.documentElement.style;
+      root.setProperty('--sub-size', size + 'px');
+      root.setProperty('--sub-width', width + '%');
+      root.setProperty('--sub-bottom', bottom + '%');
+      root.setProperty('--sub-color', textColor);
+      root.setProperty('--sub-font', fontFamily);
+      root.setProperty('--bg-opacity', bgOpacity);
+
+      sizeVal.textContent = size + 'px';
+      widthVal.textContent = width + '%';
+      bottomVal.textContent = bottom + '%';
+      subOffsetVal.textContent = subOffset + ' мс';
+      subHoldVal.textContent = subHold + ' мс';
+
+      videoEl.classList.toggle('fill-crop', fitMode === 'cover');
+      videoEl.classList.toggle('fill-stretch', fitMode === 'fill');
+
+      subtitleEl.classList.toggle('bg-on', bgToggle.checked);
+      subtitleEl.classList.toggle('bg-off', !bgToggle.checked);
+      subtitleEl.classList.toggle('mode-karaoke', wordMode === 'karaoke');
+      subtitleEl.classList.toggle('mode-full', wordMode === 'full');
+
+      if (cues.length) {
+        exportData.ass = generateASS(cues);
+        if (exportFormat.value === 'ass') updateExportPreview();
+      }
+      if (playerActive) {
+        updateOverlayGeometry();
+        updateSubtitleFrame();
+      }
+
+      try {
+        localStorage.setItem('groq_sub_settings', JSON.stringify({ 
+          size, width, bottom,
+          bg: bgToggle.checked,
+          wordMode, fitMode,
+          textColor, fontFamily, bgOpacity,
+          subOffset, subHold,
+          autoPlay: autoPlayToggle.checked,
+          llmModel: llmModelEl.value,
+          hallucinationFilter: hallucinationFilterEl.checked,
+          smartSplit: smartSplitToggleEl.checked,
+          fastAudioCompress: fastAudioCompressEl.checked,
+          whisperPrompt: whisperPromptEl.value
+        }));
+      } catch (e) {}
+    }
+
+    (function loadSettings() {
+      try {
+        const s = JSON.parse(localStorage.getItem('groq_sub_settings') || '{}');
+        if (s.size) sizeEl.value = s.size;
+        if (s.width) widthEl.value = s.width;
+        if (s.bottom) bottomEl.value = s.bottom;
+        if (s.bg !== undefined) bgToggle.checked = s.bg;
+        if (s.wordMode) wordModeSelect.value = s.wordMode;
+        if (s.fitMode) fitModeSelect.value = s.fitMode;
+        if (s.textColor) subTextColorEl.value = s.textColor;
+        if (s.fontFamily) subFontFamilyEl.value = s.fontFamily;
+        if (s.bgOpacity !== undefined) bgOpacityEl.value = s.bgOpacity;
+        
+        if (s.subOffset !== undefined) subOffsetEl.value = s.subOffset;
+        if (s.subHold !== undefined) subHoldEl.value = s.subHold;
+
+        if (s.autoPlay !== undefined) autoPlayToggle.checked = s.autoPlay;
+        if (s.llmModel) llmModelEl.value = s.llmModel;
+        if (s.hallucinationFilter !== undefined) hallucinationFilterEl.checked = s.hallucinationFilter;
+        if (s.smartSplit !== undefined) smartSplitToggleEl.checked = s.smartSplit;
+        if (s.fastAudioCompress !== undefined) fastAudioCompressEl.checked = s.fastAudioCompress;
+        if (s.whisperPrompt !== undefined) whisperPromptEl.value = s.whisperPrompt;
+      } catch (e) {}
+      applySettings();
+    })();
+
+    [
+      sizeEl, widthEl, bottomEl, bgToggle, wordModeSelect,
+      fitModeSelect,
+      subTextColorEl, subFontFamilyEl, bgOpacityEl,
+      subOffsetEl, subHoldEl, // <-- добавили в массив слушателей
+      autoPlayToggle, llmModelEl, hallucinationFilterEl,
+      fastAudioCompressEl, whisperPromptEl
+    ].forEach((el) => {
+      el.addEventListener('input', applySettings);
+      el.addEventListener('change', applySettings);
+    });
+
+    accentColorEl.addEventListener('input', (e) => {
+      const color = e.target.value;
+      document.documentElement.style.setProperty('--accent', color);
+      safeSetStorage('groq_accent', color);
+      if (cues.length) {
+        exportData.ass = generateASS(cues);
+        if (exportFormat.value === 'ass') updateExportPreview();
+      }
+    });
+
+    smartSplitToggleEl.addEventListener('change', () => {
+      applySettings();
+      if (cachedWhisper.rawSegments.length && cachedWhisper.activeLang === '') {
+        cues = buildCues(cachedWhisper.rawSegments, cachedWhisper.rawWords);
+        refreshAllExports();
+        currentCueIdx = -2;
+        updateSubtitleFrame();
+      }
+    });
+
+    speedSlider.addEventListener('input', (e) => {
+      const spd = parseFloat(e.target.value) || 1;
+      videoEl.playbackRate = spd;
+      speedVal.textContent = spd.toFixed(spd % 1 === 0 ? 1 : 2) + 'x';
+    });
+
+    /* ---------------- Web Audio ---------------- */
+    let audioCtx, gainNode, compressorNode, sourceNode;
+
+    function initAudio() {
+      if (!audioCtx) {
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioContext();
+          sourceNode = audioCtx.createMediaElementSource(videoEl);
+          gainNode = audioCtx.createGain();
+          compressorNode = audioCtx.createDynamicsCompressor();
+
+          compressorNode.threshold.value = -3.0;
+          compressorNode.knee.value = 6.0;
+          compressorNode.ratio.value = 20.0;
+          compressorNode.attack.value = 0.002;
+          compressorNode.release.value = 0.15;
+
+          sourceNode.connect(gainNode);
+          gainNode.connect(compressorNode);
+          compressorNode.connect(audioCtx.destination);
+          gainNode.gain.value = (parseInt(volSlider.value, 10) || 100) / 100;
+        } catch (e) {
+          console.warn('Web Audio API не поддерживается', e);
+        }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+    }
+
+    volSlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      volVal.textContent = val + '%';
+      initAudio();
+      if (gainNode) {
+        gainNode.gain.value = val / 100;
+      } else {
+        videoEl.volume = Math.min(val / 100, 1.0);
+      }
+    });
+
+    /* ---------------- Плеер ---------------- */
+    const seekBar = $('seekBar');
+    const timeText = $('timeText');
+    const fsBtn = $('fsBtn');
+    const settingsBtn = $('settingsBtn');
+    const settingsMenu = $('settingsMenu');
+    const controlsEl = $('playerControls');
+    let hideControlsTimer;
+
+    function formatTime(sec) {
+      if (isNaN(sec) || !isFinite(sec)) return '0:00';
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    function syncTimeUI() {
+      if (!seekBar.dataset.dragging) {
+        const pct = videoEl.duration > 0
+          ? (videoEl.currentTime / videoEl.duration) * 100
+          : 0;
+        seekBar.value = pct;
+        seekBar.style.setProperty('--progress', pct + '%');
+      }
+      timeText.innerText = `${formatTime(videoEl.currentTime)} / ${formatTime(videoEl.duration)}`;
+    }
+
+    function updatePlayState() {
+      if (videoEl.paused) {
+        controlsEl.classList.remove('hidden-controls');
+        clearTimeout(hideControlsTimer);
+        stopRenderLoop();
+        releaseWakeLock();
+      } else {
+        initAudio();
+        requestWakeLock();
+        showControls();
+        startRenderLoop();
+      }
+    }
+
+    function showControls() {
+      controlsEl.classList.remove('hidden-controls');
+      clearTimeout(hideControlsTimer);
+      if (!videoEl.paused) {
+        hideControlsTimer = setTimeout(() => {
+          if (!settingsMenu.classList.contains('show')) {
+            controlsEl.classList.add('hidden-controls');
+          }
+        }, 2500);
+      }
+    }
+
+    playerBox.addEventListener('mousemove', showControls);
+    playerBox.addEventListener('touchstart', showControls, { passive: true });
+    
+    function showPlayFlash(isPlaying) {
+      const old = playerBox.querySelector('.play-flash');
+      if (old) old.remove();
+      const el = document.createElement('div');
+      el.className = 'play-flash';
+      el.innerHTML = isPlaying
+        ? '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'
+        : '<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+      playerBox.appendChild(el);
+      setTimeout(() => el.remove(), 500);
+    }
+
+    function togglePlay() {
+      initAudio();
+      if (videoEl.paused) {
+        videoEl.play().catch(() => {});
+        showPlayFlash(true);
+      } else {
+        videoEl.pause();
+        showPlayFlash(false);
+      }
+    }
+
+    videoEl.addEventListener('play', updatePlayState);
+    videoEl.addEventListener('pause', updatePlayState);
+    videoEl.addEventListener('loadedmetadata', syncTimeUI);
+    videoEl.addEventListener('seeked', () => {
+      syncTimeUI();
+      updateSubtitleFrame();
+    });
+
+    seekBar.addEventListener('input', () => {
+      seekBar.dataset.dragging = 'true';
+      seekBar.style.setProperty('--progress', seekBar.value + '%');
+    });
+    seekBar.addEventListener('change', () => {
+      videoEl.currentTime = (seekBar.value / 100) * (videoEl.duration || 0);
+      delete seekBar.dataset.dragging;
+      syncTimeUI();
+      updateSubtitleFrame();
+    });
+
+    fsBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        playerBox.requestFullscreen?.().catch(()=>{});
+      } else {
+        document.exitFullscreen?.();
+      }
+    });
+
+    settingsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      settingsMenu.classList.toggle('show');
+      showControls();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (settingsMenu.classList.contains('show')
+          && !settingsMenu.contains(e.target)
+          && !settingsBtn.contains(e.target)) {
+        settingsMenu.classList.remove('show');
+        showControls();
+      }
+    });
+
+    videoEl.addEventListener('error', () => {
+      if (videoEl.error) {
+        let msg = 'Ошибка воспроизведения.';
+        if (videoEl.error.code === 4) {
+          msg = 'Браузер не поддерживает этот видеокодек (например, MKV). Конвертируйте файл в MP4 (H.264).';
+        }
+        statusEl.innerText = msg;
+      }
+    });
+
+    /* ---------------- Умный мультитап (0ms задержки, мгновенный Play/Pause) ---------------- */
+    function showSeekFlash(direction, totalDelta) {
+      const old = playerBox.querySelector('.seek-flash.' + direction);
+      if (old) old.remove();
+
+      const el = document.createElement('div');
+      el.className = 'seek-flash ' + direction;
+      const svg = direction === 'left'
+        ? '<svg viewBox="0 0 24 24"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>'
+        : '<svg viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>';
+      const label = totalDelta < 0 ? `−${Math.abs(totalDelta)}с` : `+${totalDelta}с`;
+      el.innerHTML = svg + `<span>${label}</span>`;
+      playerBox.appendChild(el);
+      setTimeout(() => el.remove(), 650);
+    }
+
+    function seekBy(delta) {
+      const maxT = isFinite(videoEl.duration) ? videoEl.duration : Infinity;
+      videoEl.currentTime = Math.max(0, Math.min(maxT, videoEl.currentTime + delta));
+      syncTimeUI();
+      updateSubtitleFrame();
+    }
+
+    let tapTimer = null;
+    let lastTapSide = null;
+    let seekAccum = 0;
+    let firstTapPlayState = null;
+
+    videoEl.addEventListener('click', (e) => {
+      const rect = videoEl.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const side = x < rect.width / 2 ? 'left' : 'right';
+
+      if (tapTimer && lastTapSide === side) {
+        clearTimeout(tapTimer);
+        tapTimer = null;
+
+        if (firstTapPlayState === 'paused' && !videoEl.paused) {
+          videoEl.pause();
+          showPlayFlash(false);
+        } else if (firstTapPlayState === 'playing' && videoEl.paused) {
+          videoEl.play().catch(()=>{});
+          showPlayFlash(true);
+        }
+
+        const step = side === 'left' ? -10 : 10;
+        seekAccum += step;
+        seekBy(step);
+        showSeekFlash(side, seekAccum);
+        
+        firstTapPlayState = null;
+        tapTimer = setTimeout(() => {
+          tapTimer = null;
+          lastTapSide = null;
+          seekAccum = 0;
+        }, 380);
+        return;
+      }
+
+      if (tapTimer) {
+        clearTimeout(tapTimer);
+        tapTimer = null;
+        seekAccum = 0;
+      }
+
+      lastTapSide = side;
+      firstTapPlayState = videoEl.paused ? 'paused' : 'playing';
+      
+      togglePlay();
+      showControls();
+
+      tapTimer = setTimeout(() => {
+        tapTimer = null;
+        lastTapSide = null;
+        firstTapPlayState = null;
+        seekAccum = 0;
+      }, 280);
+    });
+
+    /* ---------------- Кэш, подписи кнопок и экспорт ---------------- */
+    function getFileSignature(file) {
+      return file ? `${file.name}_${file.size}_${file.lastModified}` : '';
+    }
+
+    function cloneCues(cueList) {
+      return cueList.map(c => ({
+        start: c.start,
+        end: c.end,
+        text: c.text,
+        words: (c.words || []).map(w => ({ word: w.word, start: w.start, end: w.end }))
+      }));
+    }
+
+    function updateButtonLabel() {
+      if (activeAbortCtrl) return;
+      const f = $('mediaFile').files[0];
+      const sig = getFileSignature(f);
+      const model = $('model').value;
+      const tLang = $('translateLang').value;
+
+      if (f && cachedWhisper.fileSig === sig && cachedWhisper.model === model && cachedWhisper.rawSegments.length) {
+        if (!tLang) {
+          btn.innerText = cachedWhisper.activeLang === ''
+            ? '✨ ИИ-видео (вопросы по видео)'
+            : 'Вернуть оригинал из кэша';
+        } else if (cachedWhisper.activeLang === tLang) {
+          btn.innerText = '✨ ИИ-видео (вопросы по видео)';
+        } else if (cachedWhisper.translations[tLang]) {
+          btn.innerText = 'Открыть готовый перевод из кэша';
+        } else {
+          btn.innerText = 'Быстро перевести из кэша';
+        }
+      } else {
+        btn.innerText = 'Создать субтитры и открыть в плеере';
+      }
+    }
+
+    function updateFileName() {
+      const f = $('mediaFile').files[0];
+      $('fileName').innerText = f ? f.name : 'Не выбран';
+      if (f) {
+        currentFileName = f.name.replace(/\.[^/.]+$/, '');
+        applySettings();
+      }
+      aiSummaryBox.classList.remove('show');
+      updateButtonLabel();
+    }
+    $('mediaFile').addEventListener('change', updateFileName);
+    $('translateLang').addEventListener('change', updateButtonLabel);
+    $('model').addEventListener('change', updateButtonLabel);
+
+    const timeVTT = (sec) => {
+      const ms = Math.max(0, Math.round(sec * 1000));
+      return `${String(Math.floor(ms / 3600000)).padStart(2,'0')}:${String(Math.floor((ms % 3600000) / 60000)).padStart(2,'0')}:${String(Math.floor((ms % 60000) / 1000)).padStart(2,'0')}.${String(ms % 1000).padStart(3,'0')}`;
+    };
+    const timeSRT = (sec) => timeVTT(sec).replace('.', ',');
+    const timeASS = (sec) => {
+      const cs = Math.max(0, Math.round(sec * 100));
+      return `${Math.floor(cs / 360000)}:${String(Math.floor((cs % 360000) / 6000)).padStart(2,'0')}:${String(Math.floor((cs % 6000) / 100)).padStart(2,'0')}.${String(cs % 100).padStart(2,'0')}`;
+    };
+
+    function hexToASS(hex, alphaHex = '00') {
+      const clean = String(hex || '#ffffff').replace('#', '');
+      if (clean.length !== 6) return `&H${alphaHex}FFFFFF`;
+      const r = clean.substring(0, 2).toUpperCase();
+      const g = clean.substring(2, 4).toUpperCase();
+      const b = clean.substring(4, 6).toUpperCase();
+      return `&H${alphaHex}${b}${g}${r}`;
+    }
+
+    function generateVTT(cueArr) {
+      return 'WEBVTT\n\n' + cueArr.map(c => `${timeVTT(c.start)} --> ${timeVTT(c.end)}\n${c.text.replace(/-->/g, '—>')}\n`).join('\n');
+    }
+    function generateSRT(cueArr) {
+      return cueArr.map((c, i) => `${i + 1}\n${timeSRT(c.start)} --> ${timeSRT(c.end)}\n${c.text.replace(/-->/g, '—>')}\n`).join('\n');
+    }
+    function generateASS(cueArr) {
+      const cleanFont = (subFontFamilyEl.value || 'Inter').split(',')[0].replace(/['"]/g, '').trim() || 'Inter';
+      const fontSize = Math.round((parseInt(sizeEl.value, 10) || 18) * 3.2);
+      const marginV = Math.round((parseInt(bottomEl.value, 10) || 12) * 10.8);
+      const primaryCol = hexToASS(subTextColorEl.value, '00');
+      const secondaryCol = hexToASS(accentColorEl.value, '55');
+      const opacityVal = parseInt(bgOpacityEl.value, 10) || 62;
+      const backAlpha = bgToggle.checked
+        ? Math.round(((100 - opacityVal) / 100) * 255).toString(16).padStart(2, '0').toUpperCase()
+        : 'FF';
+      const backCol = `&H${backAlpha}000000`;
+
+      let out = `[Script Info]\nScriptType: v4.00+\nPlayResX: 1920\nPlayResY: 1080\nWrapStyle: 0\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,${cleanFont},${fontSize},${primaryCol},${secondaryCol},&H00000000,${backCol},-1,0,0,0,100,100,0,0,1,3,0,2,40,40,${marginV},1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
+      cueArr.forEach(c => {
+        let prevEnd = c.start;
+        let txt = c.words.map(w => {
+          const gapCs = Math.max(0, Math.round((w.start - prevEnd) * 100));
+          const durCs = Math.max(1, Math.round((w.end - w.start) * 100));
+          prevEnd = Math.max(prevEnd, w.end);
+          const gapTag = gapCs > 0 ? `{\\k${gapCs}}` : '';
+          const cleanWord = String(w.word).replace(/\r?\n/g, '\\N');
+          return `${gapTag}{\\kf${durCs}}${cleanWord} `;
+        }).join('');
+        out += `Dialogue: 0,${timeASS(c.start)},${timeASS(c.end)},Default,,0,0,0,,${txt.trim()}\n`;
+      });
+      return out;
+    }
+    function generateTXT(cueArr) { return cueArr.map(c => c.text).join('\n'); }
+
+    function refreshAllExports() {
+      exportData.vtt = generateVTT(cues);
+      exportData.srt = generateSRT(cues);
+      exportData.ass = generateASS(cues);
+      exportData.txt = generateTXT(cues);
+      updateExportPreview();
+    }
+
+    function updateExportPreview() {
+      const fmt = exportFormat.value;
+      vttPanel.innerText = exportData[fmt];
+      dlBtn.innerText = `Скачать .${fmt}`;
+    }
+    exportFormat.addEventListener('change', updateExportPreview);
+
+    function downloadSubtitle(fmtOverride) {
+      const fmt = fmtOverride || exportFormat.value;
+      const content = exportData[fmt];
+      if (!content) return;
+      const bridge = window.ExoPlayerManager || window.AndroidBridge;
+      if (bridge && typeof bridge.saveSubtitleFile === 'function') {
+        const ok = bridge.saveSubtitleFile(`${currentFileName}.${fmt}`, content, fmt);
+        if (ok) {
+          statusEl.innerText = `✅ Файл ${currentFileName}.${fmt} сохранён в папку «Загрузки» телефона!`;
+          return;
+        }
+      }
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${currentFileName}.${fmt}`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    }
+
+    dlBtn.addEventListener('click', () => downloadSubtitle());
+    
+    openBtn.addEventListener('click', () => {
+      const isHidden = vttPanel.classList.toggle('hidden');
+      openBtn.innerText = isHidden ? 'Текст' : 'Скрыть';
+    });
+
+    vttPanel.addEventListener('click', () => {
+      if (!vttPanel.innerText) return;
+      navigator.clipboard?.writeText(vttPanel.innerText).then(() => {
+        const prev = statusEl.innerText;
+        statusEl.innerText = 'Текст субтитров скопирован в буфер обмена!';
+        setTimeout(() => { statusEl.innerText = prev; }, 2000);
+      }).catch(() => {});
+    });
+
+    /* ---------------- ИИ-видео в стиле YouTube (Вопросы по видео через Gemini API) ---------------- */
+    const aiChatList = $('aiChatList');
+    const aiQuestionInput = $('aiQuestionInput');
+    const aiSendBtn = $('aiSendBtn');
+    const clearAiChatBtn = $('clearAiChatBtn');
+    const aiQuickPrompts = $('aiQuickPrompts');
+    let aiChatHistory = [];
+    let aiBusy = false;
+
+    function getGeminiKeys() {
+      return geminiKeyInput.value.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
+    }
+
+    function captureCurrentVideoFrameBase64() {
+      try {
+        const bridge = window.ExoPlayerManager || window.AndroidBridge;
+        if (bridge && typeof bridge.getCurrentFrameBase64 === 'function') {
+          const nativeFrame = bridge.getCurrentFrameBase64();
+          if (nativeFrame && nativeFrame.length > 32) return nativeFrame;
+        }
+        if (!videoEl || videoEl.readyState < 2 || !videoEl.videoWidth) return null;
+        const canvas = document.createElement('canvas');
+        const scale = Math.min(1, 512 / videoEl.videoWidth);
+        canvas.width = Math.max(1, Math.round(videoEl.videoWidth * scale));
+        canvas.height = Math.max(1, Math.round(videoEl.videoHeight * scale));
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+        return dataUrl.split(',')[1] || null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function buildTranscriptContext() {
+      if (!cues.length) return 'Субтитры ещё не созданы или видео без субтитров.';
+      const step = Math.max(1, Math.ceil(cues.length / 180));
+      return cues
+        .filter((_, idx) => idx % step === 0)
+        .map(c => `[${formatTime(c.start)}] ${c.text}`)
+        .join('\n');
+    }
+
+    function formatBotMessageHTML(rawText) {
+      const escaped = String(rawText || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      const withBold = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      const withTimestamps = withBold.replace(/\[?(\d{1,2}:\d{2}(?::\d{2})?)\]?/g, (match, tc) => {
+        const parts = tc.split(':').map(Number);
+        const sec = parts.length === 3
+          ? parts[0] * 3600 + parts[1] * 60 + parts[2]
+          : parts[0] * 60 + parts[1];
+        if (!isFinite(sec)) return match;
+        return `<button type="button" class="chapter-time" data-sec="${sec}">${tc}</button>`;
+      });
+      return withTimestamps
+        .split(/\n{2,}/)
+        .map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`)
+        .join('');
+    }
+
+    function appendAiMessage(role, text, isHtml = false) {
+      const msg = document.createElement('div');
+      msg.className = 'ai-msg ' + (role === 'user' ? 'user' : 'bot');
+      if (isHtml) {
+        msg.innerHTML = text;
+      } else if (role === 'bot') {
+        msg.innerHTML = formatBotMessageHTML(text);
+      } else {
+        msg.textContent = text;
+      }
+      aiChatList.appendChild(msg);
+      aiChatList.scrollTop = aiChatList.scrollHeight;
+      return msg;
+    }
+
+    aiChatList.addEventListener('click', (e) => {
+      const timeBtn = e.target.closest('.chapter-time');
+      if (timeBtn && timeBtn.dataset.sec !== undefined) {
+        const sec = Math.max(0, Number(timeBtn.dataset.sec) || 0);
+        videoEl.currentTime = sec;
+        syncTimeUI();
+        updateSubtitleFrame();
+        playerBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (videoEl.paused) togglePlay();
+        return;
+      }
+      const openCfgBtn = e.target.closest('.open-gemini-settings-btn');
+      if (openCfgBtn) {
+        openSettings();
+        setTimeout(() => geminiKeyInput.focus(), 200);
+      }
+    });
+
+    clearAiChatBtn.addEventListener('click', () => {
+      aiChatHistory = [];
+      aiChatList.innerHTML = '<div class="ai-msg bot">Чат очищен. Задайте новый вопрос по видео!</div>';
+    });
+
+    async function callGeminiVideoQA(questionText) {
+      const geminiKeys = getGeminiKeys();
+      if (!geminiKeys.length) {
+        appendAiMessage(
+          'bot',
+          'Для работы <strong>ИИ-видео</strong> укажите ваш API ключ Gemini в настройках.<br><button type="button" class="ai-clear-btn open-gemini-settings-btn" style="margin-top:8px;color:var(--accent);border-color:var(--accent);">⚙️ Открыть настройки и вставить ключ Gemini</button>',
+          true
+        );
+        return;
+      }
+
+      aiBusy = true;
+      aiSendBtn.disabled = true;
+      appendAiMessage('user', questionText);
+      const loadingBubble = appendAiMessage('bot', '⏳ ИИ анализирует видео...');
+
+      try {
+        const transcript = buildTranscriptContext();
+        const curTimeStr = formatTime(videoEl.currentTime || 0);
+        const frameB64 = captureCurrentVideoFrameBase64();
+        const selectedModel = geminiModelSelect.value || 'gemini-3.8-flash';
+
+        const candidateModels = [selectedModel];
+        ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'].forEach(m => {
+          if (!candidateModels.includes(m)) candidateModels.push(m);
+        });
+
+        const systemPrompt =
+          'Ты умный видео-ассистент внутри плеера (как функция «Спросить о видео» в YouTube). ' +
+          'Отвечай на русском языке чётко, дружелюбно и по делу. ' +
+          'Когда ссылаешься на моменты из видео, обязательно указывай таймкоды в формате [ММ:СС], чтобы пользователь мог нажать на них для перемотки. ' +
+          `Текущий момент плеера: [${curTimeStr}].\n\nСубтитры видео с таймкодами:\n${transcript}`;
+
+        const contents = [];
+        aiChatHistory.slice(-8).forEach(turn => {
+          contents.push({
+            role: turn.role === 'user' ? 'user' : 'model',
+            parts: [{ text: turn.text }]
+          });
+        });
+
+        const userParts = [{ text: questionText }];
+        if (frameB64) {
+          userParts.push({
+            inline_data: {
+              mime_type: 'image/jpeg',
+              data: frameB64
+            }
+          });
+        }
+        contents.push({ role: 'user', parts: userParts });
+
+        let answerText = null;
+        let lastErr = 'Не удалось получить ответ от Gemini API.';
+
+        for (const apiKey of geminiKeys) {
+          for (const modelId of candidateModels) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                contents,
+                generationConfig: { temperature: 0.35 }
+              })
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              const parts = data?.candidates?.[0]?.content?.parts || [];
+              const txt = parts.map(p => p.text || '').join('').trim();
+              if (txt) {
+                answerText = txt;
+                break;
+              }
+            } else {
+              const errJson = await res.json().catch(() => ({}));
+              const errMsg = errJson?.error?.message || `HTTP ${res.status}`;
+              lastErr = errMsg;
+              if (res.status === 400 && /API_KEY_INVALID|API key not valid/i.test(errMsg)) {
+                break;
+              }
+            }
+          }
+          if (answerText) break;
+        }
+
+        if (!answerText) throw new Error(lastErr);
+
+        aiChatHistory.push({ role: 'user', text: questionText });
+        aiChatHistory.push({ role: 'model', text: answerText });
+        loadingBubble.innerHTML = formatBotMessageHTML(answerText);
+        aiChatList.scrollTop = aiChatList.scrollHeight;
+      } catch (e) {
+        loadingBubble.innerHTML = formatBotMessageHTML('Ошибка Gemini API: ' + (e.message || e));
+      } finally {
+        aiBusy = false;
+        aiSendBtn.disabled = false;
+      }
+    }
+
+    function submitAiQuestion() {
+      if (aiBusy) return;
+      const q = aiQuestionInput.value.trim();
+      if (!q) return;
+      aiQuestionInput.value = '';
+      callGeminiVideoQA(q);
+    }
+
+    aiSendBtn.addEventListener('click', submitAiQuestion);
+    aiQuestionInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitAiQuestion();
+      }
+    });
+
+    aiQuickPrompts.addEventListener('click', (e) => {
+      const chip = e.target.closest('.ai-prompt-chip');
+      if (!chip || aiBusy) return;
+      const q = chip.dataset.q;
+      if (q) callGeminiVideoQA(q);
+    });
+
+    async function generateVideoAiInsights() {
+      aiSummaryBox.classList.add('show');
+      aiSummaryBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      setTimeout(() => aiQuestionInput.focus(), 180);
+    }
+
+    /* ---------------- Загрузка готового .vtt / .srt без API ---------------- */
+    function parseTimeCode(str) {
+      const p = str.trim().replace(',', '.').split(':');
+      if (p.length === 3) return (+p[0]) * 3600 + (+p[1]) * 60 + (+p[2]);
+      if (p.length === 2) return (+p[0]) * 60 + (+p[1]);
+      return 0;
+    }
+
+    $('subFile').addEventListener('change', async (e) => {
+      const subF = e.target.files[0];
+      if (!subF) return;
+      const text = await subF.text();
+      const blocks = text.replace(/\r\n?/g, '\n').split(/\n\n+/);
+      const parsedCues = [];
+
+      for (const b of blocks) {
+        const lines = b.trim().split('\n');
+        const arrowIdx = lines.findIndex(l => l.includes('-->'));
+        if (arrowIdx === -1) continue;
+        const [sStr, eStr] = lines[arrowIdx].split('-->');
+        const start = parseTimeCode(sStr);
+        const end = parseTimeCode((eStr || '').split(/\s+/)[0]);
+        const cueText = lines.slice(arrowIdx + 1).join(' ').replace(/<[^>]+>/g, '').trim();
+        if (cueText && end > start) {
+          const cue = { start, end, text: cueText, words: [] };
+          distributeWords(cue);
+          parsedCues.push(cue);
+        }
+      }
+
+      if (!parsedCues.length) { statusEl.innerText = 'Не удалось прочитать субтитры из файла.'; return; }
+      cues = parsedCues;
+      refreshAllExports();
+      actionRow.style.display = 'flex';
+      closeSettings();
+
+      const mediaF = $('mediaFile').files[0];
+      if (mediaF) {
+        setupPlayer(mediaF);
+        statusEl.innerText = `Готовые субтитры (${cues.length} строк) загружены в плеер!`;
+      } else {
+        statusEl.innerText = `Субтитры загружены (${cues.length} строк). Выберите видеофайл для просмотра.`;
+      }
+    });
+
+    /* ---------------- Фильтр галлюцинаций ---------------- */
+    const HALLUCINATION_REGEX = /(субтитры\s+(сделал|создал|добавил|подготовил|писал)|редактор\s+субтитров|корректор\s+|dimatorzok|продолжение\s+следует|amara\.org|подписывайтесь\s+на\s+канал|ставь(те)?\s+лайк)/i;
+
+    function isWhisperHallucination(seg) {
+      const text = String(seg.text || '').trim();
+      if (!text) return true;
+      if (!hallucinationFilterEl.checked) return false;
+      if (HALLUCINATION_REGEX.test(text)) return true;
+      if (typeof seg.no_speech_prob === 'number' && seg.no_speech_prob > 0.85 && (seg.avg_logprob < -0.8 || text.length < 16)) {
+        return true;
+      }
+      if (typeof seg.compression_ratio === 'number' && seg.compression_ratio > 2.6) {
+        return true;
+      }
+      return false;
+    }
+
+    /* ---------------- Запросы в Groq с ротацией ключей и отменой ---------------- */
+    async function fetchGroqWithRotation(url, makeOptionsFn, signal, retries = 5) {
+      let lastErr = null;
+      const totalKeys = Math.max(1, getApiKeys().length);
+      let rotatedCount = 0;
+
+      for (let i = 0; i <= retries; i++) {
+        if (signal && signal.aborted) throw new Error('Отменено пользователем.');
+        try {
+          const currentKey = getCurrentKey();
+          const opts = makeOptionsFn(currentKey);
+          if (signal) opts.signal = signal;
+          const res = await fetch(url, opts);
+
+          if (res.status === 429 && rotatedCount < totalKeys - 1 && rotateKey()) {
+            rotatedCount++;
+            i--;
+            statusEl.innerText = `🔄 Лимит на ключе. Переключение на ключ #${activeKeyIdx + 1}...`;
+            continue;
+          }
+
+          if ((res.status === 429 || res.status === 502 || res.status === 503) && i < retries) {
+            rotatedCount = 0;
+            rotateKey();
+            const ra = parseInt(res.headers.get('retry-after') || '0', 10);
+            let waitSec = ra > 0 ? ra : Math.ceil(1200 * Math.pow(2, i) / 1000);
+            if (waitSec < 1) waitSec = 1;
+            statusEl.innerText = `⏳ Лимит запросов. Ждем ${waitSec} сек... (Попытка ${i + 1}/${retries})`;
+            await new Promise((r) => setTimeout(r, waitSec * 1000));
+            continue;
+          }
+          return res;
+        } catch (e) {
+          if (e && e.name === 'AbortError') throw new Error('Отменено пользователем.');
+          lastErr = e;
+          if (i < retries) {
+            statusEl.innerText = `🌐 Ошибка сети. Повторная попытка...`;
+            await new Promise((r) => setTimeout(r, 2000));
+          }
+        }
+      }
+      if (lastErr) throw lastErr;
+      throw new Error('Сеть недоступна');
+    }
+
+    async function sendToGroq(blob, filename, model, promptHint, signal) {
+      const res = await fetchGroqWithRotation('https://api.groq.com/openai/v1/audio/transcriptions', (key) => {
+        const fd = new FormData();
+        fd.append('file', blob, filename);
+        fd.append('model', model);
+        fd.append('temperature', '0');
+        fd.append('response_format', 'verbose_json');
+        fd.append('timestamp_granularities[]', 'word');
+        fd.append('timestamp_granularities[]', 'segment');
+        if (promptHint) fd.append('prompt', promptHint.slice(-220));
+        return {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + key },
+          body: fd
+        };
+      }, signal);
+      
+      if (!res.ok) {
+        if (res.status === 401) throw new Error('Неверный API-ключ Groq.');
+        if (res.status === 413) throw new Error('Файл слишком большой для отправки.');
+        if (res.status === 429) throw new Error('Лимит бесплатного тарифа исчерпан. Подождите минуту или добавьте второй ключ.');
+        throw new Error(`Ошибка сервера Groq (Код ${res.status}). Попробуйте позже.`);
+      }
+
+      const data = await res.json();
+      const validSegments = (data.segments || []).filter(s => !isWhisperHallucination(s));
+      return { segments: validSegments, words: data.words || [] };
+    }
+
+    function distributeWords(cue) {
+      const words = String(cue.text || '').split(/\s+/).filter(Boolean);
+      cue.words = [];
+      if (!words.length) return;
+
+      const start = Math.max(0, Number(cue.start) || 0);
+      const end = Math.max(start + 0.1, Number(cue.end) || 0);
+      const dur = end - start;
+
+      const weights = words.map((w) => {
+        const core = w.replace(/[^\p{L}\p{N}]/gu, '');
+        return Math.max(2, core.length);
+      });
+      const total = weights.reduce((a, b) => a + b, 0) || 1;
+
+      let acc = 0;
+      cue.words = words.map((w, i) => {
+        const ws = start + (acc / total) * dur;
+        acc += weights[i];
+        const we = start + (acc / total) * dur;
+        return { word: w, start: ws, end: we };
+      });
+    }
+
+    /* ---------------- Умная авто-разбивка длинных сегментов ---------------- */
+    function smartSplitLongCues(cueList, maxWords = 14) {
+      if (!smartSplitToggleEl.checked) return cueList;
+      const out = [];
+
+      for (const cue of cueList) {
+        if (!cue.words || cue.words.length <= maxWords) {
+          out.push(cue);
+          continue;
+        }
+
+        let currentWords = [];
+        for (let i = 0; i < cue.words.length; i++) {
+          const w = cue.words[i];
+          currentWords.push(w);
+
+          const isLast = i === cue.words.length - 1;
+          const nextW = !isLast ? cue.words[i + 1] : null;
+          const gap = nextW ? (nextW.start - w.end) : 0;
+          const hasStrongPunct = /[.!?…]$/.test(w.word);
+          const hasSoftPunct = /[,;:—–-]$/.test(w.word);
+
+          const shouldSplit = !isLast && (
+            (currentWords.length >= 6 && hasStrongPunct) ||
+            (currentWords.length >= 9 && (hasSoftPunct || gap >= 0.35)) ||
+            currentWords.length >= maxWords
+          );
+
+          if (shouldSplit || isLast) {
+            out.push({
+              start: currentWords[0].start,
+              end: Math.max(currentWords[currentWords.length - 1].end, currentWords[0].start + 0.05),
+              text: currentWords.map(x => x.word).join(' '),
+              words: currentWords
+            });
+            currentWords = [];
+          }
+        }
+      }
+      return out;
+    }
+
+    function buildCues(rawSegments, rawWords) {
+      const segs = (rawSegments || [])
+        .map((s) => ({
+          start: Number(s.start) || 0,
+          end: Number(s.end) || 0,
+          text: String(s.text || '').trim(),
+          words: []
+        }))
+        .filter((c) => c.text && c.end > c.start)
+        .sort((a, b) => a.start - b.start);
+
+      if (!segs.length) return [];
+
+      const words = (rawWords || [])
+        .map((w) => {
+          const start = Number(w.start);
+          let end = Number(w.end);
+          const text = String(w.word || '').trim();
+          if (!text || !isFinite(start) || !isFinite(end)) return null;
+          if (!(end > start)) end = start + 0.08;
+          return { word: text, start, end };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.start - b.start);
+
+      if (words.length) {
+        for (const w of words) {
+          const mid = (w.start + w.end) / 2;
+          let best = null;
+          let bestDist = Infinity;
+          for (const c of segs) {
+            const d = mid < c.start ? c.start - mid : (mid > c.end ? mid - c.end : 0);
+            if (d < bestDist) { bestDist = d; best = c; }
+          }
+          if (best && bestDist <= 2.5) best.words.push(w);
+        }
+      }
+
+      let result = segs.map((c) => {
+        if (c.words.length) {
+          c.words.sort((a, b) => a.start - b.start);
+          return {
+            start: c.words[0].start,
+            end: Math.max(c.words[c.words.length - 1].end, c.words[0].start + 0.05),
+            text: c.words.map((w) => w.word).join(' '),
+            words: c.words
+          };
+        }
+        const cue = { start: c.start, end: c.end, text: c.text, words: [] };
+        distributeWords(cue);
+        return cue;
+      });
+
+      result = smartSplitLongCues(result, 14);
+      result.sort((a, b) => a.start - b.start);
+
+      for (let i = 0; i < result.length - 1; i++) {
+        if (result[i].end > result[i + 1].start) {
+          result[i].end = Math.max(result[i].start + 0.03, result[i + 1].start - 0.001);
+        }
+      }
+
+      return result.filter((c) => c.text && c.words.length);
+    }
+
+    /* ---------------- Контекстный перевод с авто-резервом модели ---------------- */
+    async function requestTranslationBatch(payload, prevContext, targetLang, modelName, signal) {
+      const contextHint = prevContext.length
+        ? `\nPrevious lines for context only (DO NOT include in output): ${JSON.stringify(prevContext)}`
+        : '';
+
+      return fetchGroqWithRotation('https://api.groq.com/openai/v1/chat/completions', (key) => ({
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + key,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: modelName,
+          temperature: 0.1,
+          response_format: { type: 'json_object' },
+          messages: [
+            {
+              role: 'system',
+              content: `You are a professional subtitle translator. Translate the "text" field of each item into ${targetLang}. Keep the exact same "id" numbers, preserve natural flow and gender agreement using context, and return ONLY valid JSON: {"items":[{"id":0,"text":"..."}]}. Do not merge, skip, or split items.${contextHint}`
+            },
+            { role: 'user', content: JSON.stringify({ items: payload }) }
+          ]
+        })
+      }), signal, 3);
+    }
+
+    async function translateSegments(cueArr, targetLang, statusElRef, signal) {
+      const batchSize = 40;
+      const primaryModel = llmModelEl.value || 'openai/gpt-oss-120b';
+      const fallbackModel = 'openai/gpt-oss-20b';
+      let failedLines = 0;
+
+      for (let i = 0; i < cueArr.length; i += batchSize) {
+        if (signal && signal.aborted) throw new Error('Отменено пользователем.');
+        const batch = cueArr.slice(i, i + batchSize);
+        const pct = 55 + Math.round((i / cueArr.length) * 42);
+        setProgress(pct);
+        statusElRef.innerText = `Перевод: строки ${i + 1}–${Math.min(i + batchSize, cueArr.length)} из ${cueArr.length}...`;
+
+        const prevContext = i >= 2 ? cueArr.slice(i - 2, i).map(c => c.text) : [];
+        const payload = batch.map((c, idx) => ({ id: idx, text: c.text }));
+
+        try {
+          let res = await requestTranslationBatch(payload, prevContext, targetLang, primaryModel, signal);
+
+          if (!res.ok && primaryModel !== fallbackModel) {
+            statusElRef.innerText = `Резервный перевод через ${fallbackModel}: строки ${i + 1}–${Math.min(i + batchSize, cueArr.length)}...`;
+            res = await requestTranslationBatch(payload, prevContext, targetLang, fallbackModel, signal);
+          }
+
+          if (!res.ok) { 
+            const errData = await res.json().catch(() => ({}));
+            const errMsg = errData.error?.message || `HTTP ${res.status}`;
+            statusElRef.innerText = `⚠️ Ошибка перевода Groq: ${errMsg}`;
+            failedLines += batch.length; 
+            continue; 
+          }
+
+          const data = await res.json();
+          let content = String(data.choices[0].message.content || '').trim();
+          content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+          const parsed = JSON.parse(content);
+
+          const received = new Set();
+          if (parsed.items && Array.isArray(parsed.items)) {
+            parsed.items.forEach((item) => {
+              const target = batch[item.id];
+              if (target && typeof item.text === 'string') {
+                received.add(item.id);
+                const txt = item.text.trim();
+                if (txt && txt !== target.text) {
+                  target.text = txt;
+                  target._translated = true;
+                }
+              }
+            });
+          }
+          failedLines += batch.length - received.size;
+        } catch (e) {
+          if (e && e.message === 'Отменено пользователем.') throw e;
+          failedLines += batch.length;
+          statusElRef.innerText = `⚠️ Ошибка разбора ответа: ${e.message}`;
+        }
+      }
+
+      for (const c of cueArr) {
+        if (c._translated) distributeWords(c);
+        delete c._translated;
+      }
+      return failedLines;
+    }
+
+    function updateOverlayGeometry() {
+      const cw = playerBox.clientWidth;
+      const ch = playerBox.clientHeight;
+      if (!cw || !ch) return;
+
+      const vw = videoEl.videoWidth || cw;
+      const vh = videoEl.videoHeight || ch;
+      const fitMode = fitModeSelect.value || 'contain';
+
+      let dw = cw;
+      let dh = ch;
+      if (fitMode === 'contain') {
+        const scale = Math.min(cw / vw, ch / vh);
+        dw = Math.round(vw * scale);
+        dh = Math.round(vh * scale);
+      }
+
+      const left = Math.round((cw - dw) / 2);
+      const top = Math.round((ch - dh) / 2);
+      
+      overlayEl.style.left = left + 'px';
+      overlayEl.style.width = dw + 'px';
+      overlayEl.style.right = 'auto';
+      overlayEl.style.top = top + 'px';
+      overlayEl.style.height = dh + 'px';
+      overlayEl.style.bottom = 'auto';
+      overlayEl.style.alignItems = 'flex-end';
+      const bottomPct = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--sub-bottom')
+      ) || 12;
+      overlayEl.style.paddingBottom = (dh * bottomPct / 100) + 'px';
+    }
+
+    videoEl.addEventListener('loadedmetadata', updateOverlayGeometry);
+    videoEl.addEventListener('loadeddata', updateOverlayGeometry);
+    window.addEventListener('resize', updateOverlayGeometry);
+    window.addEventListener('orientationchange', () => setTimeout(updateOverlayGeometry, 200));
+    document.addEventListener('fullscreenchange', () => setTimeout(updateOverlayGeometry, 80));
+    if (window.ResizeObserver) {
+      new ResizeObserver(() => updateOverlayGeometry()).observe(playerBox);
+    }
+    bottomEl.addEventListener('input', updateOverlayGeometry);
+
+    function setupPlayer(file) {
+      const newSig = getFileSignature(file);
+      const bridge = window.ExoPlayerManager || window.AndroidBridge;
+      if (videoEl.dataset.fileSig !== newSig) {
+        if (!bridge) {
+          if (mediaObjectURL) URL.revokeObjectURL(mediaObjectURL);
+          mediaObjectURL = URL.createObjectURL(file);
+          videoEl.src = mediaObjectURL;
+        }
+        videoEl.dataset.fileSig = newSig;
+      }
+
+      playerBox.style.display = 'flex';
+      videoEl.playbackRate = parseFloat(speedSlider.value) || 1;
+      playerActive = true;
+
+      currentCueIdx = -2;
+      wordSpans = [];
+      boxVisible = false;
+      subtitleEl.innerHTML = '';
+      subtitleEl.style.opacity = '0';
+
+      updatePlayState();
+      updateOverlayGeometry();
+      updateSubtitleFrame();
+    }
+
+    function startRenderLoop() {
+      if (rafId) return;
+      const loop = () => {
+        syncTimeUI();
+        updateSubtitleFrame();
+        if (!videoEl.paused) {
+          rafId = requestAnimationFrame(loop);
+        } else {
+          rafId = null;
+        }
+      };
+      rafId = requestAnimationFrame(loop);
+    }
+
+    function stopRenderLoop() {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    }
+
+    function rebuildCueDOM(cue) {
+      subtitleEl.innerHTML = '';
+      wordSpans = [];
+      boxVisible = false;
+      subtitleEl.style.opacity = '0';
+      if (!cue) return;
+
+      cue.words.forEach((w, i) => {
+        if (i > 0) subtitleEl.appendChild(document.createTextNode(' '));
+        const span = document.createElement('span');
+        span.className = 'word';
+        span.textContent = w.word;
+        span.dataset.state = 'h';
+        subtitleEl.appendChild(span);
+        wordSpans.push(span);
+      });
+    }
+
+    function updateSubtitleFrame() {
+      if (!playerActive || !cues.length) return;
+
+      const t = videoEl.currentTime;
+      
+      const offsetSec = (parseInt(subOffsetEl.value, 10) || 0) / 1000;
+      const holdSec = (parseInt(subHoldEl.value, 10) || 0) / 1000;
+      
+      let idx = -1;
+
+      for (let i = 0; i < cues.length; i++) {
+        const startTime = Math.max(0, cues[i].start + offsetSec);
+        let endTime = cues[i].end + offsetSec;
+        
+        if (i === cues.length - 1) {
+          endTime += Math.max(0.6, holdSec); 
+        } else {
+          const nextStart = Math.max(0, cues[i + 1].start + offsetSec);
+          endTime = Math.min(endTime + holdSec, nextStart);
+        }
+
+        if (t >= startTime && t < endTime) { 
+          idx = i; 
+          break; 
+        }
+      }
+
+      if (idx !== currentCueIdx) {
+        currentCueIdx = idx;
+        rebuildCueDOM(idx >= 0 ? cues[idx] : null);
+      }
+
+      if (idx < 0) return;
+
+      const cue = cues[idx];
+      const mode = wordModeSelect.value || 'hidden';
+      let anySpoken = mode !== 'hidden';
+
+      for (let i = 0; i < cue.words.length; i++) {
+        const w = cue.words[i];
+        const span = wordSpans[i];
+        if (!span) continue;
+
+        const wordStartTime = w.start + offsetSec;
+        const spoken = t >= wordStartTime;
+        
+        if (spoken) anySpoken = true;
+
+        const state = spoken ? 'v' : 'h';
+        if (span.dataset.state !== state) {
+          span.dataset.state = state;
+          if (spoken) span.classList.add('spoken');
+          else span.classList.remove('spoken');
+        }
+      }
+
+      if (anySpoken !== boxVisible) {
+        boxVisible = anySpoken;
+        subtitleEl.style.opacity = anySpoken ? '1' : '0';
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (!playerActive) return;
+      const tag = document.activeElement && document.activeElement.tagName;
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+        showControls();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        seekBy(5);
+        showControls();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        seekBy(-5);
+        showControls();
+      } else if (e.code === 'KeyF') {
+        e.preventDefault();
+        if (!document.fullscreenElement) playerBox.requestFullscreen?.();
+        else document.exitFullscreen?.();
+      }
+    });
+
+    async function generateSubtitles() {
+      if (activeAbortCtrl) {
+        activeAbortCtrl.abort();
+        return;
+      }
+
+      const file = $('mediaFile').files[0];
+      const model = $('model').value;
+      const targetLang = $('translateLang').value;
+      const fileSig = getFileSignature(file);
+      const langCode = LANG_CODES[targetLang] || '';
+
+      if (
+        file &&
+        cachedWhisper.fileSig === fileSig &&
+        cachedWhisper.model === model &&
+        cachedWhisper.rawSegments.length &&
+        cachedWhisper.activeLang === targetLang
+      ) {
+        await generateVideoAiInsights();
+        return;
+      }
+
+      const keys = getApiKeys();
+      const customPrompt = whisperPromptEl.value.trim();
+
+      if (!keys.length || !file) { statusEl.innerText = 'Укажите хотя бы один API ключ Groq и выберите файл!'; return; }
+
+      activeAbortCtrl = new AbortController();
+      const signal = activeAbortCtrl.signal;
+
+      btn.classList.add('cancel-mode');
+      btn.innerText = 'Отменить процесс';
+      actionRow.style.display = 'none';
+      vttPanel.classList.add('hidden');
+      openBtn.innerText = 'Текст';
+      setProgress(5);
+      await requestWakeLock();
+
+      currentFileName = file.name.replace(/\.[^/.]+$/, '') + (langCode ? `_${langCode}` : '');
+
+      try {
+        if (cachedWhisper.fileSig !== fileSig || cachedWhisper.model !== model || !cachedWhisper.rawSegments.length) {
+          const allSegments = [];
+          const allWords = [];
+          const shouldCompress = file.size > 24 * 1024 * 1024 || (fastAudioCompressEl.checked && file.size > 10 * 1024 * 1024);
+
+          let audioBuffer = null;
+          if (shouldCompress) {
+            statusEl.innerText = 'Извлекаем и сжимаем аудиодорожку для быстрой отправки...';
+            setProgress(12);
+            try {
+              const ab = await file.arrayBuffer();
+              const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+              audioBuffer = await decodeCtx.decodeAudioData(ab);
+              if (decodeCtx.close) decodeCtx.close();
+            } catch (e) {
+              if (file.size > 24 * 1024 * 1024) {
+                throw new Error('Браузер не поддерживает кодек файла (>24 МБ). Конвертируйте в MP4/MP3.');
+              }
+            }
+          }
+
+          if (!audioBuffer) {
+            statusEl.innerText = 'Отправка напрямую в Groq...';
+            setProgress(25);
+            const r = await sendToGroq(file, file.name, model, customPrompt, signal);
+            r.segments.forEach((s) => allSegments.push({ start: s.start, end: s.end, text: s.text }));
+            r.words.forEach((w) => allWords.push({ word: w.word, start: w.start, end: w.end }));
+          } else {
+            const channelData = audioBuffer.getChannelData(0);
+            const sampleRate = audioBuffer.sampleRate;
+            const chunkDuration = 600;
+            const overlap = 10;
+            const advance = chunkDuration - overlap;
+            const totalDuration = channelData.length / sampleRate;
+            const totalChunks = Math.ceil(totalDuration / advance);
+
+            let pos = 0;
+            let cutoff = 0;
+            let c = 0;
+            let rollingPrompt = customPrompt;
+
+            while (pos < totalDuration - 0.1) {
+              if (signal.aborted) throw new Error('Отменено пользователем.');
+              const chunkEnd = Math.min(pos + chunkDuration, totalDuration);
+              const isLast = chunkEnd >= totalDuration - 0.1;
+              const nextCutoff = isLast ? totalDuration + 10 : (pos + chunkDuration - overlap / 2);
+
+              setProgress(15 + Math.round((c / Math.max(1, totalChunks)) * 40));
+              statusEl.innerText = `Распознавание: часть ${c + 1} из ${totalChunks} (${Math.round(pos)}–${Math.round(chunkEnd)} с)...`;
+
+              const startSample = Math.floor(pos * sampleRate);
+              const endSample = Math.min(Math.floor(chunkEnd * sampleRate), channelData.length);
+              const chunkSamples = channelData.subarray(startSample, endSample);
+              if (chunkSamples.length < sampleRate) break;
+
+              const wavBlob = encodeWAV(chunkSamples, sampleRate);
+              const r = await sendToGroq(wavBlob, `chunk_${c}.wav`, model, rollingPrompt, signal);
+
+              r.segments.forEach((seg) => {
+                const absMid = (seg.start + seg.end) / 2 + pos;
+                if (absMid < cutoff || absMid >= nextCutoff) return;
+                allSegments.push({ start: seg.start + pos, end: seg.end + pos, text: seg.text });
+              });
+              r.words.forEach((w) => {
+                const absMid = (w.start + w.end) / 2 + pos;
+                if (absMid < cutoff || absMid >= nextCutoff) return;
+                allWords.push({ word: w.word, start: w.start + pos, end: w.end + pos });
+              });
+
+              if (allSegments.length) {
+                const tailText = allSegments.slice(-2).map(s => s.text).join(' ');
+                rollingPrompt = (customPrompt ? customPrompt + '. ' : '') + tailText;
+              }
+
+              cutoff = nextCutoff;
+              pos += advance;
+              c++;
+            }
+          }
+
+          if (!allSegments.length) throw new Error('Не удалось распознать речь.');
+
+          cachedWhisper = {
+            fileSig,
+            model,
+            rawSegments: allSegments,
+            rawWords: allWords,
+            translations: {},
+            activeLang: null,
+            aiSummary: null
+          };
+        } else {
+          statusEl.innerText = 'Используем распознанный текст из кэша...';
+          setProgress(50);
+        }
+
+        let translationWarn = '';
+        if (!targetLang) {
+          cues = buildCues(cachedWhisper.rawSegments, cachedWhisper.rawWords);
+        } else if (cachedWhisper.translations[targetLang]) {
+          cues = cloneCues(cachedWhisper.translations[targetLang]);
+        } else {
+          const freshCues = buildCues(cachedWhisper.rawSegments, cachedWhisper.rawWords);
+          const failed = await translateSegments(freshCues, targetLang, statusEl, signal);
+          if (failed > 0) {
+            translationWarn = ` (${failed} строк не переведены).`;
+          }
+          if (failed < freshCues.length) {
+            cachedWhisper.translations[targetLang] = cloneCues(freshCues);
+          }
+          cues = freshCues;
+        }
+
+        if (!cues.length) throw new Error('Не удалось построить субтитры.');
+
+        cachedWhisper.activeLang = targetLang;
+        setProgress(100);
+        refreshAllExports();
+
+        actionRow.style.display = 'flex';
+        statusEl.innerText = 'Готово! Субтитры загружены. Нажмите «✨ ИИ-видео» на главной кнопке для вопросов.' + translationWarn;
+
+        setupPlayer(file);
+
+        if (autoPlayToggle.checked && videoEl.paused) {
+          videoEl.play().catch(() => {});
+        }
+
+      } catch (e) {
+        statusEl.innerText = 'Статус: ' + (e && e.message ? e.message : e);
+      } finally {
+        activeAbortCtrl = null;
+        btn.classList.remove('cancel-mode');
+        updateButtonLabel();
+        setTimeout(() => setProgress(null), 600);
+        if (btn.blur) btn.blur();
+        if (videoEl.paused) releaseWakeLock();
+      }
+    }
+
+    btn.addEventListener('click', generateSubtitles);
+
+    function encodeWAV(samples, sampleRate) {
+      const buffer = new ArrayBuffer(44 + samples.length * 2);
+      const view = new DataView(buffer);
+      const writeString = (offset, str) => {
+        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+      };
+      writeString(0, 'RIFF'); view.setUint32(4, 36 + samples.length * 2, true);
+      writeString(8, 'WAVE'); writeString(12, 'fmt ');
+      view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true); view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true); writeString(36, 'data');
+      view.setUint32(40, samples.length * 2, true);
+      let offset = 44;
+      for (let i = 0; i < samples.length; i++, offset += 2) {
+        const s = Math.max(-1, Math.min(1, samples[i]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      }
+      return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+
+    /* ================ ГИБРИДНЫЙ МОСТ ANDROID EXOPLAYER (40ms SYNC) ================ */
+    const nativeBridge = window.ExoPlayerManager || window.AndroidBridge || null;
+    if (nativeBridge) {
+      document.documentElement.classList.add('native-exo-mode');
+      document.body.classList.add('native-exo-mode');
+
+      let nativePaused = true;
+      let nativeCurrentTime = 0;
+      let nativeDuration = 0;
+
+      // Shim videoEl properties so existing subtitle & UI code works seamlessly with native ExoPlayer
+      try {
+        Object.defineProperty(videoEl, 'currentTime', {
+          get() {
+            try { return Number(nativeBridge.getCurrentTime()) || nativeCurrentTime; }
+            catch (e) { return nativeCurrentTime; }
+          },
+          set(val) {
+            const sec = Math.max(0, Number(val) || 0);
+            nativeCurrentTime = sec;
+            try { nativeBridge.seekTo(sec); } catch (e) {}
+          },
+          configurable: true
+        });
+
+        Object.defineProperty(videoEl, 'duration', {
+          get() {
+            try {
+              const d = Number(nativeBridge.getDuration());
+              return d > 0 ? d : (nativeDuration || 0);
+            } catch (e) { return nativeDuration || 0; }
+          },
+          configurable: true
+        });
+
+        Object.defineProperty(videoEl, 'paused', {
+          get() {
+            try { return !nativeBridge.isPlaying(); }
+            catch (e) { return nativePaused; }
+          },
+          configurable: true
+        });
+
+        Object.defineProperty(videoEl, 'videoWidth', {
+          get() {
+            try { return Number(nativeBridge.getVideoWidth()) || 1920; }
+            catch (e) { return 1920; }
+          },
+          configurable: true
+        });
+
+        Object.defineProperty(videoEl, 'videoHeight', {
+          get() {
+            try { return Number(nativeBridge.getVideoHeight()) || 1080; }
+            catch (e) { return 1080; }
+          },
+          configurable: true
+        });
+
+        videoEl.play = function () {
+          try {
+            nativeBridge.play();
+            nativePaused = false;
+            videoEl.dispatchEvent(new Event('play'));
+          } catch (e) {}
+          return Promise.resolve();
+        };
+
+        videoEl.pause = function () {
+          try {
+            nativeBridge.pause();
+            nativePaused = true;
+            videoEl.dispatchEvent(new Event('pause'));
+          } catch (e) {}
+        };
+      } catch (err) {
+        console.warn('Bridge property binding warning:', err);
+      }
+
+      function syncNativePlayerBounds() {
+        if (!playerActive) return;
+        try {
+          const rect = playerBox.getBoundingClientRect();
+          const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+          nativeBridge.setPlayerBounds(
+            rect.left,
+            rect.top,
+            rect.width,
+            rect.height,
+            window.innerWidth || 1,
+            window.innerHeight || 1,
+            isFs
+          );
+        } catch (e) {}
+      }
+
+      window.addEventListener('scroll', syncNativePlayerBounds, { passive: true });
+      window.addEventListener('resize', syncNativePlayerBounds);
+      document.addEventListener('fullscreenchange', syncNativePlayerBounds);
+
+      // High-precision 40ms native ExoPlayer synchronization timer (YouTube-grade subtitle timing)
+      setInterval(() => {
+        if (!playerActive) return;
+        try {
+          const playingNow = Boolean(nativeBridge.isPlaying());
+          if (playingNow === nativePaused) {
+            nativePaused = !playingNow;
+            videoEl.dispatchEvent(new Event(playingNow ? 'play' : 'pause'));
+          }
+          nativeCurrentTime = Number(nativeBridge.getCurrentTime()) || 0;
+          const dur = Number(nativeBridge.getDuration()) || 0;
+          if (dur > 0 && Math.abs(dur - nativeDuration) > 0.1) {
+            nativeDuration = dur;
+            videoEl.dispatchEvent(new Event('loadedmetadata'));
+          }
+          syncTimeUI();
+          updateSubtitleFrame();
+          syncNativePlayerBounds();
+        } catch (e) {}
+      }, 40);
+
+      // Sync Volume, Speed, and ResizeMode to Native ExoPlayer
+      volSlider.addEventListener('input', (e) => {
+        try { nativeBridge.setVolume(parseInt(e.target.value, 10) || 100); } catch (err) {}
+      });
+      speedSlider.addEventListener('input', (e) => {
+        try { nativeBridge.setSpeed(parseFloat(e.target.value) || 1.0); } catch (err) {}
+      });
+      fitModeSelect.addEventListener('change', (e) => {
+        try { nativeBridge.setResizeMode(e.target.value || 'contain'); } catch (err) {}
+      });
+    }
+
+  })();
+  </script>
+</body>
+</html>
