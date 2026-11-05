@@ -349,11 +349,11 @@ class ExoPlayerManager(
         val retriever = MediaMetadataRetriever()
         return try {
             retriever.setDataSource(context, uri)
-            val timeUs = cachedPositionMs.coerceAtLeast(0L) * 1000L
+            val timeUs = if (cachedPositionMs > 100L) cachedPositionMs * 1000L else 1000000L
             val rawBitmap = retriever.getFrameAtTime(
                 timeUs,
                 MediaMetadataRetriever.OPTION_CLOSEST_SYNC
-            ) ?: retriever.getFrameAtTime() ?: return ""
+            ) ?: retriever.getFrameAtTime(0L) ?: retriever.getFrameAtTime() ?: return ""
 
             val maxDim = 512
             val scale = minOf(1f, maxDim.toFloat() / maxOf(rawBitmap.width, rawBitmap.height).coerceAtLeast(1))

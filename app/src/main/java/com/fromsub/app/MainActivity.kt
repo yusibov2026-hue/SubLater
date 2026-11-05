@@ -151,7 +151,7 @@ class MainActivity : ComponentActivity() {
                 val wv = webViewRef
                 if (wv != null) {
                     wv.evaluateJavascript(
-                        "(function(){ if (document.body.classList.contains('player-fullscreen-open')) { document.getElementById('backPlayerBtn').click(); return 'handled'; } return 'exit'; })()"
+                        "(function(){ if (document.body.classList.contains('player-fullscreen-open')) { document.getElementById('fsBtn').click(); return 'handled'; } return 'exit'; })()"
                     ) { res ->
                         if (res != null && res.contains("handled")) {
                             // Вышли из полноэкранного плеера обратно в главное меню
