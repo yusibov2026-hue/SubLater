@@ -7,7 +7,11 @@ import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -147,6 +151,12 @@ class MainActivity : ComponentActivity() {
         window.statusBarColor = grayBg
         window.navigationBarColor = grayBg
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
+            }
+        }
+
         exoPlayerManager = ExoPlayerManager(applicationContext, this)
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -202,6 +212,8 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         exoPlayerManager.pause()
+        // Не даём WebView замораживать JS-таймеры и сетевые запросы при сворачивании приложения
+        webViewRef?.resumeTimers()
     }
 
     override fun onDestroy() {

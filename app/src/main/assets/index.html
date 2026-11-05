@@ -3298,8 +3298,18 @@
       }
     });
 
-    /* ---------------- 2. Нативное извлечение и нарезка аудио через Kotlin MediaExtractor + MediaCodec ---------------- */
-    function extractNativeAudioChunksAsync(signal) {
+    /* ---------------- 1, 2, 3, 4. GOD MODE: Нативный M4A (16кГц Mono 64kbps) + VAD по тишине + Контекст Whisper + ForegroundService ---------------- */
+    function extractLastSentences(segmentsOrText, maxSentences = 3) {
+      const rawText = Array.isArray(segmentsOrText)
+        ? segmentsOrText.map((s) => String(s.text || '').trim()).filter(Boolean).join(' ')
+        : String(segmentsOrText || '');
+      const clean = rawText.replace(/\s+/g, ' ').trim();
+      if (!clean) return '';
+      const sentences = clean.match(/[^.!?…]+[.!?…]+|[^.!?…]+$/g) || [clean];
+      return sentences.slice(-maxSentences).join(' ').trim().slice(-220);
+    }
+
+    function extractNativeM4aChunksAsync(signal) {
       return new Promise((resolve, reject) => {
         const bridge = window.AndroidBridge || window.ExoPlayerManager;
         if (!bridge || typeof bridge.startNativeAudioExtraction !== 'function') {
@@ -3329,7 +3339,7 @@
 
         window.__onNativeAudioProgress = (pct, msg) => {
           if (settled) return;
-          setProgress(5 + Math.round((Number(pct) || 0) * 0.15));
+          setProgress(5 + Math.round((Number(pct) || 0) * 0.18));
           if (msg) statusEl.innerText = msg;
         };
 
@@ -3341,7 +3351,7 @@
             const parsed = JSON.parse(jsonStr || '[]');
             resolve(Array.isArray(parsed) ? parsed : []);
           } catch (e) {
-            reject(new Error('Ошибка чтения списка нативных чанков'));
+            reject(new Error('Ошибка чтения списка нативных .m4a чанков'));
           }
         };
 
@@ -3349,7 +3359,7 @@
           if (settled) return;
           settled = true;
           if (signal) signal.removeEventListener('abort', onAbort);
-          reject(new Error(errMsg || 'Ошибка нативного извлечения аудио'));
+          reject(new Error(errMsg || 'Ошибка нативного кодирования M4A'));
         };
 
         try {
@@ -3362,13 +3372,16 @@
       });
     }
 
-    async function loadNativeChunkBlob(chunkMeta) {
+    async function loadNativeM4aBlob(chunkMeta) {
+      const mime = chunkMeta.mimeType || 'audio/mp4';
       const fileUrl = chunkMeta.fileUrl || ('file://' + chunkMeta.path);
       try {
         const resp = await fetch(fileUrl);
         if (resp.ok) {
           const blob = await resp.blob();
-          if (blob && blob.size > 44) return blob;
+          if (blob && blob.size > 64) {
+            return new Blob([blob], { type: mime });
+          }
         }
       } catch (e) {}
 
@@ -3379,14 +3392,11 @@
           const bin = atob(b64);
           const bytes = new Uint8Array(bin.length);
           for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-          return new Blob([bytes], { type: 'audio/wav' });
+          return new Blob([bytes], { type: mime });
         }
       }
-      throw new Error('Не удалось прочитать аудио-чанк из cacheDir: ' + chunkMeta.fileName);
+      throw new Error('Не удалось прочитать M4A-чанк из cacheDir: ' + chunkMeta.fileName);
     }
-
-    /* ---------------- 1. Генерация субтитров с параллельной отправкой по 4 чанка и строгой склейкой по индексу ---------------- */
-    const PARALLEL_CHUNK_CONCURRENCY = 4;
 
     async function generateSubtitles() {
       if (activeAbortCtrl) {
@@ -3433,65 +3443,66 @@
       currentFileName = file.name.replace(/\.[^/.]+$/, '') + (langCode ? `_${langCode}` : '');
       const bridge = window.AndroidBridge || window.ExoPlayerManager || null;
 
+      // 4. Запускаем ForegroundService в шторке уведомлений ("Генерация субтитров..."), чтобы ОС не убила WebView в фоне
+      if (bridge && typeof bridge.startForegroundService === 'function') {
+        try { bridge.startForegroundService('Генерация субтитров...'); } catch (e) {}
+      }
+
       try {
         if (cachedWhisper.fileSig !== fileSig || cachedWhisper.model !== model || !cachedWhisper.rawSegments.length) {
           const allSegments = [];
           const allWords = [];
-          const shouldCompress = file.size > 24 * 1024 * 1024 || (fastAudioCompressEl.checked && file.size > 10 * 1024 * 1024);
+          const hasNativeM4aPipeline = Boolean(bridge && typeof bridge.startNativeAudioExtraction === 'function');
+          const shouldUseNativeM4a = hasNativeM4aPipeline && (file.size > 3 * 1024 * 1024 || fastAudioCompressEl.checked);
 
           let usedNativePipeline = false;
 
-          // Приоритет 1: Нативное извлечение 16кГц Mono и нарезка по 10 минут через Kotlin MediaExtractor + MediaCodec (без фризов JS!)
-          if (shouldCompress && bridge && typeof bridge.startNativeAudioExtraction === 'function') {
+          // 1 & 2. Нативное сжатие в M4A (AAC 16кГц Mono 64kbps) + Умная нарезка по тишине (VAD 3–5 мин без разрыва слов)
+          if (shouldUseNativeM4a) {
             try {
-              statusEl.innerText = '⚡ Нативное извлечение аудио 16кГц Mono и нарезка чанков (Kotlin)...';
-              const nativeChunks = await extractNativeAudioChunksAsync(signal);
+              statusEl.innerText = '⚡ Извлечение аудио в M4A (16кГц Mono 64kbps) и умная нарезка по паузам (VAD)...';
+              const m4aChunks = await extractNativeM4aChunksAsync(signal);
 
-              if (nativeChunks.length > 0) {
+              if (m4aChunks.length > 0) {
                 usedNativePipeline = true;
-                const totalChunks = nativeChunks.length;
-                let completedChunks = 0;
+                const totalChunks = m4aChunks.length;
+                let rollingPrompt = customPrompt;
 
-                statusEl.innerText = `🚀 Параллельная отправка в Groq (${Math.min(PARALLEL_CHUNK_CONCURRENCY, totalChunks)} потока, всего частей: ${totalChunks})...`;
-                setProgress(20);
+                // Предзагрузка первого .m4a чанка из cacheDir
+                let nextBlobPromise = loadNativeM4aBlob(m4aChunks[0]);
 
-                // Отправляем до 4 чанков параллельно, сохраняя результаты строго по индексу чанка
-                const orderedResults = await runWithConcurrency(
-                  nativeChunks,
-                  PARALLEL_CHUNK_CONCURRENCY,
-                  async (chunkMeta, idx) => {
-                    if (signal.aborted) throw new Error('Отменено пользователем.');
-                    const wavBlob = await loadNativeChunkBlob(chunkMeta);
-                    const r = await sendToGroq(
-                      wavBlob,
-                      chunkMeta.fileName || `chunk_${idx}.wav`,
-                      model,
-                      customPrompt,
-                      signal
-                    );
-                    completedChunks++;
-                    setProgress(20 + Math.round((completedChunks / totalChunks) * 36));
-                    statusEl.innerText = `🚀 Распознано ${completedChunks} из ${totalChunks} частей (параллельный режим)...`;
-                    return {
-                      index: idx,
-                      pos: Number(chunkMeta.startSec) || 0,
-                      cutoff: Number(chunkMeta.cutoffSec) || 0,
-                      nextCutoff: Number(chunkMeta.nextCutoffSec) || Infinity,
-                      segments: r.segments || [],
-                      words: r.words || []
-                    };
+                for (let idx = 0; idx < totalChunks; idx++) {
+                  if (signal.aborted) throw new Error('Отменено пользователем.');
+                  const chunkMeta = m4aChunks[idx];
+                  const pos = Number(chunkMeta.startSec) || 0;
+                  const endSec = Number(chunkMeta.endSec) || pos;
+
+                  const m4aBlob = await nextBlobPromise;
+                  // Пока текущий .m4a отправляется в Groq, параллельно подгружаем следующий .m4a с диска
+                  if (idx + 1 < totalChunks) {
+                    nextBlobPromise = loadNativeM4aBlob(m4aChunks[idx + 1]);
                   }
-                );
 
-                // Склеиваем ответы строго в хронологическом порядке (по индексу 0 .. totalChunks - 1)
-                for (let idx = 0; idx < orderedResults.length; idx++) {
-                  const item = orderedResults[idx];
-                  if (!item) continue;
-                  const { pos, cutoff, nextCutoff, segments, words } = item;
+                  const progressMsg = `🚀 Распознавание M4A: часть ${idx + 1} из ${totalChunks} (${Math.round(pos)}–${Math.round(endSec)} с)...`;
+                  statusEl.innerText = progressMsg;
+                  setProgress(22 + Math.round((idx / totalChunks) * 35));
+                  if (bridge && typeof bridge.updateForegroundNotification === 'function') {
+                    try { bridge.updateForegroundNotification(progressMsg); } catch (e) {}
+                  }
 
-                  segments.forEach((seg) => {
-                    const absMid = (seg.start + seg.end) / 2 + pos;
-                    if (absMid < cutoff || absMid >= nextCutoff) return;
+                  // 3. Передаём контекст (последние 2–3 предложения из предыдущего куска) в параметр prompt FormData
+                  const r = await sendToGroq(
+                    m4aBlob,
+                    chunkMeta.fileName || `chunk_${idx}.m4a`,
+                    model,
+                    rollingPrompt,
+                    signal
+                  );
+
+                  const segs = r.segments || [];
+                  const words = r.words || [];
+
+                  segs.forEach((seg) => {
                     allSegments.push({
                       start: seg.start + pos,
                       end: seg.end + pos,
@@ -3500,21 +3511,25 @@
                   });
 
                   words.forEach((w) => {
-                    const absMid = (w.start + w.end) / 2 + pos;
-                    if (absMid < cutoff || absMid >= nextCutoff) return;
                     allWords.push({
                       word: w.word,
                       start: w.start + pos,
                       end: w.end + pos
                     });
                   });
+
+                  // Формируем prompt из последних 2–3 предложений текущего успешно распознанного куска для следующего куска
+                  const lastSentences = extractLastSentences(segs, 3);
+                  if (lastSentences) {
+                    rollingPrompt = (customPrompt ? customPrompt + '. ' : '') + lastSentences;
+                  }
                 }
               }
             } catch (nativeErr) {
               if (signal.aborted || (nativeErr && nativeErr.message === 'Отменено пользователем.')) {
                 throw nativeErr;
               }
-              console.warn('Нативный пайплайн недоступен, используем прямой/резервный режим:', nativeErr);
+              console.warn('Нативный M4A-пайплайн вернул ошибку, пробуем прямую отправку:', nativeErr);
             } finally {
               if (bridge && typeof bridge.clearAudioCache === 'function') {
                 try { bridge.clearAudioCache(); } catch (e) {}
@@ -3522,94 +3537,13 @@
             }
           }
 
-          // Приоритет 2: Если файл <= 24 МБ (или нативный мост не потребовался), отправляем напрямую без декодирования в JS
+          // Если файл маленький (или открыт в обычном браузере вне APK) — отправляем напрямую с передачей prompt
           if (!usedNativePipeline) {
-            if (file.size <= 24 * 1024 * 1024) {
-              statusEl.innerText = '⚡ Прямая отправка файла в Groq...';
-              setProgress(25);
-              const r = await sendToGroq(file, file.name, model, customPrompt, signal);
-              r.segments.forEach((s) => allSegments.push({ start: s.start, end: s.end, text: s.text }));
-              r.words.forEach((w) => allWords.push({ word: w.word, start: w.start, end: w.end }));
-            } else {
-              // Резервный режим только для обычного веб-браузера (вне Android APK) — тоже с параллельной отправкой по 4 чанка!
-              statusEl.innerText = 'Нарезка аудио для параллельной отправки...';
-              setProgress(12);
-              const ab = await file.arrayBuffer();
-              const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-              const audioBuffer = await decodeCtx.decodeAudioData(ab);
-              if (decodeCtx.close) decodeCtx.close();
-
-              const channelData = audioBuffer.getChannelData(0);
-              const sampleRate = audioBuffer.sampleRate;
-              const chunkDuration = 600;
-              const overlap = 8;
-              const advance = chunkDuration - overlap;
-              const totalDuration = channelData.length / sampleRate;
-
-              const webChunks = [];
-              let pos = 0;
-              let cutoff = 0;
-              let idx = 0;
-              while (pos < totalDuration - 0.1) {
-                const chunkEnd = Math.min(pos + chunkDuration, totalDuration);
-                const isLast = chunkEnd >= totalDuration - 0.1;
-                const nextCutoff = isLast ? totalDuration + 100 : (pos + chunkDuration - overlap / 2);
-                const startSample = Math.floor(pos * sampleRate);
-                const endSample = Math.min(Math.floor(chunkEnd * sampleRate), channelData.length);
-                if (endSample - startSample >= sampleRate) {
-                  webChunks.push({
-                    index: idx,
-                    pos,
-                    cutoff,
-                    nextCutoff,
-                    startSample,
-                    endSample
-                  });
-                }
-                cutoff = nextCutoff;
-                pos += advance;
-                idx++;
-              }
-
-              let completedChunks = 0;
-              const totalChunks = webChunks.length;
-              const orderedResults = await runWithConcurrency(
-                webChunks,
-                PARALLEL_CHUNK_CONCURRENCY,
-                async (ch, cIdx) => {
-                  if (signal.aborted) throw new Error('Отменено пользователем.');
-                  const chunkSamples = channelData.subarray(ch.startSample, ch.endSample);
-                  const wavBlob = encodeWAV(chunkSamples, sampleRate);
-                  const r = await sendToGroq(wavBlob, `chunk_${cIdx}.wav`, model, customPrompt, signal);
-                  completedChunks++;
-                  setProgress(18 + Math.round((completedChunks / Math.max(1, totalChunks)) * 38));
-                  statusEl.innerText = `🚀 Распознано ${completedChunks} из ${totalChunks} частей (параллельно)...`;
-                  return {
-                    index: cIdx,
-                    pos: ch.pos,
-                    cutoff: ch.cutoff,
-                    nextCutoff: ch.nextCutoff,
-                    segments: r.segments || [],
-                    words: r.words || []
-                  };
-                }
-              );
-
-              for (let cIdx = 0; cIdx < orderedResults.length; cIdx++) {
-                const item = orderedResults[cIdx];
-                if (!item) continue;
-                item.segments.forEach((seg) => {
-                  const absMid = (seg.start + seg.end) / 2 + item.pos;
-                  if (absMid < item.cutoff || absMid >= item.nextCutoff) return;
-                  allSegments.push({ start: seg.start + item.pos, end: seg.end + item.pos, text: seg.text });
-                });
-                item.words.forEach((w) => {
-                  const absMid = (w.start + w.end) / 2 + item.pos;
-                  if (absMid < item.cutoff || absMid >= item.nextCutoff) return;
-                  allWords.push({ word: w.word, start: w.start + item.pos, end: w.end + item.pos });
-                });
-              }
-            }
+            statusEl.innerText = '⚡ Отправка аудио в Groq...';
+            setProgress(25);
+            const r = await sendToGroq(file, file.name, model, customPrompt, signal);
+            r.segments.forEach((s) => allSegments.push({ start: s.start, end: s.end, text: s.text }));
+            r.words.forEach((w) => allWords.push({ word: w.word, start: w.start, end: w.end }));
           }
 
           if (!allSegments.length) throw new Error('Не удалось распознать речь.');
@@ -3625,7 +3559,7 @@
           };
         } else {
           statusEl.innerText = 'Используем распознанный текст из кэша...';
-          setProgress(50);
+          setProgress(55);
         }
 
         let translationWarn = '';
@@ -3634,6 +3568,9 @@
         } else if (cachedWhisper.translations[targetLang]) {
           cues = cloneCues(cachedWhisper.translations[targetLang]);
         } else {
+          if (bridge && typeof bridge.updateForegroundNotification === 'function') {
+            try { bridge.updateForegroundNotification('Генерация субтитров: перевод...'); } catch (e) {}
+          }
           const freshCues = buildCues(cachedWhisper.rawSegments, cachedWhisper.rawWords);
           const failed = await translateSegments(freshCues, targetLang, statusEl, signal);
           if (failed > 0) {
@@ -3663,6 +3600,9 @@
       } catch (e) {
         statusEl.innerText = 'Статус: ' + (e && e.message ? e.message : e);
       } finally {
+        if (bridge && typeof bridge.stopForegroundService === 'function') {
+          try { bridge.stopForegroundService(); } catch (e) {}
+        }
         activeAbortCtrl = null;
         btn.classList.remove('cancel-mode');
         updateButtonLabel();
@@ -3673,27 +3613,6 @@
     }
 
     btn.addEventListener('click', generateSubtitles);
-
-    function encodeWAV(samples, sampleRate) {
-      const buffer = new ArrayBuffer(44 + samples.length * 2);
-      const view = new DataView(buffer);
-      const writeString = (offset, str) => {
-        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-      };
-      writeString(0, 'RIFF'); view.setUint32(4, 36 + samples.length * 2, true);
-      writeString(8, 'WAVE'); writeString(12, 'fmt ');
-      view.setUint32(16, 16, true); view.setUint16(20, 1, true);
-      view.setUint16(22, 1, true); view.setUint32(24, sampleRate, true);
-      view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true);
-      view.setUint16(34, 16, true); writeString(36, 'data');
-      view.setUint32(40, samples.length * 2, true);
-      let offset = 44;
-      for (let i = 0; i < samples.length; i++, offset += 2) {
-        const s = Math.max(-1, Math.min(1, samples[i]));
-        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-      }
-      return new Blob([buffer], { type: 'audio/wav' });
-    }
 
     /* ==================== МОСТ ANDROID EXOPLAYER (ДЛЯ MKV/HEVC И ЗАХВАТА ПРЕВЬЮ-КАДРА) ==================== */
     const nativeBridge = window.ExoPlayerManager || window.AndroidBridge || null;
