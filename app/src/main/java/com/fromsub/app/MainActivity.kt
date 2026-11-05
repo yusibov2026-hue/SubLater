@@ -24,6 +24,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -226,7 +229,7 @@ fun HybridVideoApp(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(ComposeColor(0xFF000000))
+            .background(if (bounds.isFullscreen) ComposeColor(0xFF000000) else ComposeColor(0xFF24272D))
     ) {
         val maxW = maxWidth
         val maxH = maxHeight
@@ -245,6 +248,7 @@ fun HybridVideoApp(
                 )
                 .width(maxW * bounds.widthRatio)
                 .height(maxH * bounds.heightRatio)
+                .clip(RoundedCornerShape(16.dp))
         }
 
         // Layer 1 (Background): Native AndroidX Media3 ExoPlayer (pure black background, zero gray bars)

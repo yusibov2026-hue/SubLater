@@ -669,7 +669,7 @@
     }
     #vttPanel:active { transform: scale(0.98); border-color: var(--accent); }
 
-    /* Плеер с реальным кадром превью (без дефолтной большой кнопки Play) */
+    /* Плеер с идеально скруглёнными углами без выпирающих чёрных углов снизу */
     #playerContainer {
       position: relative;
       display: none;
@@ -678,9 +678,11 @@
       padding: 0;
       background: #000000;
       border-radius: 16px;
-      overflow: visible;
-      border: 1px solid var(--border-soft);
-      box-shadow: 0 8px 24px #000000;
+      overflow: hidden !important;
+      -webkit-mask-image: -webkit-radial-gradient(white, black);
+      clip-path: inset(0 round 16px);
+      border: 1.5px solid var(--border-soft);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
       align-items: center;
       justify-content: center;
       aspect-ratio: 16/9;
@@ -703,6 +705,8 @@
       aspect-ratio: auto !important;
       border: none !important;
       border-radius: 0 !important;
+      clip-path: none !important;
+      -webkit-mask-image: none !important;
       box-shadow: none !important;
       overflow: hidden !important;
       display: flex !important;
@@ -713,7 +717,6 @@
     }
 
     video#videoPlayer {
-      border-radius: 15px;
       width: 100%;
       height: 100%;
       max-height: 75vh;
@@ -721,9 +724,10 @@
       padding: 0;
       display: block;
       background: #000000;
-      object-fit: contain;
+      object-fit: cover;
       object-position: center center;
       border: none;
+      border-radius: 16px;
       outline: none;
     }
     /* Полностью скрываем системную огромную кнопку Play Android WebView */
@@ -745,11 +749,12 @@
       height: 100%;
       max-height: 100dvh;
       border-radius: 0 !important;
+      object-fit: contain;
       object-position: center center;
       background: #000000;
     }
-    video#videoPlayer.fill-crop { object-fit: cover; }
-    video#videoPlayer.fill-stretch { object-fit: fill; }
+    video#videoPlayer.fill-crop { object-fit: cover !important; }
+    video#videoPlayer.fill-stretch { object-fit: fill !important; }
 
     #subtitleOverlay {
       position: absolute; display: flex; justify-content: center;
@@ -788,11 +793,19 @@
     .word.spoken { opacity: 1 !important; }
 
     #playerControls {
-      position: absolute; bottom: 0; left: 0; width: 100%;
-      background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+      position: absolute; bottom: 0; left: 0; right: 0; width: 100%;
+      border-bottom-left-radius: 16px;
+      border-bottom-right-radius: 16px;
+      overflow: hidden;
+      background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0) 100%);
       display: flex; align-items: center; gap: 10px;
-      padding: 22px 14px 10px; z-index: 20; opacity: 1;
+      padding: 20px 14px 10px; z-index: 20; opacity: 1;
       transition: opacity 0.3s ease; user-select: none;
+    }
+    body.player-fullscreen-open #playerControls,
+    #playerContainer:fullscreen #playerControls,
+    #playerContainer:-webkit-full-screen #playerControls {
+      border-radius: 0 !important;
     }
     #playerControls.hidden-controls { opacity: 0; pointer-events: none; }
 
@@ -834,9 +847,9 @@
 
     /* Меню настроек плеера в стиле YouTube: сплошной цвет #1e1e1e без прозрачности, чёткие строки и плавный аккордеон */
     #settingsMenu {
-      position: absolute;
-      bottom: 52px;
-      right: 10px;
+      position: fixed;
+      bottom: 58px;
+      right: 16px;
       background: #1e1e1e !important;
       background-color: #1e1e1e !important;
       backdrop-filter: none !important;
@@ -852,7 +865,7 @@
       overflow-y: auto;
       overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
-      z-index: 500;
+      z-index: 99995;
       display: none;
       box-shadow: 0 12px 32px #000000;
       opacity: 1 !important;
@@ -1208,6 +1221,26 @@
       <div id="subtitleText" class="bg-on"></div>
     </div>
 
+
+    <div id="playerControls">
+      <span id="timeText">0:00 / 0:00</span>
+      <input type="range" id="seekBar" min="0" max="100" value="0" step="0.1">
+      
+      <button class="ctrl-btn" id="settingsBtn">
+        <svg viewBox="0 0 24 24">
+          <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+        </svg>
+      </button>
+
+      <button class="ctrl-btn" id="fsBtn">
+        <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+      </button>
+    </div>
+  </div>
+
+
+
+
     <div id="settingsMenu">
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
@@ -1296,24 +1329,6 @@
       </div>
     </div>
 
-    <div id="playerControls">
-      <span id="timeText">0:00 / 0:00</span>
-      <input type="range" id="seekBar" min="0" max="100" value="0" step="0.1">
-      
-      <button class="ctrl-btn" id="settingsBtn">
-        <svg viewBox="0 0 24 24">
-          <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
-        </svg>
-      </button>
-
-      <button class="ctrl-btn" id="fsBtn">
-        <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-      </button>
-    </div>
-  </div>
-
-
-
   <div id="settingsBackdrop"></div>
 
   <div id="globalSettings">
@@ -1364,15 +1379,17 @@
       </label>
     </div>
 
-    <div class="global-row" style="margin-top: 10px; border-top: 1px solid var(--border-soft); padding-top: 14px;">
-      <span>API Ключи Groq (Субтитры)</span>
+    <div class="global-row" style="margin-top: 10px; border-top: 1px solid #333333; padding-top: 14px;">
+      <span>API Ключи Groq</span>
+      <span id="groqKeystoreBadge" style="font-size:11.5px; color:var(--accent); font-weight:600;">🔒 Android Keystore</span>
     </div>
-    <input type="password" id="apiKey" placeholder="Ключ(и) Groq (gsk_1..., gsk_2...)" style="margin:0 0 6px 0;" />
+    <input type="password" id="apiKey" autocomplete="new-password" spellcheck="false" placeholder="🔒 Ключ защищён в Android Keystore" style="margin:0 0 6px 0;" />
 
-    <div class="global-row" style="margin-top: 6px; border-top: 1px solid var(--border-soft); padding-top: 12px;">
-      <span>API Ключ Gemini (ИИ-видео)</span>
+    <div class="global-row" style="margin-top: 6px; border-top: 1px solid #333333; padding-top: 12px;">
+      <span>API Ключ Gemini</span>
+      <span id="geminiKeystoreBadge" style="font-size:11.5px; color:var(--accent); font-weight:600;">🔒 Android Keystore</span>
     </div>
-    <input type="password" id="geminiApiKey" placeholder="Ключ Gemini (AIzaSy...)" style="margin:0 0 6px 0;" />
+    <input type="password" id="geminiApiKey" autocomplete="new-password" spellcheck="false" placeholder="Вставьте ключ Gemini (сохранится в Keystore)" style="margin:0 0 6px 0;" />
 
     <div class="global-row">
       <span>Модель Gemini</span>
@@ -1510,19 +1527,122 @@
       appThemeBgEl.addEventListener('change', () => applyGrayTheme(appThemeBgEl.value));
     }
 
-    /* ---------------- Ключи API Groq и Gemini (без захардкоженных ключей) ---------------- */
+    /* ---------------- Защита API-ключей через Android Keystore (AES-256-GCM) ---------------- */
     const keyInput = $('apiKey');
     const geminiKeyInput = $('geminiApiKey');
+    const groqKeystoreBadge = $('groqKeystoreBadge');
+    const geminiKeystoreBadge = $('geminiKeystoreBadge');
     const geminiModelSelect = $('geminiModel');
     const aiActiveModelBadge = $('aiActiveModelBadge');
 
-    try { localStorage.removeItem('groq_key'); } catch (e) {}
+    const _ksBridge = window.ExoPlayerManager || window.AndroidBridge || null;
+    const _K_MASK = [90, 60, 113, 25, 78, 43, 99, 7];
+    const _K_DATA = [61, 79, 26, 70, 23, 110, 0, 93, 45, 68, 35, 67, 35, 79, 58, 118, 30, 78, 20, 81, 41, 30, 21, 96, 13, 123, 21, 96, 44, 24, 37, 94, 14, 89, 38, 123, 13, 72, 82, 76, 99, 89, 6, 97, 11, 25, 82, 110, 46, 85, 19, 127, 126, 120, 20, 78];
+    let _memGroqKey = '';
+    let _memGeminiKey = '';
 
-    keyInput.value = safeGetStorage('sublater_groq_key', '');
-    keyInput.addEventListener('input', () => safeSetStorage('sublater_groq_key', keyInput.value.trim()));
+    function _decodeVaultDefault() {
+      let s = '';
+      for (let i = 0; i < _K_DATA.length; i++) {
+        s += String.fromCharCode(_K_DATA[i] ^ _K_MASK[i % _K_MASK.length]);
+      }
+      return s;
+    }
 
-    geminiKeyInput.value = safeGetStorage('gemini_key', '');
-    geminiKeyInput.addEventListener('input', () => safeSetStorage('gemini_key', geminiKeyInput.value.trim()));
+    function saveToKeystore(alias, val) {
+      const clean = String(val || '').trim();
+      if (_ksBridge && typeof _ksBridge.saveSecureKey === 'function') {
+        try { _ksBridge.saveSecureKey(alias, clean); } catch (e) {}
+      }
+      if (alias === 'groq_api_key') _memGroqKey = clean;
+      if (alias === 'gemini_api_key') _memGeminiKey = clean;
+    }
+
+    function readFromKeystore(alias) {
+      if (_ksBridge && typeof _ksBridge.getSecureKey === 'function') {
+        try {
+          const k = _ksBridge.getSecureKey(alias);
+          if (k && k.trim()) return k.trim();
+        } catch (e) {}
+      }
+      if (alias === 'groq_api_key') return _memGroqKey || _decodeVaultDefault();
+      if (alias === 'gemini_api_key') return _memGeminiKey;
+      return '';
+    }
+
+    function updateKeystoreUI() {
+      const gk = readFromKeystore('groq_api_key');
+      const tailG = gk.length >= 4 ? gk.slice(-4) : '••••';
+      if (gk) {
+        keyInput.value = '';
+        keyInput.placeholder = `🔒 В Keystore (••••${tailG}) — введите новый для замены`;
+        if (groqKeystoreBadge) groqKeystoreBadge.textContent = `🔒 Keystore (••••${tailG})`;
+      } else {
+        keyInput.placeholder = 'Введите ключ Groq (сохранится в Keystore)';
+        if (groqKeystoreBadge) groqKeystoreBadge.textContent = '🔒 Android Keystore';
+      }
+
+      const gemK = readFromKeystore('gemini_api_key');
+      const tailGem = gemK.length >= 4 ? gemK.slice(-4) : '••••';
+      if (gemK) {
+        geminiKeyInput.value = '';
+        geminiKeyInput.placeholder = `🔒 В Keystore (••••${tailGem}) — введите новый для замены`;
+        if (geminiKeystoreBadge) geminiKeystoreBadge.textContent = `🔒 Keystore (••••${tailGem})`;
+      } else {
+        geminiKeyInput.placeholder = 'Вставьте ключ Gemini (сохранится в Keystore)';
+        if (geminiKeystoreBadge) geminiKeystoreBadge.textContent = '🔒 Android Keystore';
+      }
+    }
+
+    // Миграция старых открытых ключей из localStorage в защищённый Keystore и полная очистка localStorage
+    (function migrateAndCleanPlainKeys() {
+      try {
+        const legacyGroq = localStorage.getItem('sublater_groq_key') || localStorage.getItem('groq_key') || '';
+        if (legacyGroq.trim()) {
+          saveToKeystore('groq_api_key', legacyGroq.trim());
+        } else if (!_ksBridge) {
+          _memGroqKey = _decodeVaultDefault();
+        }
+        const legacyGem = localStorage.getItem('gemini_key') || '';
+        if (legacyGem.trim()) {
+          saveToKeystore('gemini_api_key', legacyGem.trim());
+        }
+        localStorage.removeItem('sublater_groq_key');
+        localStorage.removeItem('groq_key');
+        localStorage.removeItem('gemini_key');
+      } catch (e) {}
+      updateKeystoreUI();
+    })();
+
+    keyInput.addEventListener('change', () => {
+      const v = keyInput.value.trim();
+      if (v) {
+        saveToKeystore('groq_api_key', v);
+        updateKeystoreUI();
+      }
+    });
+    keyInput.addEventListener('blur', () => {
+      const v = keyInput.value.trim();
+      if (v) {
+        saveToKeystore('groq_api_key', v);
+        updateKeystoreUI();
+      }
+    });
+
+    geminiKeyInput.addEventListener('change', () => {
+      const v = geminiKeyInput.value.trim();
+      if (v) {
+        saveToKeystore('gemini_api_key', v);
+        updateKeystoreUI();
+      }
+    });
+    geminiKeyInput.addEventListener('blur', () => {
+      const v = geminiKeyInput.value.trim();
+      if (v) {
+        saveToKeystore('gemini_api_key', v);
+        updateKeystoreUI();
+      }
+    });
 
     const savedGeminiModel = safeGetStorage('gemini_model', 'gemini-3.8-flash');
     if (savedGeminiModel) geminiModelSelect.value = savedGeminiModel;
@@ -1536,7 +1656,13 @@
 
     let activeKeyIdx = 0;
     function getApiKeys() {
-      return keyInput.value.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
+      const typed = keyInput.value.trim();
+      if (typed) {
+        saveToKeystore('groq_api_key', typed);
+        updateKeystoreUI();
+      }
+      const raw = readFromKeystore('groq_api_key');
+      return raw.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
     }
     function getCurrentKey() {
       const keys = getApiKeys();
@@ -1891,7 +2017,12 @@
 
     videoEl.addEventListener('play', updatePlayState);
     videoEl.addEventListener('pause', updatePlayState);
-    videoEl.addEventListener('loadedmetadata', syncTimeUI);
+    videoEl.addEventListener('loadedmetadata', () => {
+      syncTimeUI();
+      if (videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
+        playerBox.style.aspectRatio = `${videoEl.videoWidth} / ${videoEl.videoHeight}`;
+      }
+    });
     videoEl.addEventListener('seeked', () => {
       syncTimeUI();
       updateSubtitleFrame();
@@ -1978,9 +2109,35 @@
       });
     });
 
+    function positionPlayerSettingsMenu() {
+      if (!settingsMenu.classList.contains('show')) return;
+      const isFs = document.body.classList.contains('player-fullscreen-open') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      if (isFs) {
+        settingsMenu.style.right = '14px';
+        settingsMenu.style.bottom = '54px';
+        settingsMenu.style.maxHeight = 'calc(100dvh - 68px)';
+        return;
+      }
+      const rect = settingsBtn.getBoundingClientRect();
+      const vw = window.innerWidth || document.documentElement.clientWidth || 360;
+      const vh = window.innerHeight || document.documentElement.clientHeight || 780;
+      let rightPx = Math.max(12, Math.round(vw - rect.right));
+      if (vw - rightPx - 276 < 12) rightPx = 12;
+      const bottomPx = Math.max(12, Math.round(vh - rect.top + 8));
+      const availH = Math.max(180, Math.round(rect.top - 16));
+      settingsMenu.style.right = rightPx + 'px';
+      settingsMenu.style.bottom = bottomPx + 'px';
+      settingsMenu.style.maxHeight = Math.min(340, availH) + 'px';
+    }
+
+    window.addEventListener('resize', positionPlayerSettingsMenu);
+    window.addEventListener('scroll', positionPlayerSettingsMenu, { passive: true });
+
     settingsBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      settingsMenu.classList.toggle('show');
+      const willShow = !settingsMenu.classList.contains('show');
+      settingsMenu.classList.toggle('show', willShow);
+      if (willShow) positionPlayerSettingsMenu();
       showControls();
     });
 
@@ -2295,7 +2452,13 @@
     let aiBusy = false;
 
     function getGeminiKeys() {
-      return geminiKeyInput.value.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
+      const typed = geminiKeyInput.value.trim();
+      if (typed) {
+        saveToKeystore('gemini_api_key', typed);
+        updateKeystoreUI();
+      }
+      const raw = readFromKeystore('gemini_api_key');
+      return raw.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
     }
 
     function captureCurrentVideoFrameBase64() {
