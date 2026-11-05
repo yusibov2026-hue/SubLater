@@ -811,12 +811,16 @@
     body.player-fullscreen-open video#videoPlayer,
     #playerContainer:fullscreen video#videoPlayer,
     #playerContainer:-webkit-full-screen video#videoPlayer {
-      width: 100%;
-      height: 100%;
-      max-height: 100dvh;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100vw !important;
+      max-height: 100dvh !important;
+      margin: 0 auto !important;
+      padding: 0 !important;
       border-radius: 0 !important;
       object-fit: contain;
-      object-position: center center;
+      object-position: center center !important;
+      transform-origin: center center !important;
       background: #000000;
     }
     video#videoPlayer.fill-crop { object-fit: cover !important; }
@@ -1375,6 +1379,16 @@
 
 
     <div id="settingsMenu">
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
+          <span class="yt-acc-label">Увеличение картины</span>
+          <span class="yt-acc-val" id="videoZoomVal">100%</span>
+        </button>
+        <div class="yt-acc-body">
+          <input type="range" id="videoZoom" min="100" max="200" step="5" value="100">
+        </div>
+      </div>
+
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
           <span class="yt-acc-label">Размер</span>
@@ -2034,6 +2048,26 @@
       fixedSubsToggle.checked = (savedFixed !== '0');
       fixedSubsToggle.addEventListener('change', applyFixedSubsMode);
       playerBox.classList.toggle('fixed-subs-on', fixedSubsToggle.checked);
+    }
+
+    const videoZoomEl = $('videoZoom');
+    const videoZoomVal = $('videoZoomVal');
+    function applyVideoZoom(rawZoom) {
+      const z = Math.min(200, Math.max(100, parseInt(rawZoom, 10) || 100));
+      if (videoZoomEl) videoZoomEl.value = String(z);
+      if (videoZoomVal) videoZoomVal.textContent = z + '%';
+      videoEl.style.transformOrigin = 'center center';
+      videoEl.style.transform = z > 100 ? `scale(${(z / 100).toFixed(2)})` : '';
+      const bridge = window.AndroidBridge || window.ExoPlayerManager;
+      if (bridge && typeof bridge.setVideoZoom === 'function') {
+        try { bridge.setVideoZoom(z); } catch (e) {}
+      }
+      safeSetStorage('sublater_video_zoom', String(z));
+    }
+    if (videoZoomEl) {
+      const savedZoom = safeGetStorage('sublater_video_zoom', '100');
+      applyVideoZoom(savedZoom);
+      videoZoomEl.addEventListener('input', (e) => applyVideoZoom(e.target.value));
     }
 
         accentColorEl.addEventListener('input', (e) => {
@@ -3698,7 +3732,7 @@
         for (let i = 0; i < len; i++) {
           bytes[i] = bin.charCodeAt(i);
         }
-        return new Blob([bytes], { type: 'audio/wav' });
+        return new Blob([bytes], { type: chunkMeta.mimeType || 'audio/mp4' });
       });
       _jniReadChain = nextRead.catch(() => {});
       return nextRead;
@@ -3772,16 +3806,20 @@
           const allSegments = [];
           const allWords = [];
 
-          // Проверяем, можно ли декодировать в WebView (только если выбран локальный File и это не внешний Intent / нестандартный контейнер)
+          // Гибридный подход (как на фото 1):
+          // На Android при сжатии/нарезке сразу используем нативный Гибридный экстрактор (AAC за 2 сек напрямую в .m4a, либо DTS/AC3 -> сжатый .m4a)!
           let audioBuffer = null;
+          const hasNativeHybridExtractor = Boolean(bridge && typeof bridge.startNativeAudioExtraction === 'function' && typeof bridge.hasNativeVideo === 'function' && bridge.hasNativeVideo());
           let needNativeExtractor = !file;
 
           if (file) {
             const lowerName = file.name.toLowerCase();
             const isExoticContainer = /\.(mkv|ts|m2ts|mts|avi|flv|wmv|mov)$/i.test(lowerName);
-            const shouldCompress = file.size > 24 * 1024 * 1024 || isExoticContainer || (fastAudioCompressEl.checked && file.size > 14 * 1024 * 1024);
+            const shouldCompress = file.size > 24 * 1024 * 1024 || isExoticContainer || (fastAudioCompressEl.checked && file.size > 12 * 1024 * 1024);
 
-            if (shouldCompress) {
+            if (shouldCompress && hasNativeHybridExtractor) {
+              needNativeExtractor = true;
+            } else if (shouldCompress) {
               statusEl.innerText = '⚡ Быстрое извлечение и сжатие аудиодорожки...';
               setProgress(10);
               try {
@@ -3790,7 +3828,6 @@
                 audioBuffer = await decodeCtx.decodeAudioData(ab);
                 if (decodeCtx.close) decodeCtx.close();
               } catch (decodeErr) {
-                // Если браузер не смог декодировать кодек фильма (.ts, .mkv, AC3, EAC3), переключаемся на нативный декодер Android!
                 if (bridge && typeof bridge.startNativeAudioExtraction === 'function') {
                   needNativeExtractor = true;
                 } else if (file.size > 24 * 1024 * 1024) {

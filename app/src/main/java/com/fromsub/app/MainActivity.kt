@@ -12,16 +12,19 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import android.view.WindowManager
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
@@ -44,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
 import org.json.JSONObject
@@ -123,11 +127,26 @@ class MainActivity : ComponentActivity() {
     fun applyImmersiveMode(fullscreen: Boolean) {
         runOnUiThread {
             if (fullscreen) {
+                // Игнорируем сдвиг выреза камеры (display cutout), чтобы левая и правая чёрные полосы в полном экране были идеально равны!
+                WindowCompat.setDecorFitsSystemWindows(window, false)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    window.attributes = window.attributes.apply {
+                        layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                        } else {
+                            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                        }
+                    }
+                }
                 window.statusBarColor = Color.BLACK
                 window.navigationBarColor = Color.BLACK
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     window.insetsController?.let { controller ->
-                        controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                        controller.hide(
+                            WindowInsets.Type.statusBars() or
+                                WindowInsets.Type.navigationBars() or
+                                WindowInsets.Type.displayCutout()
+                        )
                         controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                     }
                 } else {
@@ -142,6 +161,12 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             } else {
+                WindowCompat.setDecorFitsSystemWindows(window, true)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    window.attributes = window.attributes.apply {
+                        layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+                    }
+                }
                 val grayBg = Color.parseColor("#24272D")
                 window.statusBarColor = grayBg
                 window.navigationBarColor = grayBg
@@ -304,6 +329,7 @@ fun HybridVideoApp(
 ) {
     val resizeMode by exoPlayerManager.resizeModeState
     val bounds by exoPlayerManager.videoBoundsState
+    val zoomScale by exoPlayerManager.videoZoomState
 
     DisposableEffect(Unit) {
         onDispose { }
@@ -334,7 +360,7 @@ fun HybridVideoApp(
                 .clip(RoundedCornerShape(16.dp))
         }
 
-        // Layer 1 (Background): Native AndroidX Media3 ExoPlayer + FFmpeg Audio Decoder
+        // Layer 1 (Background): Native AndroidX Media3 ExoPlayer + FFmpeg Audio Decoder (строго по центру экрана)
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -344,14 +370,17 @@ fun HybridVideoApp(
                     setBackgroundColor(Color.BLACK)
                     setShutterBackgroundColor(Color.BLACK)
                     setKeepContentOnPlayerReset(true)
-                    layoutParams = ViewGroup.LayoutParams(
+                    layoutParams = FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Gravity.CENTER
                     )
                 }
             },
             update = { playerView ->
                 playerView.resizeMode = resizeMode
+                playerView.scaleX = zoomScale
+                playerView.scaleY = zoomScale
             },
             modifier = playerModifier
         )
