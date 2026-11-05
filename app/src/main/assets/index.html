@@ -56,7 +56,7 @@
     #appTopSection {
       background: var(--bg-main);
       position: relative;
-      z-index: 5;
+      z-index: 40;
       padding-bottom: 4px;
     }
 
@@ -377,65 +377,96 @@
       transform: scale(0.93);
       background: color-mix(in srgb, var(--accent) 22%, var(--bg-surface));
     }
+    #retryBtn svg.btn-icon-refresh {
+      width: 19px;
+      height: 19px;
+      fill: currentColor;
+      flex-shrink: 0;
+      display: inline-block;
+    }
+    #dlBtn svg.btn-icon-caret {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+      flex-shrink: 0;
+      display: inline-block;
+      transition: transform 0.2s ease;
+    }
+    .dl-wrap.open #dlBtn svg.btn-icon-caret {
+      transform: rotate(180deg);
+    }
+
     .dl-wrap {
       flex: 1;
       min-width: 135px;
       position: relative;
       display: flex;
+      z-index: 100;
     }
     .dl-wrap #dlBtn {
       width: 100%;
     }
     #dlFormatMenu {
       position: absolute;
-      top: calc(100% + 6px);
+      top: calc(100% + 8px);
       right: 0;
-      left: 0;
-      background: #1e2128;
+      left: auto;
+      min-width: 215px;
+      width: max-content;
+      max-width: min(260px, calc(100vw - 32px));
+      background: #1e1e1e;
       border: 1.5px solid var(--accent);
-      border-radius: 16px;
+      border-radius: 14px;
       padding: 6px;
-      z-index: 80;
-      display: flex;
+      z-index: 999;
+      display: none;
       flex-direction: column;
       gap: 4px;
-      box-shadow: 0 10px 28px rgba(0,0,0,0.65);
-      opacity: 0;
-      pointer-events: none;
-      transform: translateY(-6px) scale(0.96);
-      transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 12px 32px #000000;
+      overflow: hidden;
     }
     #dlFormatMenu.show {
-      opacity: 1;
-      pointer-events: auto;
-      transform: translateY(0) scale(1);
+      display: flex;
     }
     .dl-fmt-item {
-      background: transparent;
+      width: 100%;
+      background: #1e1e1e;
       border: none;
       color: #f3f4f6;
       font-family: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      padding: 10px 12px;
-      border-radius: 11px;
+      font-size: 13.5px;
+      font-weight: 500;
+      padding: 10px 14px;
+      border-radius: 10px;
       text-align: left;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      transition: background 0.18s ease, color 0.18s ease;
+      gap: 14px;
+      white-space: nowrap;
+      transition: background 0.15s ease, color 0.15s ease;
     }
     .dl-fmt-item:hover,
     .dl-fmt-item:active {
-      background: color-mix(in srgb, var(--accent) 18%, #2a2e36);
-      color: var(--accent);
+      background: #2a2e36;
+      color: #ffffff;
+    }
+    .dl-fmt-item span:first-child {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #f3f4f6;
     }
     .dl-fmt-item span.fmt-ext {
+      flex: 0 0 auto;
+      flex-shrink: 0;
       font-weight: 700;
       color: var(--accent);
+      margin-left: auto;
     }
-    
+
     #openBtn {
       flex: 1 1 100%;
       width: 100%;
@@ -1155,9 +1186,19 @@
   <div id="progressWrap"><div id="progressBar"></div></div>
   
   <div class="action-row" id="actionRow">
-    <button type="button" id="retryBtn">↻ Ещё раз</button>
-    <div class="dl-wrap">
-      <button type="button" id="dlBtn">Скачать ▾</button>
+    <button type="button" id="retryBtn">
+      <svg class="btn-icon-refresh" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+      </svg>
+      <span>Ещё раз</span>
+    </button>
+    <div class="dl-wrap" id="dlWrap">
+      <button type="button" id="dlBtn">
+        <span>Скачать</span>
+        <svg class="btn-icon-caret" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 10l5 5 5-5H7z"/>
+        </svg>
+      </button>
       <div id="dlFormatMenu">
         <button type="button" class="dl-fmt-item" data-fmt="vtt"><span>Стандарт</span><span class="fmt-ext">.VTT</span></button>
         <button type="button" class="dl-fmt-item" data-fmt="ass"><span>Караоке</span><span class="fmt-ext">.ASS</span></button>
@@ -1380,16 +1421,14 @@
     </div>
 
     <div class="global-row" style="margin-top: 10px; border-top: 1px solid #333333; padding-top: 14px;">
-      <span>API Ключи Groq</span>
-      <span id="groqKeystoreBadge" style="font-size:11.5px; color:var(--accent); font-weight:600;">🔒 Android Keystore</span>
+      <span>API Ключ Groq</span>
     </div>
-    <input type="password" id="apiKey" autocomplete="new-password" spellcheck="false" placeholder="🔒 Ключ защищён в Android Keystore" style="margin:0 0 6px 0;" />
+    <input type="password" id="apiKey" autocomplete="off" spellcheck="false" placeholder="Введите ключ Groq" style="margin:0 0 6px 0;" />
 
     <div class="global-row" style="margin-top: 6px; border-top: 1px solid #333333; padding-top: 12px;">
       <span>API Ключ Gemini</span>
-      <span id="geminiKeystoreBadge" style="font-size:11.5px; color:var(--accent); font-weight:600;">🔒 Android Keystore</span>
     </div>
-    <input type="password" id="geminiApiKey" autocomplete="new-password" spellcheck="false" placeholder="Вставьте ключ Gemini (сохранится в Keystore)" style="margin:0 0 6px 0;" />
+    <input type="password" id="geminiApiKey" autocomplete="off" spellcheck="false" placeholder="Введите ключ Gemini" style="margin:0 0 6px 0;" />
 
     <div class="global-row">
       <span>Модель Gemini</span>
@@ -1527,121 +1566,58 @@
       appThemeBgEl.addEventListener('change', () => applyGrayTheme(appThemeBgEl.value));
     }
 
-    /* ---------------- Защита API-ключей через Android Keystore (AES-256-GCM) ---------------- */
+    /* ---------------- Сохранение пользовательских API-ключей в Android Keystore ---------------- */
     const keyInput = $('apiKey');
     const geminiKeyInput = $('geminiApiKey');
-    const groqKeystoreBadge = $('groqKeystoreBadge');
-    const geminiKeystoreBadge = $('geminiKeystoreBadge');
     const geminiModelSelect = $('geminiModel');
     const aiActiveModelBadge = $('aiActiveModelBadge');
 
     const _ksBridge = window.ExoPlayerManager || window.AndroidBridge || null;
-    const _K_MASK = [90, 60, 113, 25, 78, 43, 99, 7];
-    const _K_DATA = [61, 79, 26, 70, 23, 110, 0, 93, 45, 68, 35, 67, 35, 79, 58, 118, 30, 78, 20, 81, 41, 30, 21, 96, 13, 123, 21, 96, 44, 24, 37, 94, 14, 89, 38, 123, 13, 72, 82, 76, 99, 89, 6, 97, 11, 25, 82, 110, 46, 85, 19, 127, 126, 120, 20, 78];
-    let _memGroqKey = '';
-    let _memGeminiKey = '';
 
-    function _decodeVaultDefault() {
-      let s = '';
-      for (let i = 0; i < _K_DATA.length; i++) {
-        s += String.fromCharCode(_K_DATA[i] ^ _K_MASK[i % _K_MASK.length]);
-      }
-      return s;
-    }
+    // Однократная очистка любых старых записей localStorage
+    try {
+      localStorage.removeItem('groq_key');
+      localStorage.removeItem('sublater_groq_key');
+      localStorage.removeItem('gemini_key');
+    } catch (e) {}
 
-    function saveToKeystore(alias, val) {
+    function saveUserApiKey(alias, val) {
       const clean = String(val || '').trim();
       if (_ksBridge && typeof _ksBridge.saveSecureKey === 'function') {
         try { _ksBridge.saveSecureKey(alias, clean); } catch (e) {}
+      } else {
+        safeSetStorage('ks_' + alias, clean);
       }
-      if (alias === 'groq_api_key') _memGroqKey = clean;
-      if (alias === 'gemini_api_key') _memGeminiKey = clean;
     }
 
-    function readFromKeystore(alias) {
+    function loadUserApiKey(alias) {
       if (_ksBridge && typeof _ksBridge.getSecureKey === 'function') {
         try {
-          const k = _ksBridge.getSecureKey(alias);
-          if (k && k.trim()) return k.trim();
-        } catch (e) {}
+          return String(_ksBridge.getSecureKey(alias) || '').trim();
+        } catch (e) {
+          return '';
+        }
       }
-      if (alias === 'groq_api_key') return _memGroqKey || _decodeVaultDefault();
-      if (alias === 'gemini_api_key') return _memGeminiKey;
-      return '';
+      return safeGetStorage('ks_' + alias, '').trim();
     }
 
-    function updateKeystoreUI() {
-      const gk = readFromKeystore('groq_api_key');
-      const tailG = gk.length >= 4 ? gk.slice(-4) : '••••';
-      if (gk) {
-        keyInput.value = '';
-        keyInput.placeholder = `🔒 В Keystore (••••${tailG}) — введите новый для замены`;
-        if (groqKeystoreBadge) groqKeystoreBadge.textContent = `🔒 Keystore (••••${tailG})`;
-      } else {
-        keyInput.placeholder = 'Введите ключ Groq (сохранится в Keystore)';
-        if (groqKeystoreBadge) groqKeystoreBadge.textContent = '🔒 Android Keystore';
-      }
+    // При открытии приложения автоматически подтягиваем сохранённые пользователем ключи из Keystore
+    // Поле type="password" отображает их стандартными скрытыми точками
+    keyInput.value = loadUserApiKey('groq_api_key');
+    geminiKeyInput.value = loadUserApiKey('gemini_api_key');
 
-      const gemK = readFromKeystore('gemini_api_key');
-      const tailGem = gemK.length >= 4 ? gemK.slice(-4) : '••••';
-      if (gemK) {
-        geminiKeyInput.value = '';
-        geminiKeyInput.placeholder = `🔒 В Keystore (••••${tailGem}) — введите новый для замены`;
-        if (geminiKeystoreBadge) geminiKeystoreBadge.textContent = `🔒 Keystore (••••${tailGem})`;
-      } else {
-        geminiKeyInput.placeholder = 'Вставьте ключ Gemini (сохранится в Keystore)';
-        if (geminiKeystoreBadge) geminiKeystoreBadge.textContent = '🔒 Android Keystore';
-      }
-    }
-
-    // Миграция старых открытых ключей из localStorage в защищённый Keystore и полная очистка localStorage
-    (function migrateAndCleanPlainKeys() {
-      try {
-        const legacyGroq = localStorage.getItem('sublater_groq_key') || localStorage.getItem('groq_key') || '';
-        if (legacyGroq.trim()) {
-          saveToKeystore('groq_api_key', legacyGroq.trim());
-        } else if (!_ksBridge) {
-          _memGroqKey = _decodeVaultDefault();
-        }
-        const legacyGem = localStorage.getItem('gemini_key') || '';
-        if (legacyGem.trim()) {
-          saveToKeystore('gemini_api_key', legacyGem.trim());
-        }
-        localStorage.removeItem('sublater_groq_key');
-        localStorage.removeItem('groq_key');
-        localStorage.removeItem('gemini_key');
-      } catch (e) {}
-      updateKeystoreUI();
-    })();
-
+    keyInput.addEventListener('input', () => {
+      saveUserApiKey('groq_api_key', keyInput.value);
+    });
     keyInput.addEventListener('change', () => {
-      const v = keyInput.value.trim();
-      if (v) {
-        saveToKeystore('groq_api_key', v);
-        updateKeystoreUI();
-      }
-    });
-    keyInput.addEventListener('blur', () => {
-      const v = keyInput.value.trim();
-      if (v) {
-        saveToKeystore('groq_api_key', v);
-        updateKeystoreUI();
-      }
+      saveUserApiKey('groq_api_key', keyInput.value);
     });
 
-    geminiKeyInput.addEventListener('change', () => {
-      const v = geminiKeyInput.value.trim();
-      if (v) {
-        saveToKeystore('gemini_api_key', v);
-        updateKeystoreUI();
-      }
+    geminiKeyInput.addEventListener('input', () => {
+      saveUserApiKey('gemini_api_key', geminiKeyInput.value);
     });
-    geminiKeyInput.addEventListener('blur', () => {
-      const v = geminiKeyInput.value.trim();
-      if (v) {
-        saveToKeystore('gemini_api_key', v);
-        updateKeystoreUI();
-      }
+    geminiKeyInput.addEventListener('change', () => {
+      saveUserApiKey('gemini_api_key', geminiKeyInput.value);
     });
 
     const savedGeminiModel = safeGetStorage('gemini_model', 'gemini-3.8-flash');
@@ -1656,13 +1632,8 @@
 
     let activeKeyIdx = 0;
     function getApiKeys() {
-      const typed = keyInput.value.trim();
-      if (typed) {
-        saveToKeystore('groq_api_key', typed);
-        updateKeystoreUI();
-      }
-      const raw = readFromKeystore('groq_api_key');
-      return raw.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
+      const currentVal = keyInput.value.trim() || loadUserApiKey('groq_api_key');
+      return currentVal.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
     }
     function getCurrentKey() {
       const keys = getApiKeys();
@@ -2362,6 +2333,7 @@
     }
 
     const retryBtn = $('retryBtn');
+    const dlWrap = $('dlWrap');
     const dlFormatMenu = $('dlFormatMenu');
 
     function updateExportPreview() {
@@ -2396,7 +2368,8 @@
     /* Кнопка «Скачать» с выпадающим меню выбора формата (.VTT, .ASS, .SRT, .TXT) */
     dlBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      dlFormatMenu.classList.toggle('show');
+      const openNow = dlFormatMenu.classList.toggle('show');
+      if (dlWrap) dlWrap.classList.toggle('open', openNow);
     });
 
     dlFormatMenu.querySelectorAll('.dl-fmt-item').forEach((item) => {
@@ -2404,6 +2377,7 @@
         e.stopPropagation();
         const fmt = item.dataset.fmt || 'vtt';
         dlFormatMenu.classList.remove('show');
+        if (dlWrap) dlWrap.classList.remove('open');
         downloadSubtitle(fmt);
       });
     });
@@ -2411,6 +2385,7 @@
     document.addEventListener('click', (e) => {
       if (dlFormatMenu.classList.contains('show') && !dlFormatMenu.contains(e.target) && !dlBtn.contains(e.target)) {
         dlFormatMenu.classList.remove('show');
+        if (dlWrap) dlWrap.classList.remove('open');
       }
     });
 
@@ -2452,13 +2427,8 @@
     let aiBusy = false;
 
     function getGeminiKeys() {
-      const typed = geminiKeyInput.value.trim();
-      if (typed) {
-        saveToKeystore('gemini_api_key', typed);
-        updateKeystoreUI();
-      }
-      const raw = readFromKeystore('gemini_api_key');
-      return raw.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
+      const currentVal = geminiKeyInput.value.trim() || loadUserApiKey('gemini_api_key');
+      return currentVal.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
     }
 
     function captureCurrentVideoFrameBase64() {

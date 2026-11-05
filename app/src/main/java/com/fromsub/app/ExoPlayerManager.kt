@@ -124,7 +124,7 @@ class ExoPlayerManager(
     }
 
     init {
-        bootstrapKeystoreIfNeeded()
+        ensureCleanUserKeystore()
         mainHandler.post(positionPoller)
     }
 
@@ -491,18 +491,14 @@ class ExoPlayerManager(
         return keyGenerator.generateKey()
     }
 
-    private fun bootstrapKeystoreIfNeeded() {
+    private fun ensureCleanUserKeystore() {
         try {
             val prefs = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
-            if (!prefs.contains("groq_api_key") && !prefs.getBoolean("groq_key_user_cleared", false)) {
-                val m = intArrayOf(90, 60, 113, 25, 78, 43, 99, 7)
-                val d = intArrayOf(61, 79, 26, 70, 23, 110, 0, 93, 45, 68, 35, 67, 35, 79, 58, 118, 30, 78, 20, 81, 41, 30, 21, 96, 13, 123, 21, 96, 44, 24, 37, 94, 14, 89, 38, 123, 13, 72, 82, 76, 99, 89, 6, 97, 11, 25, 82, 110, 46, 85, 19, 127, 126, 120, 20, 78)
-                val sb = StringBuilder(d.size)
-                for (i in d.indices) {
-                    sb.append((d[i] xor m[i % m.size]).toChar())
-                }
-                saveSecureKey("groq_api_key", sb.toString())
-                sb.clear()
+            if (!prefs.getBoolean("user_only_keystore_v17", false)) {
+                prefs.edit()
+                    .remove("groq_api_key")
+                    .putBoolean("user_only_keystore_v17", true)
+                    .apply()
             }
         } catch (_: Exception) {
         }
