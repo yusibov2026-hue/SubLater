@@ -11,8 +11,8 @@ android {
         applicationId = "com.fromsub.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "2.1.1"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -74,7 +74,6 @@ dependencies {
     implementation("androidx.media3:media3-ui:$media3Version")
     implementation("androidx.media3:media3-common:$media3Version")
     implementation("androidx.media3:media3-extractor:$media3Version")
-    implementation("androidx.media3:media3-transformer:$media3Version")
 
     implementation("androidx.webkit:webkit:1.11.0")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")

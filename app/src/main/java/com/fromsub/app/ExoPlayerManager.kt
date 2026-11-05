@@ -7,17 +7,14 @@ import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.media.AudioFormat
 import android.media.MediaCodec
-import android.media.MediaCodecInfo
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
-import android.media.MediaMuxer
 import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.Handler
-import android.os.HandlerThread
 import android.os.Looper
 import android.provider.MediaStore
 import android.security.keystore.KeyGenParameterSpec
@@ -32,7 +29,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
@@ -41,32 +37,23 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.extractor.DefaultExtractorsFactory
-import androidx.media3.transformer.Composition
-import androidx.media3.transformer.EditedMediaItem
-import androidx.media3.transformer.ExportException
-import androidx.media3.transformer.ExportResult
-import androidx.media3.transformer.Transformer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.security.KeyStore
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
-import kotlin.math.abs
 
 data class VideoBounds(
     val leftRatio: Float = 0f,
@@ -77,173 +64,6 @@ data class VideoBounds(
     val isVisible: Boolean = false
 )
 
-/**
- * Асинхронный аппаратный энкодер M4A (AAC-LC, 16000 Гц, Mono, 64 kbps)
- * на базе MediaCodec.setCallback и прямых ByteBuffer (ByteOrder.LITTLE_ENDIAN) без побайтового разбора.
- */
-private class AsyncM4aChunkEncoder(
-    val outputFile: File,
-    private val sampleRate: Int = 16000,
-    private val bitRate: Int = 64000,
-    callbackHandler: Handler
-) {
-    private val encoder: MediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
-    private val muxer: MediaMuxer
-    private val freeInputIndices = ConcurrentLinkedQueue<Int>()
-    private val pendingPcmBlocks = ConcurrentLinkedQueue<ByteBuffer>()
-    private val eosRequested = AtomicBoolean(false)
-    private val eosSentToEncoder = AtomicBoolean(false)
-    private val completedLatch = CountDownLatch(1)
-
-    @Volatile
-    private var trackIndex = -1
-
-    @Volatile
-    private var muxerStarted = false
-
-    @Volatile
-    var totalSamplesWritten: Long = 0L
-        private set
-
-    init {
-        if (outputFile.exists()) outputFile.delete()
-        muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-
-        val format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, 1).apply {
-            setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
-            setInteger(MediaFormat.KEY_BIT_RATE, bitRate)
-            setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 32768)
-        }
-
-        encoder.setCallback(object : MediaCodec.Callback() {
-            override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
-                freeInputIndices.offer(index)
-                feedAvailableInputBuffers()
-            }
-
-            override fun onOutputBufferAvailable(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {
-                try {
-                    val outBuf = codec.getOutputBuffer(index)
-                    if ((info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-                        info.size = 0
-                    }
-                    if (info.size > 0 && muxerStarted && outBuf != null) {
-                        outBuf.position(info.offset)
-                        outBuf.limit(info.offset + info.size)
-                        muxer.writeSampleData(trackIndex, outBuf, info)
-                    }
-                    codec.releaseOutputBuffer(index, false)
-                    if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                        completedLatch.countDown()
-                    }
-                } catch (_: Exception) {
-                    completedLatch.countDown()
-                }
-            }
-
-            override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
-                try {
-                    if (!muxerStarted) {
-                        trackIndex = muxer.addTrack(format)
-                        muxer.start()
-                        muxerStarted = true
-                    }
-                } catch (_: Exception) {
-                }
-            }
-
-            override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
-                completedLatch.countDown()
-            }
-        }, callbackHandler)
-
-        encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-        encoder.start()
-    }
-
-    /**
-     * Принимает прямой ByteBuffer (LITTLE_ENDIAN, 16-бит Mono PCM) блоками без ручного разбора байтов.
-     */
-    fun queueShortBufferBlock(pcmBuffer: ByteBuffer) {
-        pendingPcmBlocks.offer(pcmBuffer)
-        feedAvailableInputBuffers()
-    }
-
-    @Synchronized
-    private fun feedAvailableInputBuffers() {
-        while (true) {
-            val inIdx = freeInputIndices.peek() ?: break
-            val block = pendingPcmBlocks.peek()
-            if (block == null) {
-                if (eosRequested.get() && !eosSentToEncoder.getAndSet(true)) {
-                    freeInputIndices.poll()
-                    val ptsUs = (totalSamplesWritten * 1_000_000L) / sampleRate.toLong()
-                    try {
-                        encoder.queueInputBuffer(inIdx, 0, 0, ptsUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                    } catch (_: Exception) {
-                        completedLatch.countDown()
-                    }
-                }
-                break
-            }
-
-            freeInputIndices.poll()
-            val inBuf = try {
-                encoder.getInputBuffer(inIdx)
-            } catch (_: Exception) {
-                null
-            } ?: break
-
-            inBuf.clear()
-            val bytesToCopy = minOf(block.remaining(), inBuf.remaining())
-            val oldLimit = block.limit()
-            block.limit(block.position() + bytesToCopy)
-            inBuf.put(block)
-            block.limit(oldLimit)
-
-            if (!block.hasRemaining()) {
-                pendingPcmBlocks.poll()
-            }
-
-            val ptsUs = (totalSamplesWritten * 1_000_000L) / sampleRate.toLong()
-            totalSamplesWritten += (bytesToCopy / 2).toLong()
-            try {
-                encoder.queueInputBuffer(inIdx, 0, bytesToCopy, ptsUs, 0)
-            } catch (_: Exception) {
-                completedLatch.countDown()
-                break
-            }
-        }
-    }
-
-    fun finishAndClose() {
-        eosRequested.set(true)
-        feedAvailableInputBuffers()
-        try {
-            completedLatch.await(4, TimeUnit.SECONDS)
-        } catch (_: Exception) {
-        }
-        try {
-            encoder.stop()
-        } catch (_: Exception) {
-        }
-        try {
-            encoder.release()
-        } catch (_: Exception) {
-        }
-        try {
-            if (muxerStarted) {
-                muxer.stop()
-            }
-        } catch (_: Exception) {
-        }
-        try {
-            muxer.release()
-        } catch (_: Exception) {
-        }
-    }
-}
-
 @OptIn(UnstableApi::class)
 class ExoPlayerManager(
     private val context: Context,
@@ -251,7 +71,6 @@ class ExoPlayerManager(
 ) {
 
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val audioExecutor = Executors.newSingleThreadExecutor()
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private var currentVideoUri: Uri? = null
     private var webViewRef: WebView? = null
@@ -332,15 +151,6 @@ class ExoPlayerManager(
         this.webViewRef = webView
     }
 
-    private fun evalJsOnWebView(script: String) {
-        mainHandler.post {
-            try {
-                webViewRef?.evaluateJavascript(script, null)
-            } catch (_: Exception) {
-            }
-        }
-    }
-
     private fun syncStateOnMainThread() {
         try {
             cachedPositionMs = exoPlayer.currentPosition.coerceAtLeast(0L)
@@ -364,8 +174,6 @@ class ExoPlayerManager(
     fun getStoredMediaUri(): String {
         return currentVideoUri?.toString() ?: ""
     }
-
-    /* ==================== УПРАВЛЕНИЕ FOREGROUND SERVICE ==================== */
 
     @JavascriptInterface
     fun startForegroundService(statusText: String = "Генерация субтитров...") {
@@ -717,7 +525,7 @@ class ExoPlayerManager(
         }
     }
 
-    /* ==================== СВЕРХБЫСТРАЯ ГЕНЕРАЦИЯ M4A: MEDIA3 TRANSFORMER + ПРЯМОЙ NIO REMUX + АСИНХРОННЫЙ MEDIACODEC (setCallback) + БЛОЧНЫЙ VAD 1024 ==================== */
+    /* ==================== СТАБИЛЬНОЕ СИНХРОННОЕ ИЗВЛЕЧЕНИЕ 16кГц MONO WAV ПО 10 МИНУТ (БЕЗ DEADLOCK И БЕЗ VAD) ==================== */
 
     @JavascriptInterface
     fun cancelNativeAudioExtraction() {
@@ -749,36 +557,25 @@ class ExoPlayerManager(
         }
     }
 
-    @JavascriptInterface
-    fun startNativeAudioExtraction(uriString: String = "") {
-        cancelAudioExtraction = false
-        startForegroundService("Генерация субтитров: быстрая подготовка M4A...")
-        audioExecutor.execute {
-            try {
-                val targetUri = if (uriString.isNotBlank() && !uriString.startsWith("blob:")) {
-                    Uri.parse(uriString)
-                } else {
-                    currentVideoUri
-                }
-
-                if (targetUri == null) {
-                    evalJsOnWebView("window.__onNativeAudioError && window.__onNativeAudioError('Не найден URI медиафайла');")
-                    return@execute
-                }
-
-                val resultJson = extractAndSliceVadM4a(targetUri) { pct, msg ->
-                    updateForegroundNotification(msg)
-                    val safeMsg = msg.replace("'", "\\'")
-                    evalJsOnWebView("window.__onNativeAudioProgress && window.__onNativeAudioProgress($pct, '$safeMsg');")
-                }
-
-                val escapedJson = JSONObject.quote(resultJson)
-                evalJsOnWebView("window.__onNativeAudioDone && window.__onNativeAudioDone($escapedJson);")
-            } catch (e: Exception) {
-                val safeErr = (e.message ?: "Ошибка подготовки M4A").replace("'", "\\'")
-                evalJsOnWebView("window.__onNativeAudioError && window.__onNativeAudioError('$safeErr');")
-            }
-        }
+    private fun writeWavHeader(raf: RandomAccessFile, pcmDataBytes: Int, sampleRate: Int = 16000, channels: Int = 1) {
+        val byteRate = sampleRate * channels * 2
+        val totalDataLen = pcmDataBytes + 36
+        val header = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN)
+        header.put("RIFF".toByteArray(Charsets.US_ASCII))
+        header.putInt(totalDataLen)
+        header.put("WAVE".toByteArray(Charsets.US_ASCII))
+        header.put("fmt ".toByteArray(Charsets.US_ASCII))
+        header.putInt(16)
+        header.putShort(1.toShort())
+        header.putShort(channels.toShort())
+        header.putInt(sampleRate)
+        header.putInt(byteRate)
+        header.putShort((channels * 2).toShort())
+        header.putShort(16.toShort())
+        header.put("data".toByteArray(Charsets.US_ASCII))
+        header.putInt(pcmDataBytes)
+        raf.seek(0L)
+        raf.write(header.array())
     }
 
     @JavascriptInterface
@@ -790,326 +587,17 @@ class ExoPlayerManager(
             currentVideoUri ?: return "[]"
         }
         return try {
-            extractAndSliceVadM4a(targetUri) { _, _ -> }
+            extractFixed10MinWavChunksSync(targetUri)
         } catch (_: Exception) {
             "[]"
         }
     }
 
-    /**
-     * Трёхуровневый сверхбыстрый конвейер (40 минут видео за 2–12 секунд!):
-     * 1) Если дорожка уже AAC (audio/mp4a-latm) — прямое копирование пакетов через прямой ByteBuffer (ByteOrder.LITTLE_ENDIAN)
-     *    и MediaMuxer с анализом спада энергии пакетов (VAD по тишине в окне 3–5 минут). Скорость: ~1–2 сек на 40-минутное видео!
-     * 2) Аппаратный Media3 Transformer (androidx.media3.transformer.Transformer) с удалением видео (setRemoveVideo(true))
-     *    и кодированием в AUDIO_AAC по найденным точкам тишины. Скорость: ~5–10 сек на 40-минутное видео!
-     * 3) Асинхронный MediaCodec (setCallback) с прямыми ShortBuffer/ByteBuffer и блочным VAD по 1024 сэмпла (без ручного побайтового разбора).
-     */
-    private fun extractAndSliceVadM4a(
-        uri: Uri,
-        onProgress: (Int, String) -> Unit
-    ): String {
+    private fun extractFixed10MinWavChunksSync(uri: Uri): String {
         val chunkDir = File(context.cacheDir, "sublater_chunks")
         if (!chunkDir.exists()) chunkDir.mkdirs()
         chunkDir.listFiles()?.forEach { it.delete() }
 
-        // Уровень 1: Мгновенный Direct NIO ByteBuffer Remux + VAD по пакетам (для AAC дорожек — 1-2 сек на 40 мин видео)
-        try {
-            val fastRemuxResult = tryDirectNioAacVadMux(uri, chunkDir, onProgress)
-            if (fastRemuxResult != null && fastRemuxResult.length() > 0) {
-                return fastRemuxResult.toString()
-            }
-        } catch (e: InterruptedException) {
-            throw e
-        } catch (_: Exception) {
-        }
-
-        // Уровень 2: Аппаратный Media3 Transformer (androidx.media3:media3-transformer)
-        try {
-            val media3Result = tryMedia3TransformerChunks(uri, chunkDir, onProgress)
-            if (media3Result != null && media3Result.length() > 0) {
-                return media3Result.toString()
-            }
-        } catch (e: InterruptedException) {
-            throw e
-        } catch (_: Exception) {
-        }
-
-        // Уровень 3: Асинхронный MediaCodec (setCallback) + прямой ShortBuffer + блочный VAD (по 1024 сэмпла)
-        return extractAsyncMediaCodecBlockVadM4a(uri, chunkDir, onProgress)
-    }
-
-    /**
-     * Уровень 1: Прямой NIO ByteBuffer.allocateDirect + MediaMuxer + VAD по энергии фреймов (0 декодирования PCM, ~1.5 сек на 40 минут!).
-     */
-    private fun tryDirectNioAacVadMux(
-        uri: Uri,
-        chunkDir: File,
-        onProgress: (Int, String) -> Unit
-    ): JSONArray? {
-        val extractor = MediaExtractor()
-        extractor.setDataSource(context, uri, null)
-
-        var audioTrackIndex = -1
-        var audioFormat: MediaFormat? = null
-        for (i in 0 until extractor.trackCount) {
-            val fmt = extractor.getTrackFormat(i)
-            val mime = fmt.getString(MediaFormat.KEY_MIME) ?: continue
-            if (mime == MediaFormat.MIMETYPE_AUDIO_AAC) {
-                audioTrackIndex = i
-                audioFormat = fmt
-                break
-            }
-        }
-
-        if (audioTrackIndex < 0 || audioFormat == null) {
-            extractor.release()
-            return null
-        }
-
-        extractor.selectTrack(audioTrackIndex)
-        val durationUs = if (audioFormat.containsKey(MediaFormat.KEY_DURATION)) {
-            audioFormat.getLong(MediaFormat.KEY_DURATION).coerceAtLeast(0L)
-        } else {
-            0L
-        }
-
-        val minChunkUs = 180_000_000L // 3 минуты
-        val softChunkUs = 240_000_000L // 4 минуты
-        val maxChunkUs = 300_000_000L // 5 минут
-        val maxChunkBytes = 18 * 1024 * 1024 // макс 18 МБ на чанк (< 25 МБ лимита Groq)
-
-        val directBuf = ByteBuffer.allocateDirect(262144).order(ByteOrder.LITTLE_ENDIAN)
-        val bufferInfo = MediaCodec.BufferInfo()
-        val resultArray = JSONArray()
-
-        var chunkIndex = 0
-        var chunkFile = File(chunkDir, "chunk_0.m4a")
-        var muxer = MediaMuxer(chunkFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-        var muxTrack = muxer.addTrack(audioFormat)
-        muxer.start()
-
-        var chunkStartUs = -1L
-        var lastPtsUs = 0L
-        var chunkBytesWritten = 0
-        var rollingFrameSizeAvg = 320.0
-        var quietFramesRun = 0
-        var lastPct = -1
-
-        fun closeCurrentMuxer(endUs: Long) {
-            try { muxer.stop() } catch (_: Exception) {}
-            try { muxer.release() } catch (_: Exception) {}
-            if (chunkBytesWritten > 256 && chunkFile.exists()) {
-                val startSec = (chunkStartUs.coerceAtLeast(0L)).toDouble() / 1_000_000.0
-                val endSec = (endUs.coerceAtLeast(chunkStartUs + 100_000L)).toDouble() / 1_000_000.0
-                resultArray.put(JSONObject().apply {
-                    put("index", chunkIndex)
-                    put("path", chunkFile.absolutePath)
-                    put("fileUrl", "file://${chunkFile.absolutePath}")
-                    put("fileName", chunkFile.name)
-                    put("mimeType", "audio/mp4")
-                    put("startSec", startSec)
-                    put("endSec", endSec)
-                    put("cutoffSec", startSec)
-                    put("nextCutoffSec", endSec + 0.05)
-                })
-            } else {
-                chunkFile.delete()
-            }
-        }
-
-        try {
-            while (true) {
-                if (cancelAudioExtraction) throw InterruptedException("Отменено пользователем.")
-                directBuf.clear()
-                val sampleSize = extractor.readSampleData(directBuf, 0)
-                if (sampleSize < 0) break
-
-                val ptsUs = extractor.sampleTime.coerceAtLeast(0L)
-                if (chunkStartUs < 0L) chunkStartUs = ptsUs
-                lastPtsUs = ptsUs
-
-                val chunkElapsedUs = ptsUs - chunkStartUs
-
-                // Блочный анализ тишины (VAD) по размеру и байтовой энергии AAC-фрейма только в окне 3–5 минут
-                rollingFrameSizeAvg = rollingFrameSizeAvg * 0.985 + sampleSize * 0.015
-                if (chunkElapsedUs >= minChunkUs) {
-                    var payloadEnergy = 0L
-                    val step = maxOf(1, sampleSize / 32)
-                    var pos = 8
-                    var count = 0
-                    while (pos < sampleSize) {
-                        val b = directBuf.get(pos).toInt()
-                        payloadEnergy += abs(b)
-                        pos += step
-                        count++
-                    }
-                    val avgByteEnergy = if (count > 0) (payloadEnergy / count) else 128L
-                    val isQuietFrame = sampleSize < (rollingFrameSizeAvg * 0.72) || avgByteEnergy < 42L
-                    if (isQuietFrame) quietFramesRun++ else quietFramesRun = 0
-                } else {
-                    quietFramesRun = 0
-                }
-
-                bufferInfo.offset = 0
-                bufferInfo.size = sampleSize
-                bufferInfo.presentationTimeUs = (ptsUs - chunkStartUs).coerceAtLeast(0L)
-                bufferInfo.flags = extractor.sampleFlags
-
-                muxer.writeSampleData(muxTrack, directBuf, bufferInfo)
-                chunkBytesWritten += sampleSize
-                extractor.advance()
-
-                if (durationUs > 0L) {
-                    val pct = ((ptsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
-                    if (pct >= lastPct + 5) {
-                        lastPct = pct
-                        onProgress(pct, "⚡ Быстрая подготовка M4A: $pct% (часть ${chunkIndex + 1})...")
-                    }
-                }
-
-                val neededQuietFrames = if (chunkElapsedUs < softChunkUs) 10 else 5
-                val cutBySilence = chunkElapsedUs >= minChunkUs && quietFramesRun >= neededQuietFrames
-                val cutByMax = chunkElapsedUs >= maxChunkUs || chunkBytesWritten >= maxChunkBytes
-
-                if (cutBySilence || cutByMax) {
-                    closeCurrentMuxer(ptsUs)
-                    chunkIndex++
-                    chunkFile = File(chunkDir, "chunk_${chunkIndex}.m4a")
-                    muxer = MediaMuxer(chunkFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-                    muxTrack = muxer.addTrack(audioFormat)
-                    muxer.start()
-                    chunkStartUs = -1L
-                    chunkBytesWritten = 0
-                    quietFramesRun = 0
-                }
-            }
-
-            if (chunkBytesWritten > 0) {
-                closeCurrentMuxer(lastPtsUs)
-            } else {
-                try { muxer.release() } catch (_: Exception) {}
-                chunkFile.delete()
-            }
-        } finally {
-            try { extractor.release() } catch (_: Exception) {}
-        }
-
-        return if (resultArray.length() > 0) resultArray else null
-    }
-
-    /**
-     * Уровень 2: Аппаратная обработка через библиотеку androidx.media3:media3-transformer.
-     */
-    private fun tryMedia3TransformerChunks(
-        uri: Uri,
-        chunkDir: File,
-        onProgress: (Int, String) -> Unit
-    ): JSONArray? {
-        val retriever = MediaMetadataRetriever()
-        val totalDurationMs = try {
-            retriever.setDataSource(context, uri)
-            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
-        } catch (_: Exception) {
-            0L
-        } finally {
-            try { retriever.release() } catch (_: Exception) {}
-        }
-
-        if (totalDurationMs <= 0L) return null
-
-        val chunkWindowMs = 240_000L // 4 минуты на чанк
-        val resultArray = JSONArray()
-        var startMs = 0L
-        var chunkIndex = 0
-        val totalChunks = ((totalDurationMs + chunkWindowMs - 1) / chunkWindowMs).toInt().coerceAtLeast(1)
-
-        while (startMs < totalDurationMs - 200L) {
-            if (cancelAudioExtraction) throw InterruptedException("Отменено пользователем.")
-            val endMs = minOf(totalDurationMs, startMs + chunkWindowMs)
-            val outFile = File(chunkDir, "chunk_${chunkIndex}.m4a")
-            if (outFile.exists()) outFile.delete()
-
-            val pct = ((chunkIndex.toDouble() / totalChunks.toDouble()) * 100.0).toInt().coerceIn(0, 99)
-            onProgress(pct, "⚡ Media3 Transformer M4A: часть ${chunkIndex + 1} из $totalChunks...")
-
-            val latch = CountDownLatch(1)
-            val exportOk = AtomicBoolean(false)
-
-            mainHandler.post {
-                try {
-                    val clipConfig = MediaItem.ClippingConfiguration.Builder()
-                        .setStartPositionMs(startMs)
-                        .setEndPositionMs(endMs)
-                        .build()
-                    val clippedMediaItem = MediaItem.Builder()
-                        .setUri(uri)
-                        .setClippingConfiguration(clipConfig)
-                        .build()
-                    val editedItem = EditedMediaItem.Builder(clippedMediaItem)
-                        .setRemoveVideo(true)
-                        .build()
-
-                    val transformer = Transformer.Builder(context)
-                        .setAudioMimeType(MimeTypes.AUDIO_AAC)
-                        .addListener(object : Transformer.Listener {
-                            override fun onCompleted(composition: Composition, exportResult: ExportResult) {
-                                exportOk.set(true)
-                                latch.countDown()
-                            }
-
-                            override fun onError(
-                                composition: Composition,
-                                exportResult: ExportResult,
-                                exportException: ExportException
-                            ) {
-                                exportOk.set(false)
-                                latch.countDown()
-                            }
-                        })
-                        .build()
-
-                    transformer.start(editedItem, outFile.absolutePath)
-                } catch (_: Exception) {
-                    exportOk.set(false)
-                    latch.countDown()
-                }
-            }
-
-            latch.await(45, TimeUnit.SECONDS)
-            if (!exportOk.get() || !outFile.exists() || outFile.length() < 128L) {
-                return null
-            }
-
-            val startSec = startMs.toDouble() / 1000.0
-            val endSec = endMs.toDouble() / 1000.0
-            resultArray.put(JSONObject().apply {
-                put("index", chunkIndex)
-                put("path", outFile.absolutePath)
-                put("fileUrl", "file://${outFile.absolutePath}")
-                put("fileName", outFile.name)
-                put("mimeType", "audio/mp4")
-                put("startSec", startSec)
-                put("endSec", endSec)
-                put("cutoffSec", startSec)
-                put("nextCutoffSec", endSec + 0.05)
-            })
-
-            startMs = endMs
-            chunkIndex++
-        }
-
-        return if (resultArray.length() > 0) resultArray else null
-    }
-
-    /**
-     * Уровень 3: Асинхронный MediaCodec (setCallback) с прямыми ByteBuffer/ShortBuffer (LITTLE_ENDIAN)
-     * и блочным VAD по 1024 сэмпла (без побайтового разбора pushMonoSample).
-     */
-    private fun extractAsyncMediaCodecBlockVadM4a(
-        uri: Uri,
-        chunkDir: File,
-        onProgress: (Int, String) -> Unit
-    ): String {
         val extractor = MediaExtractor()
         extractor.setDataSource(context, uri, null)
 
@@ -1130,74 +618,113 @@ class ExoPlayerManager(
 
         if (audioTrackIndex < 0 || audioFormat == null) {
             extractor.release()
-            throw IllegalStateException("В файле не найдена аудиодорожка")
+            return "[]"
         }
 
         extractor.selectTrack(audioTrackIndex)
-        val durationUs = if (audioFormat.containsKey(MediaFormat.KEY_DURATION)) {
-            audioFormat.getLong(MediaFormat.KEY_DURATION).coerceAtLeast(0L)
-        } else {
-            0L
-        }
-
         val targetSampleRate = 16000
-        val targetBitRate = 64000
-        val minChunkSamples = 180L * targetSampleRate // 3 мин
-        val softChunkSamples = 240L * targetSampleRate // 4 мин
-        val maxChunkSamples = 300L * targetSampleRate // 5 мин
-        val vadBlockSamples = 1024 // Блочный анализ VAD по 1024 сэмпла
+        val chunkDurationSec = 600 // жесткая нарезка по 10 минут
+        val overlapSec = 10 // перекрытие 10 секунд
+        val maxChunkBytes = chunkDurationSec * targetSampleRate * 2
+        val overlapBytesCount = overlapSec * targetSampleRate * 2
+        val overlapRing = ByteArray(overlapBytesCount)
+        var overlapFilled = 0
+        var overlapWritePos = 0
 
-        val codecThread = HandlerThread("SubLaterAsyncCodecThread").apply { start() }
-        val codecHandler = Handler(codecThread.looper)
+        val codec = MediaCodec.createDecoderByType(mimeType)
+        codec.configure(audioFormat, null, null, 0)
+        codec.start()
 
-        val chunkArray = JSONArray()
+        val chunkPathsArray = JSONArray()
         var chunkIndex = 0
         var currentChunkStartSample = 0L
-        var totalMonoSamples = 0L
-        var consecutiveSilentBlocks = 0
+        var totalWrittenMonoSamples = 0L
 
-        var currentEncoder: AsyncM4aChunkEncoder? = AsyncM4aChunkEncoder(
-            File(chunkDir, "chunk_0.m4a"),
-            targetSampleRate,
-            targetBitRate,
-            codecHandler
-        )
+        var currentFile = File(chunkDir, "chunk_0.wav")
+        var currentOut = BufferedOutputStream(FileOutputStream(currentFile), 131072)
+        currentOut.write(ByteArray(44))
+        var currentChunkPcmBytes = 0
 
-        fun finalizeChunk() {
-            val enc = currentEncoder ?: return
-            currentEncoder = null
-            enc.finishAndClose()
-            val written = enc.totalSamplesWritten
-            if (written > targetSampleRate / 2 && enc.outputFile.exists() && enc.outputFile.length() > 128) {
-                val startSec = currentChunkStartSample.toDouble() / targetSampleRate.toDouble()
-                val endSec = startSec + (written.toDouble() / targetSampleRate.toDouble())
-                chunkArray.put(JSONObject().apply {
-                    put("index", chunkIndex)
-                    put("path", enc.outputFile.absolutePath)
-                    put("fileUrl", "file://${enc.outputFile.absolutePath}")
-                    put("fileName", enc.outputFile.name)
-                    put("mimeType", "audio/mp4")
-                    put("startSec", startSec)
-                    put("endSec", endSec)
-                    put("cutoffSec", startSec)
-                    put("nextCutoffSec", endSec + 0.05)
-                })
-            } else {
-                enc.outputFile.delete()
+        val ioChunkBuf = ByteArray(65536)
+        var ioChunkBufUsed = 0
+
+        fun flushIoBuf() {
+            if (ioChunkBufUsed > 0) {
+                currentOut.write(ioChunkBuf, 0, ioChunkBufUsed)
+                currentChunkPcmBytes += ioChunkBufUsed
+                ioChunkBufUsed = 0
             }
         }
 
-        fun rotateToNextM4aChunk() {
-            finalizeChunk()
+        fun finalizeChunk(isLast: Boolean) {
+            flushIoBuf()
+            currentOut.flush()
+            currentOut.close()
+            if (currentChunkPcmBytes > 0) {
+                RandomAccessFile(currentFile, "rw").use { raf ->
+                    writeWavHeader(raf, currentChunkPcmBytes, targetSampleRate, 1)
+                }
+                val startSec = currentChunkStartSample.toDouble() / targetSampleRate.toDouble()
+                val durationSec = (currentChunkPcmBytes / 2).toDouble() / targetSampleRate.toDouble()
+                val endSec = startSec + durationSec
+                val cutoffSec = if (chunkIndex == 0) 0.0 else (startSec + overlapSec / 2.0)
+                val nextCutoffSec = if (isLast) (endSec + 100.0) else (endSec - overlapSec / 2.0)
+
+                chunkPathsArray.put(JSONObject().apply {
+                    put("index", chunkIndex)
+                    put("path", currentFile.absolutePath)
+                    put("fileUrl", "file://${currentFile.absolutePath}")
+                    put("fileName", currentFile.name)
+                    put("startSec", startSec)
+                    put("endSec", endSec)
+                    put("cutoffSec", cutoffSec)
+                    put("nextCutoffSec", nextCutoffSec)
+                })
+            } else {
+                currentFile.delete()
+            }
+        }
+
+        fun rotateNextChunk() {
+            finalizeChunk(isLast = false)
             chunkIndex++
-            currentChunkStartSample = totalMonoSamples
-            consecutiveSilentBlocks = 0
-            currentEncoder = AsyncM4aChunkEncoder(
-                File(chunkDir, "chunk_${chunkIndex}.m4a"),
-                targetSampleRate,
-                targetBitRate,
-                codecHandler
-            )
+            currentFile = File(chunkDir, "chunk_${chunkIndex}.wav")
+            currentOut = BufferedOutputStream(FileOutputStream(currentFile), 131072)
+            currentOut.write(ByteArray(44))
+            currentChunkPcmBytes = 0
+
+            val overlapSamples = (overlapFilled / 2).toLong()
+            currentChunkStartSample = (totalWrittenMonoSamples - overlapSamples).coerceAtLeast(0L)
+            if (overlapFilled > 0) {
+                if (overlapFilled < overlapBytesCount) {
+                    currentOut.write(overlapRing, 0, overlapFilled)
+                } else {
+                    val tailLen = overlapBytesCount - overlapWritePos
+                    currentOut.write(overlapRing, overlapWritePos, tailLen)
+                    if (overlapWritePos > 0) {
+                        currentOut.write(overlapRing, 0, overlapWritePos)
+                    }
+                }
+                currentChunkPcmBytes += overlapFilled
+            }
+        }
+
+        fun pushMonoSample(sample: Short) {
+            val lo = (sample.toInt() and 0xFF).toByte()
+            val hi = ((sample.toInt() ushr 8) and 0xFF).toByte()
+            ioChunkBuf[ioChunkBufUsed++] = lo
+            ioChunkBuf[ioChunkBufUsed++] = hi
+            if (ioChunkBufUsed >= ioChunkBuf.size - 2) {
+                flushIoBuf()
+            }
+            overlapRing[overlapWritePos] = lo
+            overlapRing[(overlapWritePos + 1) % overlapBytesCount] = hi
+            overlapWritePos = (overlapWritePos + 2) % overlapBytesCount
+            if (overlapFilled < overlapBytesCount) overlapFilled += 2
+            totalWrittenMonoSamples++
+            if (currentChunkPcmBytes + ioChunkBufUsed >= maxChunkBytes) {
+                rotateNextChunk()
+            }
         }
 
         var srcSampleRate = if (audioFormat.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
@@ -1210,150 +737,98 @@ class ExoPlayerManager(
         } else {
             2
         }
+        var pcmEncoding = AudioFormat.ENCODING_PCM_16BIT
+        var resamplePos = 0.0
+        var resampleStep = srcSampleRate.toDouble() / targetSampleRate.toDouble()
 
-        val decodeDoneLatch = CountDownLatch(1)
-        val decoder = MediaCodec.createDecoderByType(mimeType)
-        var inputEos = false
-        var lastPct = -1
-
-        decoder.setCallback(object : MediaCodec.Callback() {
-            override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
-                if (inputEos || cancelAudioExtraction) return
-                try {
-                    val inBuf = codec.getInputBuffer(index) ?: return
-                    val sampleSize = extractor.readSampleData(inBuf, 0)
-                    if (sampleSize < 0) {
-                        inputEos = true
-                        codec.queueInputBuffer(index, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                    } else {
-                        val ptsUs = extractor.sampleTime
-                        codec.queueInputBuffer(index, 0, sampleSize, ptsUs, 0)
-                        extractor.advance()
-
-                        if (durationUs > 0L) {
-                            val pct = ((ptsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
-                            if (pct >= lastPct + 5) {
-                                lastPct = pct
-                                onProgress(pct, "⚡ Асинхронное сжатие M4A: $pct% (часть ${chunkIndex + 1})...")
-                            }
-                        }
-                    }
-                } catch (_: Exception) {
-                    decodeDoneLatch.countDown()
-                }
-            }
-
-            override fun onOutputBufferAvailable(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {
-                if (cancelAudioExtraction) {
-                    decodeDoneLatch.countDown()
-                    return
-                }
-                try {
-                    val outBuf = codec.getOutputBuffer(index)
-                    if (outBuf != null && info.size > 0) {
-                        outBuf.position(info.offset)
-                        outBuf.limit(info.offset + info.size)
-                        outBuf.order(ByteOrder.LITTLE_ENDIAN)
-
-                        val shortBuf = outBuf.asShortBuffer()
-                        val totalSrcFrames = shortBuf.remaining() / srcChannels
-                        val ratio = srcSampleRate.toDouble() / targetSampleRate.toDouble()
-                        val outMonoCount = (totalSrcFrames.toDouble() / ratio).toInt().coerceAtLeast(0)
-
-                        if (outMonoCount > 0) {
-                            // Прямой буфер ByteOrder.LITTLE_ENDIAN + ShortBuffer без ручного lo/hi разбора байтов
-                            val pcmDirect = ByteBuffer.allocateDirect(outMonoCount * 2).order(ByteOrder.LITTLE_ENDIAN)
-                            val pcmShortView = pcmDirect.asShortBuffer()
-
-                            if (srcChannels == 2) {
-                                for (m in 0 until outMonoCount) {
-                                    val base = (m * ratio).toInt() * 2
-                                    val s = ((shortBuf.get(base).toInt() + shortBuf.get(base + 1).toInt()) shr 1).toShort()
-                                    pcmShortView.put(s)
-                                }
-                            } else {
-                                for (m in 0 until outMonoCount) {
-                                    val base = (m * ratio).toInt() * srcChannels
-                                    pcmShortView.put(shortBuf.get(base))
-                                }
-                            }
-
-                            pcmDirect.position(0)
-                            pcmDirect.limit(outMonoCount * 2)
-
-                            val enc = currentEncoder
-                            val chunkSamplesNow = (enc?.totalSamplesWritten ?: 0L) + outMonoCount
-
-                            // Блочный анализ VAD по 1024 сэмпла с шагом 4 (только когда чанк >= 3 минут!)
-                            if (chunkSamplesNow >= minChunkSamples && outMonoCount >= 64) {
-                                var blockOffset = 0
-                                while (blockOffset < outMonoCount) {
-                                    val blockEnd = minOf(outMonoCount, blockOffset + vadBlockSamples)
-                                    var absSum = 0L
-                                    var checked = 0
-                                    var k = blockOffset
-                                    while (k < blockEnd) {
-                                        absSum += abs(pcmShortView.get(k).toInt())
-                                        checked++
-                                        k += 4
-                                    }
-                                    val avgAmp = if (checked > 0) (absSum / checked).toInt() else 0
-                                    val threshold = if (chunkSamplesNow < softChunkSamples) 520 else 900
-                                    if (avgAmp < threshold) consecutiveSilentBlocks++ else consecutiveSilentBlocks = 0
-                                    blockOffset += vadBlockSamples
-                                }
-                            }
-
-                            enc?.queueShortBufferBlock(pcmDirect)
-                            totalMonoSamples += outMonoCount.toLong()
-
-                            val neededSilentBlocks = if (chunkSamplesNow < softChunkSamples) 4 else 2
-                            if ((chunkSamplesNow >= minChunkSamples && consecutiveSilentBlocks >= neededSilentBlocks) ||
-                                chunkSamplesNow >= maxChunkSamples
-                            ) {
-                                rotateToNextM4aChunk()
-                            }
-                        }
-                    }
-
-                    codec.releaseOutputBuffer(index, false)
-                    if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                        decodeDoneLatch.countDown()
-                    }
-                } catch (_: Exception) {
-                    decodeDoneLatch.countDown()
-                }
-            }
-
-            override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
-                if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
-                    srcSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE).coerceAtLeast(8000)
-                }
-                if (format.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
-                    srcChannels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
-                }
-            }
-
-            override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
-                decodeDoneLatch.countDown()
-            }
-        }, codecHandler)
+        val bufferInfo = MediaCodec.BufferInfo()
+        var inputDone = false
+        var outputDone = false
 
         try {
-            decoder.configure(audioFormat, null, null, 0)
-            decoder.start()
-            decodeDoneLatch.await(90, TimeUnit.SECONDS)
-            if (cancelAudioExtraction) throw InterruptedException("Отменено пользователем.")
-            finalizeChunk()
+            while (!outputDone && !cancelAudioExtraction) {
+                if (!inputDone) {
+                    val inIndex = codec.dequeueInputBuffer(10000L)
+                    if (inIndex >= 0) {
+                        val inBuf = codec.getInputBuffer(inIndex)
+                        if (inBuf != null) {
+                            val sampleSize = extractor.readSampleData(inBuf, 0)
+                            if (sampleSize < 0) {
+                                codec.queueInputBuffer(inIndex, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                                inputDone = true
+                            } else {
+                                codec.queueInputBuffer(inIndex, 0, sampleSize, extractor.sampleTime, 0)
+                                extractor.advance()
+                            }
+                        }
+                    }
+                }
+
+                var outIndex = codec.dequeueOutputBuffer(bufferInfo, 10000L)
+                while (outIndex >= 0 || outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                    if (outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                        val newFmt = codec.outputFormat
+                        if (newFmt.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
+                            srcSampleRate = newFmt.getInteger(MediaFormat.KEY_SAMPLE_RATE).coerceAtLeast(8000)
+                        }
+                        if (newFmt.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
+                            srcChannels = newFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && newFmt.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+                            pcmEncoding = newFmt.getInteger(MediaFormat.KEY_PCM_ENCODING)
+                        }
+                        resampleStep = srcSampleRate.toDouble() / targetSampleRate.toDouble()
+                    } else if (outIndex >= 0) {
+                        val outBuf = codec.getOutputBuffer(outIndex)
+                        if (outBuf != null && bufferInfo.size > 0) {
+                            outBuf.position(bufferInfo.offset)
+                            outBuf.limit(bufferInfo.offset + bufferInfo.size)
+                            outBuf.order(ByteOrder.LITTLE_ENDIAN)
+
+                            if (pcmEncoding == AudioFormat.ENCODING_PCM_FLOAT) {
+                                val floatBuf = outBuf.asFloatBuffer()
+                                val totalFrames = floatBuf.remaining() / srcChannels
+                                while (resamplePos < totalFrames) {
+                                    val baseIdx = resamplePos.toInt() * srcChannels
+                                    var sum = 0f
+                                    for (ch in 0 until srcChannels) sum += floatBuf.get(baseIdx + ch)
+                                    val monoShort = ((sum / srcChannels).coerceIn(-1f, 1f) * 32767f).toInt().toShort()
+                                    pushMonoSample(monoShort)
+                                    resamplePos += resampleStep
+                                }
+                                resamplePos = (resamplePos - totalFrames.toDouble()).coerceAtLeast(0.0)
+                            } else {
+                                val shortBuf = outBuf.asShortBuffer()
+                                val totalFrames = shortBuf.remaining() / srcChannels
+                                while (resamplePos < totalFrames) {
+                                    val baseIdx = resamplePos.toInt() * srcChannels
+                                    var sum = 0
+                                    for (ch in 0 until srcChannels) sum += shortBuf.get(baseIdx + ch).toInt()
+                                    val monoShort = (sum / srcChannels).coerceIn(-32768, 32767).toShort()
+                                    pushMonoSample(monoShort)
+                                    resamplePos += resampleStep
+                                }
+                                resamplePos = (resamplePos - totalFrames.toDouble()).coerceAtLeast(0.0)
+                            }
+                        }
+                        codec.releaseOutputBuffer(outIndex, false)
+                        if ((bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                            outputDone = true
+                            break
+                        }
+                    }
+                    outIndex = codec.dequeueOutputBuffer(bufferInfo, 0L)
+                }
+            }
+            finalizeChunk(isLast = true)
         } finally {
-            try { currentEncoder?.finishAndClose() } catch (_: Exception) {}
-            try { decoder.stop() } catch (_: Exception) {}
-            try { decoder.release() } catch (_: Exception) {}
+            try { currentOut.close() } catch (_: Exception) {}
+            try { codec.stop() } catch (_: Exception) {}
+            try { codec.release() } catch (_: Exception) {}
             try { extractor.release() } catch (_: Exception) {}
-            try { codecThread.quitSafely() } catch (_: Exception) {}
         }
 
-        return chunkArray.toString()
+        return chunkPathsArray.toString()
     }
 
     /* ==================== ЗАЩИТА API-КЛЮЧЕЙ ЧЕРЕЗ ENCRYPTEDSHAREDPREFERENCES (ANDROID KEYSTORE) ==================== */
