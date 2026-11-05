@@ -3,11 +3,15 @@ package com.fromsub.app
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -72,12 +76,11 @@ class MainActivity : ComponentActivity() {
                 } catch (_: Exception) {
                 }
 
-                // Check if this is a media file (not a .vtt/.srt subtitle file)
                 val mimeType = contentResolver.getType(chosenUri) ?: ""
                 val pathStr = chosenUri.toString().lowercase()
                 val isSubtitleFile = pathStr.endsWith(".vtt") || pathStr.endsWith(".srt") || pathStr.endsWith(".ass")
                 if (!isSubtitleFile && (mimeType.startsWith("video/") || mimeType.startsWith("audio/") || !mimeType.startsWith("text/"))) {
-                    exoPlayerManager.setMediaUri(chosenUri)
+                    exoPlayerManager.storeMediaUri(chosenUri)
                 }
                 callback?.onReceiveValue(uris.toTypedArray())
             } else {
@@ -88,6 +91,52 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    fun applyImmersiveMode(fullscreen: Boolean) {
+        runOnUiThread {
+            if (fullscreen) {
+                window.statusBarColor = Color.BLACK
+                window.navigationBarColor = Color.BLACK
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    window.insetsController?.let { controller ->
+                        controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                        controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    }
+                } else {
+                    @Suppress("DEPRECATION")
+                    window.decorView.systemUiVisibility = (
+                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                            or View.SYSTEM_UI_FLAG_FULLSCREEN
+                            or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    )
+                }
+            } else {
+                val grayBg = Color.parseColor("#24272D")
+                window.statusBarColor = grayBg
+                window.navigationBarColor = grayBg
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    window.insetsController?.show(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                } else {
+                    @Suppress("DEPRECATION")
+                    window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+                }
+            }
+        }
+    }
+
+    fun applyLandscapeOrientation(landscape: Boolean) {
+        runOnUiThread {
+            requestedOrientation = if (landscape) {
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            } else {
+                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -95,13 +144,24 @@ class MainActivity : ComponentActivity() {
         window.statusBarColor = grayBg
         window.navigationBarColor = grayBg
 
-        exoPlayerManager = ExoPlayerManager(applicationContext)
+        exoPlayerManager = ExoPlayerManager(applicationContext, this)
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 val wv = webViewRef
-                if (wv != null && wv.canGoBack()) {
-                    wv.goBack()
+                if (wv != null) {
+                    wv.evaluateJavascript(
+                        "(function(){ if (document.body.classList.contains('player-fullscreen-open')) { document.getElementById('backPlayerBtn').click(); return 'handled'; } return 'exit'; })()"
+                    ) { res ->
+                        if (res != null && res.contains("handled")) {
+                            // Вышли из полноэкранного плеера обратно в главное меню
+                        } else if (wv.canGoBack()) {
+                            wv.goBack()
+                        } else {
+                            isEnabled = false
+                            onBackPressedDispatcher.onBackPressed()
+                        }
+                    }
                 } else {
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
@@ -166,7 +226,7 @@ fun HybridVideoApp(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(ComposeColor(0xFF24272D))
+            .background(ComposeColor(0xFF000000))
     ) {
         val maxW = maxWidth
         val maxH = maxHeight
@@ -187,14 +247,15 @@ fun HybridVideoApp(
                 .height(maxH * bounds.heightRatio)
         }
 
-        // Layer 1 (Background): Native AndroidX Media3 ExoPlayer
+        // Layer 1 (Background): Native AndroidX Media3 ExoPlayer (pure black background, zero gray bars)
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
                     player = exoPlayerManager.exoPlayer
                     useController = false
                     this.resizeMode = resizeMode
-                    setShutterBackgroundColor(Color.parseColor("#181A20"))
+                    setBackgroundColor(Color.BLACK)
+                    setShutterBackgroundColor(Color.BLACK)
                     setKeepContentOnPlayerReset(true)
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -208,7 +269,7 @@ fun HybridVideoApp(
             modifier = playerModifier
         )
 
-        // Layer 2 (Foreground): Transparent WebView with index.html and ExoPlayerManager JS Bridge
+        // Layer 2 (Foreground): WebView with SubLater UI & Subtitle Overlay
         AndroidView(
             factory = { ctx ->
                 WebView(ctx).apply {

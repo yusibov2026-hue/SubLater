@@ -40,7 +40,6 @@
 
     html {
       background: var(--bg-main);
-      transition: background 0.25s ease;
     }
 
     body {
@@ -53,7 +52,6 @@
       margin: auto;
       min-height: 100vh;
       overflow-x: hidden;
-      transition: background 0.25s ease;
     }
 
     #appTopSection {
@@ -61,16 +59,18 @@
       position: relative;
       z-index: 5;
       padding-bottom: 4px;
-      transition: background 0.25s ease;
     }
 
-    /* Когда плеер запущен — главный интерфейс полностью скрывается, а плеер на весь экран */
-    body.player-open {
+    /* Полноэкранный режим плеера: главный интерфейс скрыт, вокруг видео чистый #000 без серых полос */
+    html.player-fullscreen-open,
+    body.player-fullscreen-open {
+      background: #000000 !important;
       padding: 0 !important;
+      margin: 0 !important;
       max-width: none !important;
       overflow: hidden !important;
     }
-    body.player-open #appTopSection {
+    body.player-fullscreen-open #appTopSection {
       display: none !important;
     }
 
@@ -569,95 +569,85 @@
     }
     #vttPanel:active { transform: scale(0.98); border-color: var(--accent); }
 
-    /* Кнопка быстрого возврата в плеер на главном экране */
-    #openPlayerQuickBtn {
-      display: none;
-      width: 92%;
-      margin: 6px auto 8px;
-      padding: 13px 18px;
-      border-radius: 999px;
-      font-family: inherit;
-      font-weight: 700;
-      font-size: 14px;
-      cursor: pointer;
-      background: var(--bg-surface);
-      color: var(--accent);
-      border: 1.5px solid var(--accent);
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease;
-    }
-    #openPlayerQuickBtn:hover {
-      background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
-    }
-    #openPlayerQuickBtn:active {
-      transform: scale(0.95);
-    }
-
-    /* Полноэкранный плеер при запуске видео */
+    /* Плеер: всегда остаётся на странице (не пропадает) и разворачивается на весь экран без серых полос */
     #playerContainer {
-      position: fixed;
-      inset: 0;
+      position: relative;
       display: none;
-      width: 100vw;
-      height: 100vh;
-      height: 100dvh;
-      margin: 0;
+      width: 100%;
+      margin: 14px auto 20px;
       padding: 0;
-      background: var(--player-surface-bg, #1c1f26);
-      border: none;
-      border-radius: 0;
+      background: #000000;
+      border-radius: 16px;
       overflow: hidden;
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
       align-items: center;
       justify-content: center;
-      z-index: 90;
+      aspect-ratio: 16/9;
+      z-index: 10;
       touch-action: manipulation;
       user-select: none;
+    }
+
+    body.player-fullscreen-open #playerContainer,
+    #playerContainer:fullscreen,
+    #playerContainer:-webkit-full-screen {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      height: 100dvh !important;
+      max-width: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      aspect-ratio: auto !important;
+      border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      background: #000000 !important;
+      z-index: 95 !important;
     }
 
     video#videoPlayer {
       width: 100%;
       height: 100%;
-      max-height: 100dvh;
+      max-height: 75vh;
       margin: 0 auto;
       padding: 0;
       display: block;
-      background: transparent;
+      background: #000000;
       object-fit: contain;
       object-position: center center;
       border: none;
       outline: none;
-      transition: transform 0.2s ease;
+    }
+    body.player-fullscreen-open video#videoPlayer,
+    #playerContainer:fullscreen video#videoPlayer,
+    #playerContainer:-webkit-full-screen video#videoPlayer {
+      width: 100%;
+      height: 100%;
+      max-height: 100dvh;
+      object-position: center center;
+      background: #000000;
     }
     video#videoPlayer.fill-crop { object-fit: cover; }
     video#videoPlayer.fill-stretch { object-fit: fill; }
 
-    #playerContainer:fullscreen,
-    #playerContainer:-webkit-full-screen {
-      width: 100vw;
-      height: 100vh;
-      inset: 0;
-      border: none;
-      border-radius: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--player-surface-bg, #1c1f26);
-    }
-
-    /* Верхняя панель плеера: Кнопка «Назад», название файла и «Открыть с помощью...» */
+    /* Верхняя панель в полноэкранном плеере: аккуратная кнопка «Назад» и «Открыть с помощью...» */
     #playerTopBar {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
-      background: linear-gradient(to bottom, rgba(16, 18, 23, 0.88) 0%, rgba(16, 18, 23, 0.4) 65%, rgba(16, 18, 23, 0) 100%);
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0) 100%);
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      padding: max(12px, env(safe-area-inset-top)) 14px 20px;
+      padding: 12px 14px 18px;
       z-index: 25;
       opacity: 1;
       transition: opacity 0.3s ease;
@@ -668,36 +658,35 @@
     }
 
     .top-pill-btn {
-      background: rgba(42, 46, 54, 0.85);
+      background: rgba(0, 0, 0, 0.55);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.18);
       color: #fff;
-      height: 38px;
-      padding: 0 14px;
+      height: 34px;
+      padding: 0 12px;
       border-radius: 999px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 7px;
+      gap: 6px;
       font-family: inherit;
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 600;
       cursor: pointer;
       flex-shrink: 0;
-      transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s, border-color 0.2s, color 0.2s;
+      transition: transform 0.2s ease, background 0.2s, border-color 0.2s;
     }
     .top-pill-btn:hover {
-      background: color-mix(in srgb, var(--accent) 22%, rgba(42, 46, 54, 0.92));
+      background: rgba(255, 255, 255, 0.16);
       border-color: var(--accent);
-      color: #fff;
     }
     .top-pill-btn:active {
-      transform: scale(0.91);
+      transform: scale(0.92);
     }
     .top-pill-btn svg {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       fill: currentColor;
       flex-shrink: 0;
     }
@@ -705,30 +694,28 @@
     #playerTitleText {
       flex: 1;
       text-align: center;
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 600;
-      color: #e5e7eb;
+      color: rgba(255, 255, 255, 0.9);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       padding: 0 6px;
-      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      text-shadow: 0 1px 3px rgba(0,0,0,0.9);
     }
 
-    /* Индикатор ускорения 2x при удержании пальца */
     #speedBoostBadge {
       position: absolute;
-      top: max(64px, calc(env(safe-area-inset-top) + 52px));
+      top: 54px;
       left: 50%;
       transform: translateX(-50%) scale(0.9);
-      background: rgba(28, 31, 38, 0.88);
+      background: rgba(0, 0, 0, 0.75);
       border: 1px solid var(--accent);
       color: var(--accent);
-      padding: 5px 14px;
+      padding: 4px 12px;
       border-radius: 999px;
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 700;
-      letter-spacing: 0.4px;
       pointer-events: none;
       z-index: 26;
       opacity: 0;
@@ -753,8 +740,8 @@
       line-height: 1.38;
       font-weight: 600;
       color: var(--sub-color, #fff);
-      padding: 0.26em 0.68em;
-      border-radius: 0.48em;
+      padding: 0.25em 0.66em;
+      border-radius: 0.45em;
       word-break: break-word;
       opacity: 0;
       transition: opacity 0.12s ease, background 0.2s ease;
@@ -764,7 +751,7 @@
       background: rgba(var(--sub-bg-rgb, 36, 39, 45), calc(var(--bg-opacity, 62) / 100));
       backdrop-filter: blur(5px);
       -webkit-backdrop-filter: blur(5px);
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.88);
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
     }
     #subtitleText.bg-off {
       background: transparent; backdrop-filter: none;
@@ -780,7 +767,7 @@
       position: absolute; bottom: 0; left: 0; width: 100%;
       background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
       display: flex; align-items: center; gap: 10px;
-      padding: 26px 16px max(14px, env(safe-area-inset-bottom)); z-index: 22; opacity: 1;
+      padding: 22px 14px 10px; z-index: 20; opacity: 1;
       transition: opacity 0.3s ease; user-select: none;
     }
     #playerControls.hidden-controls { opacity: 0; pointer-events: none; }
@@ -823,7 +810,7 @@
 
     #settingsMenu {
       position: absolute; bottom: 50px; right: 10px;
-      background: rgba(38, 42, 50, 0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      background: rgba(34, 38, 46, 0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
       border: 1px solid rgba(255,255,255,0.12); border-radius: 12px;
       padding: 10px 12px; width: 224px; z-index: 30;
       display: flex; flex-direction: column; gap: 6px;
@@ -895,15 +882,15 @@
 
     .hidden { display: none !important; }
 
-    /* Гибридный режим Android ExoPlayer */
-    html.native-exo-active,
-    body.native-exo-active {
+    /* Резервный режим нативного ExoPlayer (включается только если WebView не поддерживает кодек файла) */
+    html.native-exo-fallback,
+    body.native-exo-fallback {
       background: transparent !important;
     }
-    body.native-exo-active #playerContainer {
+    body.native-exo-fallback #playerContainer {
       background: transparent !important;
     }
-    body.native-exo-active video#videoPlayer {
+    body.native-exo-fallback video#videoPlayer {
       opacity: 0 !important;
       pointer-events: none !important;
     }
@@ -936,11 +923,11 @@
     <div class="global-row">
       <span>Серый фон темы</span>
       <select id="appThemeBg">
-        <option value="dark-gray">Тёмно-серый (По умолчанию)</option>
-        <option value="gray">Серый (Мягкий)</option>
-        <option value="light-slate">Светло-серый (Слейт)</option>
+        <option value="dark-gray">Тёмно-серый</option>
+        <option value="gray">Серый</option>
+        <option value="light-slate">Светло-серый</option>
         <option value="warm-gray">Тёплый серый</option>
-        <option value="graphite">Графитовый (Глубокий)</option>
+        <option value="graphite">Графитовый</option>
       </select>
     </div>
     
@@ -951,7 +938,7 @@
     <div class="global-row">
       <span>Шрифт субтитров</span>
       <select id="subFontFamily">
-        <option value="'Inter', sans-serif">Inter (По умолчанию)</option>
+        <option value="'Inter', sans-serif">Inter</option>
         <option value="'Roboto', sans-serif">Roboto</option>
         <option value="'Montserrat', sans-serif">Montserrat</option>
         <option value="Arial, sans-serif">Arial</option>
@@ -1046,8 +1033,7 @@
     <input type="file" id="mediaFile" accept="video/*,audio/*,.mkv" style="display:none" />
   </label>
 
-  <button id="btn">Создать субтитры и открыть в плеере</button>
-  <button type="button" id="openPlayerQuickBtn">▶ Открыть видео в плеере</button>
+  <button id="btn">Создать субтитры</button>
   <div id="progressWrap"><div id="progressBar"></div></div>
   
   <div class="action-row" id="actionRow">
@@ -1116,7 +1102,7 @@
 
     <div id="speedBoostBadge">⏩ 2.0x</div>
 
-    <video id="videoPlayer" playsinline poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
+    <video id="videoPlayer" playsinline preload="metadata"></video>
 
     <div id="subtitleOverlay">
       <div id="subtitleText" class="bg-on"></div>
@@ -1177,7 +1163,7 @@
           <option value="gray">Серый</option>
           <option value="ash-gray">Пепельно-серый</option>
           <option value="graphite">Графитовый</option>
-          <option value="dark">Тёмный (Угольный)</option>
+          <option value="dark">Тёмный</option>
         </select>
       </div>
     </div>
@@ -1257,11 +1243,11 @@
     document.documentElement.style.setProperty('--accent', savedAccent);
 
     const GRAY_THEMES = {
-      'dark-gray':   { main: '#24272d', surface: '#2f333b', elevated: '#2a2e36', border: '#3e434f', player: '#1c1f26' },
-      'gray':        { main: '#2e323a', surface: '#393e48', elevated: '#333842', border: '#4b515f', player: '#24272d' },
-      'light-slate': { main: '#373c46', surface: '#434956', elevated: '#3d424e', border: '#565d6e', player: '#2a2e36' },
-      'warm-gray':   { main: '#2b2a2e', surface: '#36353a', elevated: '#313035', border: '#48464e', player: '#212024' },
-      'graphite':    { main: '#1c1f24', surface: '#262a31', elevated: '#21252b', border: '#353a44', player: '#16181d' }
+      'dark-gray':   { main: '#24272d', surface: '#2f333b', elevated: '#2a2e36', border: '#3e434f' },
+      'gray':        { main: '#2e323a', surface: '#393e48', elevated: '#333842', border: '#4b515f' },
+      'light-slate': { main: '#373c46', surface: '#434956', elevated: '#3d424e', border: '#565d6e' },
+      'warm-gray':   { main: '#2b2a2e', surface: '#36353a', elevated: '#313035', border: '#48464e' },
+      'graphite':    { main: '#1c1f24', surface: '#262a31', elevated: '#21252b', border: '#353a44' }
     };
     const appThemeBgEl = $('appThemeBg');
     function applyGrayTheme(themeKey) {
@@ -1271,7 +1257,6 @@
       root.setProperty('--bg-surface', t.surface);
       root.setProperty('--bg-elevated', t.elevated);
       root.setProperty('--border-soft', t.border);
-      root.setProperty('--player-surface-bg', t.player);
       const meta = $('themeColorMeta');
       if (meta) meta.setAttribute('content', t.main);
       safeSetStorage('sublater_gray_theme', themeKey);
@@ -1439,17 +1424,16 @@
       videoEl.classList.toggle('fill-stretch', fitMode === 'fill');
 
       const SUB_BG_PRESETS = {
-        'none':      { on: false, rgb: '36, 39, 45', playerBg: '#24272d', assHex: '2D2724' },
-        'dark-gray': { on: true,  rgb: '36, 39, 45', playerBg: '#24272d', assHex: '2D2724' },
-        'gray':      { on: true,  rgb: '58, 63, 74', playerBg: '#2e323a', assHex: '4A3F3A' },
-        'ash-gray':  { on: true,  rgb: '78, 84, 98', playerBg: '#373c46', assHex: '62544E' },
-        'graphite':  { on: true,  rgb: '26, 29, 36', playerBg: '#1c1f24', assHex: '241D1A' },
-        'dark':      { on: true,  rgb: '14, 16, 20', playerBg: '#14161a', assHex: '14100E' }
+        'none':      { on: false, rgb: '36, 39, 45' },
+        'dark-gray': { on: true,  rgb: '36, 39, 45' },
+        'gray':      { on: true,  rgb: '60, 65, 76' },
+        'ash-gray':  { on: true,  rgb: '82, 88, 102' },
+        'graphite':  { on: true,  rgb: '24, 27, 33' },
+        'dark':      { on: true,  rgb: '10, 12, 15' }
       };
       const bgModeVal = SUB_BG_PRESETS[bgToggle.value] ? bgToggle.value : 'dark-gray';
       const bgPreset = SUB_BG_PRESETS[bgModeVal];
       root.setProperty('--sub-bg-rgb', bgPreset.rgb);
-      root.setProperty('--player-surface-bg', bgPreset.playerBg);
 
       subtitleEl.classList.toggle('bg-on', bgPreset.on);
       subtitleEl.classList.toggle('bg-off', !bgPreset.on);
@@ -1599,9 +1583,9 @@
     const backPlayerBtn = $('backPlayerBtn');
     const sharePlayerBtn = $('sharePlayerBtn');
     const playerTitleText = $('playerTitleText');
-    const openPlayerQuickBtn = $('openPlayerQuickBtn');
     const speedBoostBadge = $('speedBoostBadge');
     let hideControlsTimer;
+    let usingNativeExoFallback = false;
 
     function formatTime(sec) {
       if (isNaN(sec) || !isFinite(sec)) return '0:00';
@@ -1629,7 +1613,7 @@
         stopRenderLoop();
         releaseWakeLock();
       } else {
-        if (!window.ExoPlayerManager && !window.AndroidBridge) {
+        if (!usingNativeExoFallback) {
           initAudio();
         }
         requestWakeLock();
@@ -1652,49 +1636,41 @@
       }
     }
 
-    function closePlayerView() {
-      videoEl.pause();
+    /* Вход в полноэкранный режим плеера (скрывает главный интерфейс, убирает серые полосы) */
+    function enterFullscreenPlayer() {
+      document.documentElement.classList.add('player-fullscreen-open');
+      document.body.classList.add('player-fullscreen-open');
+      const bridge = window.ExoPlayerManager || window.AndroidBridge;
+      if (bridge && typeof bridge.setImmersiveFullscreen === 'function') {
+        try { bridge.setImmersiveFullscreen(true); } catch (e) {}
+      }
+      setTimeout(() => {
+        updateOverlayGeometry();
+        if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
+      }, 60);
+    }
+
+    /* Выход из полноэкранного режима по кнопке «Назад»: возвращает главный интерфейс, но НЕ скрывает сам плеер на странице! */
+    function exitFullscreenPlayer() {
       settingsMenu.classList.remove('show');
       if (document.fullscreenElement || document.webkitFullscreenElement) {
         document.exitFullscreen?.().catch(() => {});
       }
-      playerActive = false;
-      playerBox.style.display = 'none';
-      document.body.classList.remove('player-open');
-      document.documentElement.classList.remove('native-exo-active');
-      document.body.classList.remove('native-exo-active');
+      document.documentElement.classList.remove('player-fullscreen-open');
+      document.body.classList.remove('player-fullscreen-open');
       const bridge = window.ExoPlayerManager || window.AndroidBridge;
-      if (bridge) {
-        try {
-          if (typeof bridge.setPlayerVisibility === 'function') bridge.setPlayerVisibility(false);
-          else if (typeof bridge.setPlayerBounds === 'function') bridge.setPlayerBounds(-2000, -2000, 1, 1, 1000, 1000, false);
-        } catch (e) {}
+      if (bridge && typeof bridge.setImmersiveFullscreen === 'function') {
+        try { bridge.setImmersiveFullscreen(false); } catch (e) {}
       }
-      if ($('mediaFile').files[0]) {
-        openPlayerQuickBtn.style.display = 'flex';
-      }
-      releaseWakeLock();
+      setTimeout(() => {
+        updateOverlayGeometry();
+        if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
+      }, 60);
     }
 
     backPlayerBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      closePlayerView();
-    });
-
-    window.addEventListener('popstate', () => {
-      if (playerActive) {
-        closePlayerView();
-      }
-    });
-
-    openPlayerQuickBtn.addEventListener('click', () => {
-      const f = $('mediaFile').files[0];
-      if (f) {
-        setupPlayer(f);
-        if (autoPlayToggle.checked && videoEl.paused) {
-          videoEl.play().catch(() => {});
-        }
-      }
+      exitFullscreenPlayer();
     });
 
     /* Вызов нативного меню «Открыть с помощью...» через Web Share API (+ Android Intent fallback) */
@@ -1707,7 +1683,6 @@
           if (mediaFile && (!navigator.canShare || navigator.canShare({ files: [mediaFile] }))) {
             await navigator.share({
               title: currentFileName || mediaFile.name,
-              text: 'Открыть видео из SubLater',
               files: [mediaFile]
             });
             return;
@@ -1737,8 +1712,6 @@
       const bridge = window.ExoPlayerManager || window.AndroidBridge;
       if (bridge && typeof bridge.openWithExternalApp === 'function') {
         bridge.openWithExternalApp();
-      } else {
-        statusEl.innerText = 'Нативное меню «Открыть с помощью...» поддерживается в мобильном браузере и Android-приложении.';
       }
     });
 
@@ -1768,7 +1741,12 @@
       }
     }
 
-    videoEl.addEventListener('play', updatePlayState);
+    videoEl.addEventListener('play', () => {
+      if (playerActive && !document.body.classList.contains('player-fullscreen-open')) {
+        enterFullscreenPlayer();
+      }
+      updatePlayState();
+    });
     videoEl.addEventListener('pause', updatePlayState);
     videoEl.addEventListener('loadedmetadata', syncTimeUI);
     videoEl.addEventListener('seeked', () => {
@@ -1789,21 +1767,21 @@
 
     fsBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const isDomFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
-      if (!isDomFs) {
-        if (playerBox.requestFullscreen) {
-          playerBox.requestFullscreen().then(() => {
-            try { screen.orientation?.lock?.('landscape').catch(() => {}); } catch (err) {}
-          }).catch(() => {});
+      const isFull = document.body.classList.contains('player-fullscreen-open');
+      const bridge = window.ExoPlayerManager || window.AndroidBridge;
+      if (!isFull) {
+        enterFullscreenPlayer();
+        if (bridge && typeof bridge.toggleLandscape === 'function') {
+          try { bridge.toggleLandscape(true); } catch (err) {}
+        } else if (playerBox.requestFullscreen && !bridge) {
+          playerBox.requestFullscreen().catch(() => {});
         }
       } else {
-        try { screen.orientation?.unlock?.(); } catch (err) {}
-        document.exitFullscreen?.().catch(() => {});
+        if (bridge && typeof bridge.toggleLandscape === 'function') {
+          try { bridge.toggleLandscape(false); } catch (err) {}
+        }
+        exitFullscreenPlayer();
       }
-      setTimeout(() => {
-        updateOverlayGeometry();
-        if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
-      }, 80);
     });
 
     settingsBtn.addEventListener('click', (e) => {
@@ -1822,6 +1800,12 @@
     });
 
     videoEl.addEventListener('error', () => {
+      const bridge = window.ExoPlayerManager || window.AndroidBridge;
+      if (bridge && !usingNativeExoFallback) {
+        usingNativeExoFallback = true;
+        if (window.__activateNativeExoFallback) window.__activateNativeExoFallback();
+        return;
+      }
       if (videoEl.error) {
         let msg = 'Ошибка воспроизведения.';
         if (videoEl.error.code === 4) {
@@ -1870,10 +1854,6 @@
           isHoldBoosting = true;
           savedSpeedBeforeHold = parseFloat(speedSlider.value) || 1;
           videoEl.playbackRate = 2.0;
-          const bridge = window.ExoPlayerManager || window.AndroidBridge;
-          if (bridge && typeof bridge.setSpeed === 'function') {
-            try { bridge.setSpeed(2.0); } catch (err) {}
-          }
           if (speedBoostBadge) speedBoostBadge.classList.add('show');
         }
       }, 420);
@@ -1883,10 +1863,6 @@
       clearTimeout(holdSpeedTimer);
       if (isHoldBoosting) {
         videoEl.playbackRate = savedSpeedBeforeHold;
-        const bridge = window.ExoPlayerManager || window.AndroidBridge;
-        if (bridge && typeof bridge.setSpeed === 'function') {
-          try { bridge.setSpeed(savedSpeedBeforeHold); } catch (err) {}
-        }
         if (speedBoostBadge) speedBoostBadge.classList.remove('show');
         setTimeout(() => { isHoldBoosting = false; }, 60);
       }
@@ -1986,7 +1962,7 @@
           btn.innerText = 'Быстро перевести из кэша';
         }
       } else {
-        btn.innerText = 'Создать субтитры и открыть в плеере';
+        btn.innerText = 'Создать субтитры';
       }
     }
 
@@ -1997,9 +1973,7 @@
         currentFileName = f.name.replace(/\.[^/.]+$/, '');
         if (playerTitleText) playerTitleText.innerText = f.name;
         applySettings();
-        openPlayerQuickBtn.style.display = 'flex';
-      } else {
-        openPlayerQuickBtn.style.display = 'none';
+        setupPlayer(f, false);
       }
       aiSummaryBox.classList.remove('show');
       updateButtonLabel();
@@ -2044,7 +2018,7 @@
       const backAlpha = isBgOn
         ? Math.round(((100 - opacityVal) / 100) * 255).toString(16).padStart(2, '0').toUpperCase()
         : 'FF';
-      const assBgrMap = { 'none': '2D2724', 'dark-gray': '2D2724', 'gray': '4A3F3A', 'ash-gray': '62544E', 'graphite': '241D1A', 'dark': '14100E' };
+      const assBgrMap = { 'none': '2D2724', 'dark-gray': '2D2724', 'gray': '4C413C', 'ash-gray': '665852', 'graphite': '211B18', 'dark': '0F0C0A' };
       const backCol = `&H${backAlpha}${assBgrMap[bgToggle.value] || '2D2724'}`;
 
       let out = `[Script Info]\nScriptType: v4.00+\nPlayResX: 1920\nPlayResY: 1080\nWrapStyle: 0\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,${cleanFont},${fontSize},${primaryCol},${secondaryCol},&H00000000,${backCol},-1,0,0,0,100,100,0,0,1,3,0,2,40,40,${marginV},1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
@@ -2132,7 +2106,7 @@
     function captureCurrentVideoFrameBase64() {
       try {
         const bridge = window.ExoPlayerManager || window.AndroidBridge;
-        if (bridge && typeof bridge.getCurrentFrameBase64 === 'function') {
+        if (usingNativeExoFallback && bridge && typeof bridge.getCurrentFrameBase64 === 'function') {
           const nativeFrame = bridge.getCurrentFrameBase64();
           if (nativeFrame && nativeFrame.length > 32) return nativeFrame;
         }
@@ -2198,11 +2172,10 @@
       const timeBtn = e.target.closest('.chapter-time');
       if (timeBtn && timeBtn.dataset.sec !== undefined) {
         const sec = Math.max(0, Number(timeBtn.dataset.sec) || 0);
-        const f = $('mediaFile').files[0];
-        if (!playerActive && f) setupPlayer(f);
         videoEl.currentTime = sec;
         syncTimeUI();
         updateSubtitleFrame();
+        playerBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
         if (videoEl.paused) togglePlay();
         return;
       }
@@ -2752,31 +2725,31 @@
     }
     bottomEl.addEventListener('input', updateOverlayGeometry);
 
-    function setupPlayer(file) {
+    function setupPlayer(file, openFullscreen = true) {
       const newSig = getFileSignature(file);
-      const bridge = window.ExoPlayerManager || window.AndroidBridge;
       if (file && playerTitleText) {
         playerTitleText.innerText = file.name;
       }
-      if (videoEl.dataset.fileSig !== newSig) {
-        if (!bridge && file) {
-          if (mediaObjectURL) URL.revokeObjectURL(mediaObjectURL);
-          mediaObjectURL = URL.createObjectURL(file);
-          videoEl.src = mediaObjectURL;
+      if (file && videoEl.dataset.fileSig !== newSig) {
+        usingNativeExoFallback = false;
+        document.documentElement.classList.remove('native-exo-fallback');
+        document.body.classList.remove('native-exo-fallback');
+        const bridge = window.ExoPlayerManager || window.AndroidBridge;
+        if (bridge && typeof bridge.setPlayerVisibility === 'function') {
+          try { bridge.setPlayerVisibility(false); } catch (e) {}
         }
+        if (mediaObjectURL) URL.revokeObjectURL(mediaObjectURL);
+        mediaObjectURL = URL.createObjectURL(file);
+        videoEl.src = mediaObjectURL;
         videoEl.dataset.fileSig = newSig;
       }
 
-      /* Скрываем главный интерфейс и открываем плеер на весь экран */
-      document.body.classList.add('player-open');
       playerBox.style.display = 'flex';
       videoEl.playbackRate = parseFloat(speedSlider.value) || 1;
       playerActive = true;
-      try { history.pushState({ sublaterPlayer: true }, ''); } catch (e) {}
 
-      if (bridge) {
-        document.documentElement.classList.add('native-exo-active');
-        document.body.classList.add('native-exo-active');
+      if (openFullscreen) {
+        enterFullscreenPlayer();
       }
 
       currentCueIdx = -2;
@@ -2789,17 +2762,7 @@
       showControls();
       updateOverlayGeometry();
       updateSubtitleFrame();
-      if (window.__syncNativePlayerBounds) {
-        window.__syncNativePlayerBounds();
-        requestAnimationFrame(() => {
-          updateOverlayGeometry();
-          window.__syncNativePlayerBounds();
-        });
-        setTimeout(() => {
-          updateOverlayGeometry();
-          window.__syncNativePlayerBounds();
-        }, 120);
-      }
+      setTimeout(updateOverlayGeometry, 100);
     }
 
     function startRenderLoop() {
@@ -2922,7 +2885,7 @@
         showControls();
       } else if (e.code === 'Escape') {
         e.preventDefault();
-        closePlayerView();
+        exitFullscreenPlayer();
       } else if (e.code === 'KeyF') {
         e.preventDefault();
         if (!document.fullscreenElement) playerBox.requestFullscreen?.();
@@ -3135,161 +3098,36 @@
       return new Blob([buffer], { type: 'audio/wav' });
     }
 
-    /* ==================== ГИБРИДНЫЙ МОСТ ANDROID EXOPLAYER ==================== */
+    /* ==================== РЕЗЕРВНЫЙ МОСТ ANDROID EXOPLAYER (ДЛЯ MKV/HEVC) ==================== */
     const nativeBridge = window.ExoPlayerManager || window.AndroidBridge || null;
     if (nativeBridge) {
-      let nativePaused = true;
-      let nativeCurrentTime = 0;
-      let nativeDuration = 0;
-      let lastUserPlayActionAt = 0;
-
       try {
         if (typeof nativeBridge.setPlayerVisibility === 'function') {
           nativeBridge.setPlayerVisibility(false);
-        } else if (typeof nativeBridge.setPlayerBounds === 'function') {
-          nativeBridge.setPlayerBounds(-2000, -2000, 1, 1, 1000, 1000, false);
         }
       } catch (e) {}
 
-      try {
-        Object.defineProperty(videoEl, 'currentTime', {
-          get() {
-            try { return Number(nativeBridge.getCurrentTime()) || nativeCurrentTime; }
-            catch (e) { return nativeCurrentTime; }
-          },
-          set(val) {
-            const sec = Math.max(0, Number(val) || 0);
-            nativeCurrentTime = sec;
-            lastUserPlayActionAt = Date.now();
-            try { nativeBridge.seekTo(sec); } catch (e) {}
-          },
-          configurable: true
-        });
-
-        Object.defineProperty(videoEl, 'duration', {
-          get() {
-            try {
-              const d = Number(nativeBridge.getDuration());
-              return d > 0 ? d : (nativeDuration || 0);
-            } catch (e) { return nativeDuration || 0; }
-          },
-          configurable: true
-        });
-
-        Object.defineProperty(videoEl, 'paused', {
-          get() {
-            if (Date.now() - lastUserPlayActionAt < 320) {
-              return nativePaused;
-            }
-            try {
-              if (typeof nativeBridge.isPlaying === 'function') {
-                return !Boolean(nativeBridge.isPlaying());
-              }
-              return nativePaused;
-            } catch (e) { return nativePaused; }
-          },
-          configurable: true
-        });
-
-        Object.defineProperty(videoEl, 'videoWidth', {
-          get() {
-            try { return Number(nativeBridge.getVideoWidth()) || 1920; }
-            catch (e) { return 1920; }
-          },
-          configurable: true
-        });
-
-        Object.defineProperty(videoEl, 'videoHeight', {
-          get() {
-            try { return Number(nativeBridge.getVideoHeight()) || 1080; }
-            catch (e) { return 1080; }
-          },
-          configurable: true
-        });
-
-        videoEl.play = function () {
-          try {
-            nativePaused = false;
-            lastUserPlayActionAt = Date.now();
-            nativeBridge.play();
-            videoEl.dispatchEvent(new Event('play'));
-          } catch (e) {}
-          return Promise.resolve();
-        };
-
-        videoEl.pause = function () {
-          try {
-            nativePaused = true;
-            lastUserPlayActionAt = Date.now();
-            nativeBridge.pause();
-            videoEl.dispatchEvent(new Event('pause'));
-          } catch (e) {}
-        };
-      } catch (err) {
-        console.warn('Bridge property binding warning:', err);
-      }
-
-      function syncNativePlayerBounds() {
-        if (!playerActive || playerBox.style.display === 'none') {
-          try {
-            if (typeof nativeBridge.setPlayerVisibility === 'function') {
-              nativeBridge.setPlayerVisibility(false);
-            }
-          } catch (e) {}
-          return;
-        }
+      window.__activateNativeExoFallback = function () {
+        document.documentElement.classList.add('native-exo-fallback');
+        document.body.classList.add('native-exo-fallback');
         try {
+          if (typeof nativeBridge.prepareStoredVideo === 'function') {
+            nativeBridge.prepareStoredVideo();
+          }
           if (typeof nativeBridge.setPlayerVisibility === 'function') {
             nativeBridge.setPlayerVisibility(true);
           }
           nativeBridge.setPlayerBounds(
-            0,
-            0,
-            window.innerWidth || 1,
-            window.innerHeight || 1,
-            window.innerWidth || 1,
-            window.innerHeight || 1,
+            0, 0,
+            window.innerWidth || 1, window.innerHeight || 1,
+            window.innerWidth || 1, window.innerHeight || 1,
             true
           );
-        } catch (e) {}
-      }
-
-      window.__syncNativePlayerBounds = syncNativePlayerBounds;
-      window.addEventListener('resize', syncNativePlayerBounds);
-      document.addEventListener('fullscreenchange', syncNativePlayerBounds);
-
-      setInterval(() => {
-        if (!playerActive) return;
-        try {
-          if (Date.now() - lastUserPlayActionAt >= 320) {
-            const playingNow = Boolean(nativeBridge.isPlaying());
-            if (playingNow === nativePaused) {
-              nativePaused = !playingNow;
-              videoEl.dispatchEvent(new Event(playingNow ? 'play' : 'pause'));
-            }
+          if (autoPlayToggle.checked) {
+            nativeBridge.play();
           }
-          nativeCurrentTime = Number(nativeBridge.getCurrentTime()) || 0;
-          const dur = Number(nativeBridge.getDuration()) || 0;
-          if (dur > 0 && Math.abs(dur - nativeDuration) > 0.1) {
-            nativeDuration = dur;
-            updateOverlayGeometry();
-            videoEl.dispatchEvent(new Event('loadedmetadata'));
-          }
-          syncTimeUI();
-          updateSubtitleFrame();
-          syncNativePlayerBounds();
         } catch (e) {}
-      }, 40);
-
-      volSlider.addEventListener('input', (e) => {
-        try { nativeBridge.setVolume(parseInt(e.target.value, 10) || 100); } catch (err) {}
-      });
-      speedSlider.addEventListener('input', (e) => {
-        try { nativeBridge.setSpeed(parseFloat(e.target.value) || 1.0); } catch (err) {}
-      });
-      fitModeSelect.addEventListener('change', (e) => {
-        try { nativeBridge.setResizeMode(e.target.value || 'contain'); } catch (err) {}
-      });
+      };
     }
 
   })();

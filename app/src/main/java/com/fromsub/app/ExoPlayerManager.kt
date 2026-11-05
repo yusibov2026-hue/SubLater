@@ -43,7 +43,10 @@ data class VideoBounds(
 )
 
 @OptIn(UnstableApi::class)
-class ExoPlayerManager(private val context: Context) {
+class ExoPlayerManager(
+    private val context: Context,
+    private val activity: MainActivity? = null
+) {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var loudnessEnhancer: LoudnessEnhancer? = null
@@ -106,8 +109,10 @@ class ExoPlayerManager(private val context: Context) {
 
     private val positionPoller = object : Runnable {
         override fun run() {
-            syncStateOnMainThread()
-            mainHandler.postDelayed(this, 16L)
+            if (videoBoundsState.value.isVisible) {
+                syncStateOnMainThread()
+            }
+            mainHandler.postDelayed(this, 30L)
         }
     }
 
@@ -125,8 +130,18 @@ class ExoPlayerManager(private val context: Context) {
         }
     }
 
+    fun storeMediaUri(uri: Uri) {
+        currentVideoUri = uri
+    }
+
     fun setMediaUri(uri: Uri) {
         currentVideoUri = uri
+        prepareStoredVideo()
+    }
+
+    @JavascriptInterface
+    fun prepareStoredVideo() {
+        val uri = currentVideoUri ?: return
         mainHandler.post {
             try {
                 val mediaItem = MediaItem.fromUri(uri)
@@ -138,6 +153,16 @@ class ExoPlayerManager(private val context: Context) {
                 Toast.makeText(context, "Ошибка загрузки видео: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    @JavascriptInterface
+    fun setImmersiveFullscreen(enabled: Boolean) {
+        activity?.applyImmersiveMode(enabled)
+    }
+
+    @JavascriptInterface
+    fun toggleLandscape(landscape: Boolean) {
+        activity?.applyLandscapeOrientation(landscape)
     }
 
     @JavascriptInterface
@@ -306,7 +331,6 @@ class ExoPlayerManager(private val context: Context) {
         isFullscreen: Boolean
     ) {
         if (viewportW <= 0f || viewportH <= 0f) return
-        val visible = widthCss >= 10f && heightCss >= 10f && (topCss + heightCss) > 0f && topCss < viewportH
         mainHandler.post {
             videoBoundsState.value = VideoBounds(
                 leftRatio = (leftCss / viewportW).coerceIn(-1f, 2f),
@@ -314,7 +338,7 @@ class ExoPlayerManager(private val context: Context) {
                 widthRatio = (widthCss / viewportW).coerceIn(0.05f, 1f),
                 heightRatio = (heightCss / viewportH).coerceIn(0.05f, 1f),
                 isFullscreen = isFullscreen,
-                isVisible = visible || isFullscreen
+                isVisible = videoBoundsState.value.isVisible
             )
         }
     }
