@@ -765,6 +765,7 @@
       height: 100vh !important;
       height: 100dvh !important;
       max-width: none !important;
+      max-height: none !important;
       margin: 0 !important;
       padding: 0 !important;
       aspect-ratio: auto !important;
@@ -822,13 +823,23 @@
     video#videoPlayer.fill-stretch { object-fit: fill !important; }
 
     #subtitleOverlay {
-      position: absolute; display: flex; justify-content: center;
-      pointer-events: none; z-index: 10; will-change: top, left, width, bottom;
-      left: 0; right: 0; transition: bottom 0.1s ease;
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      top: auto;
+      bottom: calc(var(--sub-bottom, 12%) + 26px);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      pointer-events: none;
+      z-index: 15;
     }
 
     #subtitleText {
+      width: fit-content;
       max-width: var(--sub-width, 85%);
+      min-height: 0;
       text-align: center;
       font-family: var(--sub-font, 'Inter', sans-serif);
       font-size: var(--sub-size, 18px);
@@ -839,19 +850,18 @@
       border-radius: 0.45em;
       word-break: break-word;
       opacity: 0;
-      transition: opacity 0.12s ease, background 0.2s ease;
+      transition: opacity 0.1s ease;
     }
 
-    /* Режим жёсткой фиксации субтитров внизу (без прыжков при пословном появлении и переносе строк) */
+    /* Режим жёсткой фиксации субтитров внизу: нижняя граница привязана к низу видео над таймлайном, текст растёт строго вверх */
     #playerContainer.fixed-subs-on #subtitleOverlay {
       position: absolute !important;
-      left: 0 !important;
-      right: 0 !important;
+      left: 10px !important;
+      right: 10px !important;
       top: auto !important;
-      bottom: var(--sub-bottom, 12%) !important;
-      width: 100% !important;
+      bottom: calc(var(--sub-bottom, 12%) + 26px) !important;
+      width: auto !important;
       height: auto !important;
-      min-height: 2.8em !important;
       padding-bottom: 0 !important;
       display: flex !important;
       flex-direction: column !important;
@@ -861,20 +871,15 @@
     }
 
     #playerContainer.fixed-subs-on #subtitleText {
-      min-height: 2.7em;
-      width: auto;
+      width: fit-content;
       max-width: var(--sub-width, 85%);
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      align-items: center;
+      min-height: 0;
+      display: inline-block;
       text-align: center;
-      transition: opacity 0.1s ease;
     }
 
-    #playerContainer.fixed-subs-on #subtitleText .cue-lines-wrap {
-      display: block;
-      width: 100%;
+    #subtitleText .cue-lines-wrap {
+      display: inline;
       text-align: center;
       line-height: 1.35;
     }
@@ -885,13 +890,29 @@
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
     }
     #subtitleText.bg-off {
-      background: transparent; backdrop-filter: none;
+      background: transparent;
+      backdrop-filter: none;
       text-shadow: 0 2px 4px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,1);
     }
 
-    .word { opacity: 0; color: inherit; transition: opacity 0.12s ease; }
-    #subtitleText.mode-karaoke .word { opacity: 0.38; }
-    #subtitleText.mode-full .word { opacity: 1; }
+    /* В режиме "Пословно" ещё не произнесённые слова скрыты (display: none), чтобы тёмная плашка фона
+       аккуратно облегала только произнесённые слова по центру, без огромного пустого прямоугольника */
+    .word { color: inherit; transition: opacity 0.1s ease; }
+    #subtitleText:not(.mode-karaoke):not(.mode-full) .word:not(.spoken) {
+      display: none !important;
+    }
+    #subtitleText:not(.mode-karaoke):not(.mode-full) .word.spoken {
+      display: inline !important;
+      opacity: 1 !important;
+    }
+    #subtitleText.mode-karaoke .word {
+      display: inline !important;
+      opacity: 0.38;
+    }
+    #subtitleText.mode-full .word {
+      display: inline !important;
+      opacity: 1;
+    }
     .word.spoken { opacity: 1 !important; }
 
     #playerControls {
@@ -2165,6 +2186,15 @@
     videoEl.addEventListener('play', updatePlayState);
     videoEl.addEventListener('pause', updatePlayState);
     function updatePlayerAspectRatio() {
+      const isFs = document.body.classList.contains('player-fullscreen-open') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      if (isFs) {
+        playerBox.classList.remove('is-vertical');
+        playerBox.style.aspectRatio = '';
+        videoEl.style.objectFit = '';
+        updateOverlayGeometry();
+        if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
+        return;
+      }
       if (videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
         const vw = videoEl.videoWidth;
         const vh = videoEl.videoHeight;
@@ -2207,6 +2237,9 @@
     function enterFullscreenPlayer() {
       document.documentElement.classList.add('player-fullscreen-open');
       document.body.classList.add('player-fullscreen-open');
+      playerBox.classList.remove('is-vertical');
+      playerBox.style.aspectRatio = '';
+      videoEl.style.objectFit = '';
       const bridge = window.ExoPlayerManager || window.AndroidBridge;
       if (bridge && typeof bridge.setImmersiveFullscreen === 'function') {
         try { bridge.setImmersiveFullscreen(true); } catch (e) {}
@@ -2232,6 +2265,7 @@
         try { bridge.toggleLandscape(false); } catch (e) {}
       }
       setTimeout(() => {
+        updatePlayerAspectRatio();
         updateOverlayGeometry();
         if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
       }, 60);
@@ -2409,9 +2443,19 @@
       }, 280);
     });
 
-    /* ---------------- Кэш, подписи кнопок и экспорт ---------------- */
+    /* ---------------- Поддержка внешних видео («Открыть с помощью...»), кэш и подписи кнопок ---------------- */
+    let externalMediaUri = '';
+    let externalMediaName = '';
+
     function getFileSignature(file) {
-      return file ? `${file.name}_${file.size}_${file.lastModified}` : '';
+      if (file) return `${file.name}_${file.size}_${file.lastModified}`;
+      if (externalMediaUri) return `ext_${externalMediaName}_${externalMediaUri}`;
+      const bridge = window.AndroidBridge || window.ExoPlayerManager;
+      if (bridge && typeof bridge.hasNativeVideo === 'function' && bridge.hasNativeVideo()) {
+        const u = typeof bridge.getStoredMediaUri === 'function' ? bridge.getStoredMediaUri() : 'native';
+        return `ext_${u}`;
+      }
+      return '';
     }
 
     function cloneCues(cueList) {
@@ -2430,7 +2474,7 @@
       const model = $('model').value;
       const tLang = $('translateLang').value;
 
-      if (f && cachedWhisper.fileSig === sig && cachedWhisper.model === model && cachedWhisper.rawSegments.length) {
+      if (sig && cachedWhisper.fileSig === sig && cachedWhisper.model === model && cachedWhisper.rawSegments.length) {
         if (!tLang) {
           btn.innerText = cachedWhisper.activeLang === ''
             ? '✨ ИИ-видео (вопросы по видео)'
@@ -2447,13 +2491,58 @@
       }
     }
 
+    function setupExternalIntentPlayer(uriStr, displayName) {
+      externalMediaUri = uriStr || '';
+      externalMediaName = displayName || 'external_video.mp4';
+      $('fileName').innerText = externalMediaName;
+      currentFileName = externalMediaName.replace(/\.[^/.]+$/, '') || 'subtitles';
+      aiSummaryBox.classList.remove('show');
+      applySettings();
+
+      playerBox.style.display = 'flex';
+      if (fixedSubsToggle) {
+        playerBox.classList.toggle('fixed-subs-on', fixedSubsToggle.checked);
+      }
+      playerActive = true;
+      currentCueIdx = -2;
+      wordSpans = [];
+      boxVisible = false;
+      subtitleEl.innerHTML = '';
+      subtitleEl.style.opacity = '0';
+
+      // Для внешних фильмов («Открыть с помощью...», .mkv, .ts, AC3/EAC3/DTS) сразу включаем нативный ExoPlayer с декодером FFmpeg!
+      usingNativeExoFallback = true;
+      try {
+        videoEl.pause();
+        videoEl.removeAttribute('src');
+        videoEl.load();
+      } catch (e) {}
+      if (window.__activateNativeExoFallback) {
+        window.__activateNativeExoFallback();
+      }
+      setTimeout(applyRealVideoPreviewPoster, 200);
+      setTimeout(applyRealVideoPreviewPoster, 700);
+      updatePlayState();
+      updateOverlayGeometry();
+      updateSubtitleFrame();
+      updateButtonLabel();
+    }
+
+    window.__onExternalMediaOpened = function (uriStr, displayName) {
+      setupExternalIntentPlayer(uriStr, displayName);
+    };
+
     function updateFileName() {
       const f = $('mediaFile').files[0];
-      $('fileName').innerText = f ? f.name : 'Не выбран';
       if (f) {
+        externalMediaUri = '';
+        externalMediaName = '';
+        $('fileName').innerText = f.name;
         currentFileName = f.name.replace(/\.[^/.]+$/, '');
         applySettings();
         setupPlayer(f);
+      } else if (!externalMediaUri) {
+        $('fileName').innerText = 'Не выбран';
       }
       aiSummaryBox.classList.remove('show');
       updateButtonLabel();
@@ -3331,8 +3420,15 @@
         videoEl.poster = TRANSPARENT_POSTER;
         if (mediaObjectURL) URL.revokeObjectURL(mediaObjectURL);
         mediaObjectURL = URL.createObjectURL(file);
-        videoEl.src = mediaObjectURL + '#t=0.1';
-        videoEl.dataset.fileSig = newSig;
+        const isExotic = /\.(mkv|ts|m2ts|mts|avi|flv|wmv)$/i.test(file.name || '');
+        if (bridge && isExotic && window.__activateNativeExoFallback) {
+          usingNativeExoFallback = true;
+          videoEl.dataset.fileSig = newSig;
+          window.__activateNativeExoFallback();
+        } else {
+          videoEl.src = mediaObjectURL + '#t=0.1';
+          videoEl.dataset.fileSig = newSig;
+        }
         setTimeout(applyRealVideoPreviewPoster, 120);
         setTimeout(applyRealVideoPreviewPoster, 450);
       }
@@ -3389,10 +3485,9 @@
       linesWrap.className = 'cue-lines-wrap';
 
       cue.words.forEach((w, i) => {
-        if (i > 0) linesWrap.appendChild(document.createTextNode(' '));
         const span = document.createElement('span');
         span.className = 'word';
-        span.textContent = w.word;
+        span.textContent = (i < cue.words.length - 1) ? (w.word + ' ') : w.word;
         span.dataset.state = 'h';
         linesWrap.appendChild(span);
         wordSpans.push(span);
@@ -3490,7 +3585,7 @@
       }
     });
 
-    /* ---------------- Ускоренное стабильное извлечение аудио (WAV 12кГц, Int16Array) + нарезка по 5 мин (6.8 МБ/чанк) + 4 параллельных потока в Groq ---------------- */
+    /* ---------------- Поддержка всех кодеков (Media3 + FFmpeg / Native WAV + JS WAV) и параллельная отправка в Groq ---------------- */
     const PARALLEL_CHUNK_CONCURRENCY = 4;
 
     function encodeWAV(samples, sampleRate) {
@@ -3514,7 +3609,6 @@
       writeString(36, 'data');
       view.setUint32(40, numSamples * 2, true);
 
-      // Быстрая векторная запись через типизированный массив Int16Array (в 10 раз быстрее побайтового DataView.setInt16)
       const pcm16 = new Int16Array(buffer, 44, numSamples);
       for (let i = 0; i < numSamples; i++) {
         const s = samples[i];
@@ -3523,20 +3617,125 @@
       return new Blob([buffer], { type: 'audio/wav' });
     }
 
+    function extractNativeAudioChunksForExternal(signal) {
+      return new Promise((resolve, reject) => {
+        const bridge = window.AndroidBridge || window.ExoPlayerManager;
+        if (!bridge || typeof bridge.startNativeAudioExtraction !== 'function') {
+          reject(new Error('Нативный декодер недоступен'));
+          return;
+        }
+
+        let settled = false;
+        const onAbort = () => {
+          if (settled) return;
+          settled = true;
+          try {
+            if (typeof bridge.cancelNativeAudioExtraction === 'function') {
+              bridge.cancelNativeAudioExtraction();
+            }
+          } catch (e) {}
+          reject(new Error('Отменено пользователем.'));
+        };
+
+        if (signal) {
+          if (signal.aborted) {
+            onAbort();
+            return;
+          }
+          signal.addEventListener('abort', onAbort, { once: true });
+        }
+
+        window.__onNativeAudioProgress = (pct, msg) => {
+          if (settled) return;
+          setProgress(6 + Math.round((Number(pct) || 0) * 0.14));
+          if (msg) statusEl.innerText = msg;
+        };
+
+        window.__onNativeAudioDone = (jsonStr) => {
+          if (settled) return;
+          settled = true;
+          if (signal) signal.removeEventListener('abort', onAbort);
+          try {
+            const parsed = JSON.parse(jsonStr || '[]');
+            resolve(Array.isArray(parsed) ? parsed : []);
+          } catch (e) {
+            reject(new Error('Ошибка разбора списка аудио-чанков'));
+          }
+        };
+
+        window.__onNativeAudioError = (errMsg) => {
+          if (settled) return;
+          settled = true;
+          if (signal) signal.removeEventListener('abort', onAbort);
+          reject(new Error(errMsg || 'Ошибка извлечения аудио из внешнего фильма'));
+        };
+
+        try {
+          const uriToUse = externalMediaUri || (typeof bridge.getStoredMediaUri === 'function' ? bridge.getStoredMediaUri() : '');
+          bridge.startNativeAudioExtraction(uriToUse || '');
+        } catch (err) {
+          settled = true;
+          reject(err);
+        }
+      });
+    }
+
+    // Безопасное последовательное чтение чанка через JNI без перегрузки памяти и без зависающего fetch("file://...")
+    let _jniReadChain = Promise.resolve();
+    function readNativeChunkBlobSafe(chunkMeta) {
+      const nextRead = _jniReadChain.then(() => {
+        const bridge = window.AndroidBridge || window.ExoPlayerManager;
+        if (!bridge || typeof bridge.readChunkBase64 !== 'function') {
+          throw new Error('Мост чтения чанков недоступен');
+        }
+        const b64 = bridge.readChunkBase64(chunkMeta.path);
+        if (!b64 || !b64.length) {
+          throw new Error('Пустой аудио-чанк: ' + chunkMeta.fileName);
+        }
+        const bin = atob(b64);
+        const len = bin.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = bin.charCodeAt(i);
+        }
+        return new Blob([bytes], { type: 'audio/wav' });
+      });
+      _jniReadChain = nextRead.catch(() => {});
+      return nextRead;
+    }
+
     async function generateSubtitles() {
       if (activeAbortCtrl) {
         activeAbortCtrl.abort();
         return;
       }
 
-      const file = $('mediaFile').files[0];
+      const file = $('mediaFile').files[0] || null;
+      const bridge = window.AndroidBridge || window.ExoPlayerManager || null;
+      const hasNativeVideo = Boolean(
+        externalMediaUri ||
+        (bridge && typeof bridge.hasNativeVideo === 'function' && bridge.hasNativeVideo())
+      );
+
+      const keys = getApiKeys();
+      if (!keys.length) {
+        statusEl.innerText = 'Укажите хотя бы один API ключ Groq в настройках (⚙️)!';
+        openSettings();
+        return;
+      }
+
+      if (!file && !hasNativeVideo) {
+        statusEl.innerText = 'Выберите видео- или аудиофайл (или откройте фильм через «Открыть с помощью...»)!';
+        return;
+      }
+
       const model = $('model').value;
       const targetLang = $('translateLang').value;
       const fileSig = getFileSignature(file);
       const langCode = LANG_CODES[targetLang] || '';
 
       if (
-        file &&
+        fileSig &&
         cachedWhisper.fileSig === fileSig &&
         cachedWhisper.model === model &&
         cachedWhisper.rawSegments.length &&
@@ -3546,13 +3745,7 @@
         return;
       }
 
-      const keys = getApiKeys();
       const customPrompt = whisperPromptEl.value.trim();
-
-      if (!keys.length || !file) {
-        statusEl.innerText = 'Укажите хотя бы один API ключ Groq и выберите файл!';
-        return;
-      }
 
       activeAbortCtrl = new AbortController();
       const signal = activeAbortCtrl.signal;
@@ -3565,8 +3758,10 @@
       setProgress(5);
       await requestWakeLock();
 
-      currentFileName = file.name.replace(/\.[^/.]+$/, '') + (langCode ? `_${langCode}` : '');
-      const bridge = window.AndroidBridge || window.ExoPlayerManager || null;
+      const baseTitle = file
+        ? file.name.replace(/\.[^/.]+$/, '')
+        : (externalMediaName || (bridge && typeof bridge.getStoredMediaName === 'function' ? bridge.getStoredMediaName() : 'movie')).replace(/\.[^/.]+$/, '');
+      currentFileName = (baseTitle || 'subtitles') + (langCode ? `_${langCode}` : '');
 
       if (bridge && typeof bridge.startForegroundService === 'function') {
         try { bridge.startForegroundService('Генерация субтитров...'); } catch (e) {}
@@ -3576,36 +3771,115 @@
         if (cachedWhisper.fileSig !== fileSig || cachedWhisper.model !== model || !cachedWhisper.rawSegments.length) {
           const allSegments = [];
           const allWords = [];
-          const shouldCompress = file.size > 24 * 1024 * 1024 || (fastAudioCompressEl.checked && file.size > 14 * 1024 * 1024);
 
+          // Проверяем, можно ли декодировать в WebView (только если выбран локальный File и это не внешний Intent / нестандартный контейнер)
           let audioBuffer = null;
-          if (shouldCompress) {
-            statusEl.innerText = '⚡ Быстрое извлечение и сжатие аудиодорожки...';
-            setProgress(10);
-            try {
-              const ab = await file.arrayBuffer();
-              // Частота 12000 Гц идеально передаёт человеческую речь для Whisper и уменьшает объём данных на 25%
-              const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 12000 });
-              audioBuffer = await decodeCtx.decodeAudioData(ab);
-              if (decodeCtx.close) decodeCtx.close();
-            } catch (e) {
-              if (file.size > 24 * 1024 * 1024) {
-                throw new Error('Браузер не поддерживает кодек файла (>24 МБ). Конвертируйте в MP4/MP3.');
+          let needNativeExtractor = !file;
+
+          if (file) {
+            const lowerName = file.name.toLowerCase();
+            const isExoticContainer = /\.(mkv|ts|m2ts|mts|avi|flv|wmv|mov)$/i.test(lowerName);
+            const shouldCompress = file.size > 24 * 1024 * 1024 || isExoticContainer || (fastAudioCompressEl.checked && file.size > 14 * 1024 * 1024);
+
+            if (shouldCompress) {
+              statusEl.innerText = '⚡ Быстрое извлечение и сжатие аудиодорожки...';
+              setProgress(10);
+              try {
+                const ab = await file.arrayBuffer();
+                const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 12000 });
+                audioBuffer = await decodeCtx.decodeAudioData(ab);
+                if (decodeCtx.close) decodeCtx.close();
+              } catch (decodeErr) {
+                // Если браузер не смог декодировать кодек фильма (.ts, .mkv, AC3, EAC3), переключаемся на нативный декодер Android!
+                if (bridge && typeof bridge.startNativeAudioExtraction === 'function') {
+                  needNativeExtractor = true;
+                } else if (file.size > 24 * 1024 * 1024) {
+                  throw new Error('Браузер не поддерживает кодек этого фильма (>24 МБ). Откройте в приложении Android.');
+                }
               }
             }
           }
 
-          if (!audioBuffer) {
+          if (needNativeExtractor && bridge && typeof bridge.startNativeAudioExtraction === 'function') {
+            statusEl.innerText = '⚡ Нативное извлечение аудио из фильма (поддержка внешних файлов и кодеков)...';
+            setProgress(8);
+            try {
+              const nativeChunks = await extractNativeAudioChunksForExternal(signal);
+              if (!nativeChunks.length) {
+                throw new Error('Не удалось извлечь аудиодорожку из фильма.');
+              }
+
+              const totalChunks = nativeChunks.length;
+              let completedChunks = 0;
+              statusEl.innerText = `🚀 Параллельная отправка в Groq (${Math.min(PARALLEL_CHUNK_CONCURRENCY, totalChunks)} потока, частей: ${totalChunks})...`;
+              setProgress(18);
+
+              const orderedResults = await runWithConcurrency(
+                nativeChunks,
+                PARALLEL_CHUNK_CONCURRENCY,
+                async (chunkMeta) => {
+                  if (signal.aborted) throw new Error('Отменено пользователем.');
+                  const wavBlob = await readNativeChunkBlobSafe(chunkMeta);
+                  if (signal.aborted) throw new Error('Отменено пользователем.');
+
+                  const r = await sendToGroq(
+                    wavBlob,
+                    chunkMeta.fileName || `chunk_${chunkMeta.index}.wav`,
+                    model,
+                    customPrompt,
+                    signal
+                  );
+
+                  completedChunks++;
+                  const cPos = Number(chunkMeta.startSec) || 0;
+                  const cEnd = Number(chunkMeta.endSec) || cPos;
+                  const msg = `🚀 Распознано: ${completedChunks} из ${totalChunks} (${Math.round(cPos)}–${Math.round(cEnd)} с)...`;
+                  statusEl.innerText = msg;
+                  setProgress(18 + Math.round((completedChunks / Math.max(1, totalChunks)) * 40));
+                  if (bridge && typeof bridge.updateForegroundNotification === 'function') {
+                    try { bridge.updateForegroundNotification(msg); } catch (e) {}
+                  }
+
+                  return {
+                    index: Number(chunkMeta.index) || 0,
+                    pos: cPos,
+                    cutoff: Number(chunkMeta.cutoffSec) || 0,
+                    nextCutoff: Number(chunkMeta.nextCutoffSec) || Infinity,
+                    segments: r.segments || [],
+                    words: r.words || []
+                  };
+                }
+              );
+
+              for (let idx = 0; idx < orderedResults.length; idx++) {
+                const item = orderedResults[idx];
+                if (!item) continue;
+                const { pos: cPos, cutoff: cCutoff, nextCutoff: cNextCutoff, segments, words } = item;
+                segments.forEach((seg) => {
+                  const absMid = (seg.start + seg.end) / 2 + cPos;
+                  if (absMid < cCutoff || absMid >= cNextCutoff) return;
+                  allSegments.push({ start: seg.start + cPos, end: seg.end + cPos, text: seg.text });
+                });
+                words.forEach((w) => {
+                  const absMid = (w.start + w.end) / 2 + cPos;
+                  if (absMid < cCutoff || absMid >= cNextCutoff) return;
+                  allWords.push({ word: w.word, start: w.start + cPos, end: w.end + cPos });
+                });
+              }
+            } finally {
+              if (bridge && typeof bridge.clearAudioCache === 'function') {
+                try { bridge.clearAudioCache(); } catch (e) {}
+              }
+            }
+          } else if (!audioBuffer && file) {
             statusEl.innerText = '🚀 Прямая отправка в Groq...';
             setProgress(25);
             const r = await sendToGroq(file, file.name, model, customPrompt, signal);
             r.segments.forEach((s) => allSegments.push({ start: s.start, end: s.end, text: s.text }));
             r.words.forEach((w) => allWords.push({ word: w.word, start: w.start, end: w.end }));
-          } else {
+          } else if (audioBuffer) {
             const channelData = audioBuffer.getChannelData(0);
             const sampleRate = audioBuffer.sampleRate;
-            // Чанки по 5 минут (300 сек) с перекрытием 6 сек: каждый кусок весит всего ~6.8 МБ (в 2.7 раза меньше 10-минутного 16кГц),
-            // благодаря чему 20-минутное видео обрабатывается сразу в 4 параллельных потока на серверах Groq!
             const chunkDuration = 300;
             const overlap = 6;
             const advance = chunkDuration - overlap;
@@ -3646,13 +3920,11 @@
             statusEl.innerText = `🚀 Параллельная отправка в Groq (${Math.min(PARALLEL_CHUNK_CONCURRENCY, totalChunks)} потока, частей: ${totalChunks})...`;
             setProgress(16);
 
-            // Параллельная отправка по 4 чанка одновременно через пул Promise.all
             const orderedResults = await runWithConcurrency(
               chunkTasks,
               PARALLEL_CHUNK_CONCURRENCY,
               async (task, workerIdx) => {
                 if (signal.aborted) throw new Error('Отменено пользователем.');
-                // Небольшой сдвиг старта потоков (60 мс), чтобы равномерно распределить ключи и сетевой буфер
                 if (workerIdx > 0 && workerIdx < PARALLEL_CHUNK_CONCURRENCY) {
                   await new Promise((r) => setTimeout(r, workerIdx * 60));
                 }
@@ -3688,7 +3960,6 @@
               }
             );
 
-            // Склеиваем ответы строго в хронологическом порядке по индексу (0 .. totalChunks - 1)
             for (let idx = 0; idx < orderedResults.length; idx++) {
               const item = orderedResults[idx];
               if (!item) continue;
@@ -3758,7 +4029,13 @@
         actionRow.style.display = 'flex';
         statusEl.innerText = 'Готово! Субтитры загружены.' + translationWarn;
 
-        setupPlayer(file);
+        if (file) {
+          setupPlayer(file);
+        } else {
+          currentCueIdx = -2;
+          updateOverlayGeometry();
+          updateSubtitleFrame();
+        }
 
         if (autoPlayToggle.checked && videoEl.paused) {
           videoEl.play().catch(() => {});
@@ -3947,6 +4224,39 @@
         if (!usingNativeExoFallback) return;
         try { nativeBridge.setResizeMode(e.target.value || 'contain'); } catch (err) {}
       });
+
+      // Автоматическая проверка звука: если HTML5 <video> не может декодировать звук (AC3, E-AC3, DTS в фильмах),
+      // мгновенно переключаем воспроизведение на нативный ExoPlayer + FFmpeg!
+      videoEl.addEventListener('playing', () => {
+        if (usingNativeExoFallback) return;
+        setTimeout(() => {
+          if (usingNativeExoFallback || videoEl.paused) return;
+          const noWebkitAudio = typeof videoEl.webkitAudioDecodedByteCount === 'number' && videoEl.webkitAudioDecodedByteCount === 0 && videoEl.currentTime > 0.4;
+          const noAudioTracks = videoEl.audioTracks && videoEl.audioTracks.length === 0;
+          if ((noWebkitAudio || noAudioTracks) && typeof nativeBridge.hasNativeVideo === 'function' && nativeBridge.hasNativeVideo()) {
+            const curT = videoEl.currentTime || 0;
+            try { videoEl.pause(); videoEl.muted = true; } catch (e) {}
+            usingNativeExoFallback = true;
+            if (window.__activateNativeExoFallback) window.__activateNativeExoFallback();
+            setTimeout(() => {
+              try {
+                nativeBridge.seekTo(curT);
+                nativeBridge.play();
+              } catch (e) {}
+            }, 150);
+          }
+        }, 650);
+      });
+
+      // Если приложение было запущено через «Открыть с помощью...», сразу подхватываем внешний фильм при старте
+      try {
+        if (typeof nativeBridge.getExternalMediaInfoJson === 'function') {
+          const info = JSON.parse(nativeBridge.getExternalMediaInfoJson() || '{}');
+          if (info && info.hasMedia && info.isExternalIntent && info.uri) {
+            setTimeout(() => setupExternalIntentPlayer(info.uri, info.name || 'external_video.mp4'), 80);
+          }
+        }
+      } catch (e) {}
     }
 
   })();

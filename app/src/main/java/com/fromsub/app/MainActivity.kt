@@ -1,17 +1,17 @@
 package com.fromsub.app
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
+import android.database.Cursor
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
-import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Bundle
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
+import android.provider.OpenableColumns
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -28,25 +28,25 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
+import org.json.JSONObject
 
 @OptIn(UnstableApi::class)
 class MainActivity : ComponentActivity() {
@@ -87,7 +87,8 @@ class MainActivity : ComponentActivity() {
                 val pathStr = chosenUri.toString().lowercase()
                 val isSubtitleFile = pathStr.endsWith(".vtt") || pathStr.endsWith(".srt") || pathStr.endsWith(".ass")
                 if (!isSubtitleFile && (mimeType.startsWith("video/") || mimeType.startsWith("audio/") || !mimeType.startsWith("text/"))) {
-                    exoPlayerManager.storeMediaUri(chosenUri)
+                    val displayName = resolveUriDisplayName(chosenUri)
+                    exoPlayerManager.storeMediaUri(chosenUri, displayName, isExternalIntent = false)
                 }
                 callback?.onReceiveValue(uris.toTypedArray())
             } else {
@@ -96,6 +97,27 @@ class MainActivity : ComponentActivity() {
         } else {
             callback?.onReceiveValue(null)
         }
+    }
+
+    private fun resolveUriDisplayName(uri: Uri): String {
+        if (uri.scheme == "content") {
+            var cursor: Cursor? = null
+            try {
+                cursor = contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                if (cursor != null && cursor.moveToFirst()) {
+                    val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (idx >= 0) {
+                        val name = cursor.getString(idx)
+                        if (!name.isNullOrBlank()) return name
+                    }
+                }
+            } catch (_: Exception) {
+            } finally {
+                try { cursor?.close() } catch (_: Exception) {}
+            }
+        }
+        val seg = uri.lastPathSegment?.substringAfterLast('/')
+        return if (!seg.isNullOrBlank()) seg else "external_video.mp4"
     }
 
     fun applyImmersiveMode(fullscreen: Boolean) {
@@ -158,6 +180,8 @@ class MainActivity : ComponentActivity() {
         }
 
         exoPlayerManager = ExoPlayerManager(applicationContext, this)
+        handleIncomingIntent(intent)
+
         addOnNewIntentListener { newIntent ->
             setIntent(newIntent)
             handleIncomingIntent(newIntent)
@@ -208,7 +232,6 @@ class MainActivity : ComponentActivity() {
                 },
                 onWebViewCreated = { wv ->
                     webViewRef = wv
-                    wv.postDelayed({ handleIncomingIntent(intent) }, 400L)
                 }
             )
         }
@@ -239,22 +262,20 @@ class MainActivity : ComponentActivity() {
             } catch (_: Exception) {
             }
 
-            val mimeType = contentResolver.getType(uri) ?: ""
             val pathStr = uri.toString().lowercase()
             val isSubtitleFile = pathStr.endsWith(".vtt") || pathStr.endsWith(".srt") || pathStr.endsWith(".ass")
             if (!isSubtitleFile) {
-                exoPlayerManager.storeMediaUri(uri)
-                val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "video"
-                val jsCall = "(function() { " +
-                    "try { " +
-                    "  const fNameEl = document.getElementById('fileName'); if (fNameEl) fNameEl.innerText = '${fileName.replace("'", "\\'")}'; " +
-                    "  const vEl = document.getElementById('videoPlayer'); if (vEl) { vEl.src = '${uri.toString().replace("'", "\\'")}'; vEl.load(); } " +
-                    "  const pBox = document.getElementById('playerContainer'); if (pBox) pBox.style.display = 'flex'; " +
-                    "  if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds(); " +
-                    "} catch (e) {} " +
-                    "})()"
+                val displayName = resolveUriDisplayName(uri)
+                exoPlayerManager.storeMediaUri(uri, displayName, isExternalIntent = true)
+                exoPlayerManager.prepareStoredVideo()
+
+                val safeName = JSONObject.quote(displayName)
+                val safeUri = JSONObject.quote(uri.toString())
                 runOnUiThread {
-                    webViewRef?.evaluateJavascript(jsCall, null)
+                    webViewRef?.evaluateJavascript(
+                        "window.__onExternalMediaOpened && window.__onExternalMediaOpened($safeUri, $safeName);",
+                        null
+                    )
                 }
             }
         }
@@ -263,7 +284,6 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         exoPlayerManager.pause()
-        // Не даём WebView замораживать JS-таймеры и сетевые запросы при сворачивании приложения
         webViewRef?.resumeTimers()
     }
 
@@ -314,7 +334,7 @@ fun HybridVideoApp(
                 .clip(RoundedCornerShape(16.dp))
         }
 
-        // Layer 1 (Background): Native AndroidX Media3 ExoPlayer (pure black background, zero gray bars)
+        // Layer 1 (Background): Native AndroidX Media3 ExoPlayer + FFmpeg Audio Decoder
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -365,7 +385,12 @@ fun HybridVideoApp(
                     addJavascriptInterface(exoPlayerManager, "AndroidBridge")
                     addJavascriptInterface(exoPlayerManager, "Android")
 
-                    webViewClient = WebViewClient()
+                    webViewClient = object : WebViewClient() {
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            super.onPageFinished(view, url)
+                            exoPlayerManager.notifyExternalMediaIfPresent()
+                        }
+                    }
                     webChromeClient = object : WebChromeClient() {
                         override fun onShowFileChooser(
                             webView: WebView?,
