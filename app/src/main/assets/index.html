@@ -1566,58 +1566,84 @@
       appThemeBgEl.addEventListener('change', () => applyGrayTheme(appThemeBgEl.value));
     }
 
-    /* ---------------- Сохранение пользовательских API-ключей в Android Keystore ---------------- */
+    /* ---------------- 3. Защита ключей через EncryptedSharedPreferences (Android Keystore) без localStorage ---------------- */
     const keyInput = $('apiKey');
     const geminiKeyInput = $('geminiApiKey');
     const geminiModelSelect = $('geminiModel');
     const aiActiveModelBadge = $('aiActiveModelBadge');
 
-    const _ksBridge = window.ExoPlayerManager || window.AndroidBridge || null;
+    const androidBridge = window.AndroidBridge || window.ExoPlayerManager || null;
+    let sessionGroqKey = '';
+    let sessionGeminiKey = '';
 
-    // Однократная очистка любых старых записей localStorage
-    try {
-      localStorage.removeItem('groq_key');
-      localStorage.removeItem('sublater_groq_key');
-      localStorage.removeItem('gemini_key');
-    } catch (e) {}
-
-    function saveUserApiKey(alias, val) {
-      const clean = String(val || '').trim();
-      if (_ksBridge && typeof _ksBridge.saveSecureKey === 'function') {
-        try { _ksBridge.saveSecureKey(alias, clean); } catch (e) {}
-      } else {
-        safeSetStorage('ks_' + alias, clean);
+    function saveGroqApiKeyToKeystore(key) {
+      const clean = String(key || '').trim();
+      sessionGroqKey = clean;
+      if (androidBridge && typeof androidBridge.saveApiKey === 'function') {
+        try { androidBridge.saveApiKey(clean); } catch (e) {}
+      } else if (androidBridge && typeof androidBridge.saveSecureKey === 'function') {
+        try { androidBridge.saveSecureKey('groq_api_key', clean); } catch (e) {}
       }
     }
 
-    function loadUserApiKey(alias) {
-      if (_ksBridge && typeof _ksBridge.getSecureKey === 'function') {
+    function getGroqApiKeyFromKeystore() {
+      if (androidBridge && typeof androidBridge.getApiKey === 'function') {
         try {
-          return String(_ksBridge.getSecureKey(alias) || '').trim();
-        } catch (e) {
-          return '';
-        }
+          const k = String(androidBridge.getApiKey() || '').trim();
+          if (k) return k;
+        } catch (e) {}
       }
-      return safeGetStorage('ks_' + alias, '').trim();
+      if (androidBridge && typeof androidBridge.getSecureKey === 'function') {
+        try {
+          const k = String(androidBridge.getSecureKey('groq_api_key') || '').trim();
+          if (k) return k;
+        } catch (e) {}
+      }
+      return sessionGroqKey;
     }
 
-    // При открытии приложения автоматически подтягиваем сохранённые пользователем ключи из Keystore
-    // Поле type="password" отображает их стандартными скрытыми точками
-    keyInput.value = loadUserApiKey('groq_api_key');
-    geminiKeyInput.value = loadUserApiKey('gemini_api_key');
+    function saveGeminiKeyToKeystore(key) {
+      const clean = String(key || '').trim();
+      sessionGeminiKey = clean;
+      if (androidBridge && typeof androidBridge.saveGeminiApiKey === 'function') {
+        try { androidBridge.saveGeminiApiKey(clean); } catch (e) {}
+      } else if (androidBridge && typeof androidBridge.saveSecureKey === 'function') {
+        try { androidBridge.saveSecureKey('gemini_api_key', clean); } catch (e) {}
+      }
+    }
+
+    function getGeminiKeyFromKeystore() {
+      if (androidBridge && typeof androidBridge.getGeminiApiKey === 'function') {
+        try {
+          const k = String(androidBridge.getGeminiApiKey() || '').trim();
+          if (k) return k;
+        } catch (e) {}
+      }
+      if (androidBridge && typeof androidBridge.getSecureKey === 'function') {
+        try {
+          const k = String(androidBridge.getSecureKey('gemini_api_key') || '').trim();
+          if (k) return k;
+        } catch (e) {}
+      }
+      return sessionGeminiKey;
+    }
+
+    // При старте приложения подтягиваем ключи напрямую из EncryptedSharedPreferences (Android Keystore)
+    keyInput.value = getGroqApiKeyFromKeystore();
+    geminiKeyInput.value = getGeminiKeyFromKeystore();
 
     keyInput.addEventListener('input', () => {
-      saveUserApiKey('groq_api_key', keyInput.value);
+      saveGroqApiKeyToKeystore(keyInput.value);
     });
     keyInput.addEventListener('change', () => {
-      saveUserApiKey('groq_api_key', keyInput.value);
+      saveGroqApiKeyToKeystore(keyInput.value);
     });
 
     geminiKeyInput.addEventListener('input', () => {
-      saveUserApiKey('gemini_api_key', geminiKeyInput.value);
+      saveGeminiKeyToKeystore(geminiKeyInput.value);
     });
     geminiKeyInput.addEventListener('change', () => {
-      saveUserApiKey('gemini_api_key', geminiKeyInput.value);
+      saveGeminiKeyToKeystore(geminiKeyInput.value);
     });
 
     const savedGeminiModel = safeGetStorage('gemini_model', 'gemini-3.8-flash');
@@ -1632,7 +1658,7 @@
 
     let activeKeyIdx = 0;
     function getApiKeys() {
-      const currentVal = keyInput.value.trim() || loadUserApiKey('groq_api_key');
+      const currentVal = keyInput.value.trim() || getGroqApiKeyFromKeystore();
       return currentVal.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
     }
     function getCurrentKey() {
@@ -2427,7 +2453,7 @@
     let aiBusy = false;
 
     function getGeminiKeys() {
-      const currentVal = geminiKeyInput.value.trim() || loadUserApiKey('gemini_api_key');
+      const currentVal = geminiKeyInput.value.trim() || getGeminiKeyFromKeystore();
       return currentVal.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
     }
 
@@ -2944,36 +2970,51 @@
       }), signal, 3);
     }
 
+    /* ---------------- Пул параллельного выполнения промисов с ограничением concurrency ---------------- */
+    async function runWithConcurrency(items, concurrency, workerFn) {
+      const results = new Array(items.length);
+      let nextIdx = 0;
+      const workerCount = Math.max(1, Math.min(concurrency, items.length));
+      const workers = Array.from({ length: workerCount }, async () => {
+        while (nextIdx < items.length) {
+          const cur = nextIdx++;
+          results[cur] = await workerFn(items[cur], cur);
+        }
+      });
+      await Promise.all(workers);
+      return results;
+    }
+
+    /* ---------------- Параллельный контекстный перевод батчами (до 3 батчей одновременно) ---------------- */
     async function translateSegments(cueArr, targetLang, statusElRef, signal) {
       const batchSize = 40;
       const primaryModel = llmModelEl.value || 'openai/gpt-oss-120b';
       const fallbackModel = 'openai/gpt-oss-20b';
       let failedLines = 0;
 
+      const batches = [];
       for (let i = 0; i < cueArr.length; i += batchSize) {
-        if (signal && signal.aborted) throw new Error('Отменено пользователем.');
         const batch = cueArr.slice(i, i + batchSize);
-        const pct = 55 + Math.round((i / cueArr.length) * 42);
-        setProgress(pct);
-        statusElRef.innerText = `Перевод: строки ${i + 1}–${Math.min(i + batchSize, cueArr.length)} из ${cueArr.length}...`;
-
         const prevContext = i >= 2 ? cueArr.slice(i - 2, i).map(c => c.text) : [];
+        batches.push({ startLine: i, batch, prevContext });
+      }
+
+      let completedBatches = 0;
+      await runWithConcurrency(batches, 3, async (bObj) => {
+        if (signal && signal.aborted) throw new Error('Отменено пользователем.');
+        const { startLine, batch, prevContext } = bObj;
         const payload = batch.map((c, idx) => ({ id: idx, text: c.text }));
 
         try {
           let res = await requestTranslationBatch(payload, prevContext, targetLang, primaryModel, signal);
 
           if (!res.ok && primaryModel !== fallbackModel) {
-            statusElRef.innerText = `Резервный перевод через ${fallbackModel}: строки ${i + 1}–${Math.min(i + batchSize, cueArr.length)}...`;
             res = await requestTranslationBatch(payload, prevContext, targetLang, fallbackModel, signal);
           }
 
-          if (!res.ok) { 
-            const errData = await res.json().catch(() => ({}));
-            const errMsg = errData.error?.message || `HTTP ${res.status}`;
-            statusElRef.innerText = `⚠️ Ошибка перевода Groq: ${errMsg}`;
-            failedLines += batch.length; 
-            continue; 
+          if (!res.ok) {
+            failedLines += batch.length;
+            return;
           }
 
           const data = await res.json();
@@ -2999,9 +3040,13 @@
         } catch (e) {
           if (e && e.message === 'Отменено пользователем.') throw e;
           failedLines += batch.length;
-          statusElRef.innerText = `⚠️ Ошибка разбора ответа: ${e.message}`;
+        } finally {
+          completedBatches++;
+          const pct = 58 + Math.round((completedBatches / Math.max(1, batches.length)) * 40);
+          setProgress(pct);
+          statusElRef.innerText = `⚡ Параллельный перевод: батч ${completedBatches} из ${batches.length} (строки ${startLine + 1}–${Math.min(startLine + batchSize, cueArr.length)})...`;
         }
-      }
+      });
 
       for (const c of cueArr) {
         if (c._translated) distributeWords(c);
@@ -3253,6 +3298,96 @@
       }
     });
 
+    /* ---------------- 2. Нативное извлечение и нарезка аудио через Kotlin MediaExtractor + MediaCodec ---------------- */
+    function extractNativeAudioChunksAsync(signal) {
+      return new Promise((resolve, reject) => {
+        const bridge = window.AndroidBridge || window.ExoPlayerManager;
+        if (!bridge || typeof bridge.startNativeAudioExtraction !== 'function') {
+          reject(new Error('NativeAudioBridge unavailable'));
+          return;
+        }
+
+        let settled = false;
+        const onAbort = () => {
+          if (settled) return;
+          settled = true;
+          try {
+            if (typeof bridge.cancelNativeAudioExtraction === 'function') {
+              bridge.cancelNativeAudioExtraction();
+            }
+          } catch (e) {}
+          reject(new Error('Отменено пользователем.'));
+        };
+
+        if (signal) {
+          if (signal.aborted) {
+            onAbort();
+            return;
+          }
+          signal.addEventListener('abort', onAbort, { once: true });
+        }
+
+        window.__onNativeAudioProgress = (pct, msg) => {
+          if (settled) return;
+          setProgress(5 + Math.round((Number(pct) || 0) * 0.15));
+          if (msg) statusEl.innerText = msg;
+        };
+
+        window.__onNativeAudioDone = (jsonStr) => {
+          if (settled) return;
+          settled = true;
+          if (signal) signal.removeEventListener('abort', onAbort);
+          try {
+            const parsed = JSON.parse(jsonStr || '[]');
+            resolve(Array.isArray(parsed) ? parsed : []);
+          } catch (e) {
+            reject(new Error('Ошибка чтения списка нативных чанков'));
+          }
+        };
+
+        window.__onNativeAudioError = (errMsg) => {
+          if (settled) return;
+          settled = true;
+          if (signal) signal.removeEventListener('abort', onAbort);
+          reject(new Error(errMsg || 'Ошибка нативного извлечения аудио'));
+        };
+
+        try {
+          const uriStr = typeof bridge.getStoredMediaUri === 'function' ? bridge.getStoredMediaUri() : '';
+          bridge.startNativeAudioExtraction(uriStr || '');
+        } catch (err) {
+          settled = true;
+          reject(err);
+        }
+      });
+    }
+
+    async function loadNativeChunkBlob(chunkMeta) {
+      const fileUrl = chunkMeta.fileUrl || ('file://' + chunkMeta.path);
+      try {
+        const resp = await fetch(fileUrl);
+        if (resp.ok) {
+          const blob = await resp.blob();
+          if (blob && blob.size > 44) return blob;
+        }
+      } catch (e) {}
+
+      const bridge = window.AndroidBridge || window.ExoPlayerManager;
+      if (bridge && typeof bridge.readChunkBase64 === 'function') {
+        const b64 = bridge.readChunkBase64(chunkMeta.path);
+        if (b64 && b64.length > 0) {
+          const bin = atob(b64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          return new Blob([bytes], { type: 'audio/wav' });
+        }
+      }
+      throw new Error('Не удалось прочитать аудио-чанк из cacheDir: ' + chunkMeta.fileName);
+    }
+
+    /* ---------------- 1. Генерация субтитров с параллельной отправкой по 4 чанка и строгой склейкой по индексу ---------------- */
+    const PARALLEL_CHUNK_CONCURRENCY = 4;
+
     async function generateSubtitles() {
       if (activeAbortCtrl) {
         activeAbortCtrl.abort();
@@ -3279,7 +3414,10 @@
       const keys = getApiKeys();
       const customPrompt = whisperPromptEl.value.trim();
 
-      if (!keys.length || !file) { statusEl.innerText = 'Укажите хотя бы один API ключ Groq и выберите файл!'; return; }
+      if (!keys.length || !file) {
+        statusEl.innerText = 'Укажите хотя бы один API ключ Groq и выберите файл!';
+        return;
+      }
 
       activeAbortCtrl = new AbortController();
       const signal = activeAbortCtrl.signal;
@@ -3293,6 +3431,7 @@
       await requestWakeLock();
 
       currentFileName = file.name.replace(/\.[^/.]+$/, '') + (langCode ? `_${langCode}` : '');
+      const bridge = window.AndroidBridge || window.ExoPlayerManager || null;
 
       try {
         if (cachedWhisper.fileSig !== fileSig || cachedWhisper.model !== model || !cachedWhisper.rawSegments.length) {
@@ -3300,78 +3439,176 @@
           const allWords = [];
           const shouldCompress = file.size > 24 * 1024 * 1024 || (fastAudioCompressEl.checked && file.size > 10 * 1024 * 1024);
 
-          let audioBuffer = null;
-          if (shouldCompress) {
-            statusEl.innerText = 'Извлекаем и сжимаем аудиодорожку для быстрой отправки...';
-            setProgress(12);
+          let usedNativePipeline = false;
+
+          // Приоритет 1: Нативное извлечение 16кГц Mono и нарезка по 10 минут через Kotlin MediaExtractor + MediaCodec (без фризов JS!)
+          if (shouldCompress && bridge && typeof bridge.startNativeAudioExtraction === 'function') {
             try {
-              const ab = await file.arrayBuffer();
-              const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-              audioBuffer = await decodeCtx.decodeAudioData(ab);
-              if (decodeCtx.close) decodeCtx.close();
-            } catch (e) {
-              if (file.size > 24 * 1024 * 1024) {
-                throw new Error('Браузер не поддерживает кодек файла (>24 МБ). Конвертируйте в MP4/MP3.');
+              statusEl.innerText = '⚡ Нативное извлечение аудио 16кГц Mono и нарезка чанков (Kotlin)...';
+              const nativeChunks = await extractNativeAudioChunksAsync(signal);
+
+              if (nativeChunks.length > 0) {
+                usedNativePipeline = true;
+                const totalChunks = nativeChunks.length;
+                let completedChunks = 0;
+
+                statusEl.innerText = `🚀 Параллельная отправка в Groq (${Math.min(PARALLEL_CHUNK_CONCURRENCY, totalChunks)} потока, всего частей: ${totalChunks})...`;
+                setProgress(20);
+
+                // Отправляем до 4 чанков параллельно, сохраняя результаты строго по индексу чанка
+                const orderedResults = await runWithConcurrency(
+                  nativeChunks,
+                  PARALLEL_CHUNK_CONCURRENCY,
+                  async (chunkMeta, idx) => {
+                    if (signal.aborted) throw new Error('Отменено пользователем.');
+                    const wavBlob = await loadNativeChunkBlob(chunkMeta);
+                    const r = await sendToGroq(
+                      wavBlob,
+                      chunkMeta.fileName || `chunk_${idx}.wav`,
+                      model,
+                      customPrompt,
+                      signal
+                    );
+                    completedChunks++;
+                    setProgress(20 + Math.round((completedChunks / totalChunks) * 36));
+                    statusEl.innerText = `🚀 Распознано ${completedChunks} из ${totalChunks} частей (параллельный режим)...`;
+                    return {
+                      index: idx,
+                      pos: Number(chunkMeta.startSec) || 0,
+                      cutoff: Number(chunkMeta.cutoffSec) || 0,
+                      nextCutoff: Number(chunkMeta.nextCutoffSec) || Infinity,
+                      segments: r.segments || [],
+                      words: r.words || []
+                    };
+                  }
+                );
+
+                // Склеиваем ответы строго в хронологическом порядке (по индексу 0 .. totalChunks - 1)
+                for (let idx = 0; idx < orderedResults.length; idx++) {
+                  const item = orderedResults[idx];
+                  if (!item) continue;
+                  const { pos, cutoff, nextCutoff, segments, words } = item;
+
+                  segments.forEach((seg) => {
+                    const absMid = (seg.start + seg.end) / 2 + pos;
+                    if (absMid < cutoff || absMid >= nextCutoff) return;
+                    allSegments.push({
+                      start: seg.start + pos,
+                      end: seg.end + pos,
+                      text: seg.text
+                    });
+                  });
+
+                  words.forEach((w) => {
+                    const absMid = (w.start + w.end) / 2 + pos;
+                    if (absMid < cutoff || absMid >= nextCutoff) return;
+                    allWords.push({
+                      word: w.word,
+                      start: w.start + pos,
+                      end: w.end + pos
+                    });
+                  });
+                }
+              }
+            } catch (nativeErr) {
+              if (signal.aborted || (nativeErr && nativeErr.message === 'Отменено пользователем.')) {
+                throw nativeErr;
+              }
+              console.warn('Нативный пайплайн недоступен, используем прямой/резервный режим:', nativeErr);
+            } finally {
+              if (bridge && typeof bridge.clearAudioCache === 'function') {
+                try { bridge.clearAudioCache(); } catch (e) {}
               }
             }
           }
 
-          if (!audioBuffer) {
-            statusEl.innerText = 'Отправка напрямую в Groq...';
-            setProgress(25);
-            const r = await sendToGroq(file, file.name, model, customPrompt, signal);
-            r.segments.forEach((s) => allSegments.push({ start: s.start, end: s.end, text: s.text }));
-            r.words.forEach((w) => allWords.push({ word: w.word, start: w.start, end: w.end }));
-          } else {
-            const channelData = audioBuffer.getChannelData(0);
-            const sampleRate = audioBuffer.sampleRate;
-            const chunkDuration = 600;
-            const overlap = 10;
-            const advance = chunkDuration - overlap;
-            const totalDuration = channelData.length / sampleRate;
-            const totalChunks = Math.ceil(totalDuration / advance);
+          // Приоритет 2: Если файл <= 24 МБ (или нативный мост не потребовался), отправляем напрямую без декодирования в JS
+          if (!usedNativePipeline) {
+            if (file.size <= 24 * 1024 * 1024) {
+              statusEl.innerText = '⚡ Прямая отправка файла в Groq...';
+              setProgress(25);
+              const r = await sendToGroq(file, file.name, model, customPrompt, signal);
+              r.segments.forEach((s) => allSegments.push({ start: s.start, end: s.end, text: s.text }));
+              r.words.forEach((w) => allWords.push({ word: w.word, start: w.start, end: w.end }));
+            } else {
+              // Резервный режим только для обычного веб-браузера (вне Android APK) — тоже с параллельной отправкой по 4 чанка!
+              statusEl.innerText = 'Нарезка аудио для параллельной отправки...';
+              setProgress(12);
+              const ab = await file.arrayBuffer();
+              const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+              const audioBuffer = await decodeCtx.decodeAudioData(ab);
+              if (decodeCtx.close) decodeCtx.close();
 
-            let pos = 0;
-            let cutoff = 0;
-            let c = 0;
-            let rollingPrompt = customPrompt;
+              const channelData = audioBuffer.getChannelData(0);
+              const sampleRate = audioBuffer.sampleRate;
+              const chunkDuration = 600;
+              const overlap = 8;
+              const advance = chunkDuration - overlap;
+              const totalDuration = channelData.length / sampleRate;
 
-            while (pos < totalDuration - 0.1) {
-              if (signal.aborted) throw new Error('Отменено пользователем.');
-              const chunkEnd = Math.min(pos + chunkDuration, totalDuration);
-              const isLast = chunkEnd >= totalDuration - 0.1;
-              const nextCutoff = isLast ? totalDuration + 10 : (pos + chunkDuration - overlap / 2);
-
-              setProgress(15 + Math.round((c / Math.max(1, totalChunks)) * 40));
-              statusEl.innerText = `Распознавание: часть ${c + 1} из ${totalChunks} (${Math.round(pos)}–${Math.round(chunkEnd)} с)...`;
-
-              const startSample = Math.floor(pos * sampleRate);
-              const endSample = Math.min(Math.floor(chunkEnd * sampleRate), channelData.length);
-              const chunkSamples = channelData.subarray(startSample, endSample);
-              if (chunkSamples.length < sampleRate) break;
-
-              const wavBlob = encodeWAV(chunkSamples, sampleRate);
-              const r = await sendToGroq(wavBlob, `chunk_${c}.wav`, model, rollingPrompt, signal);
-
-              r.segments.forEach((seg) => {
-                const absMid = (seg.start + seg.end) / 2 + pos;
-                if (absMid < cutoff || absMid >= nextCutoff) return;
-                allSegments.push({ start: seg.start + pos, end: seg.end + pos, text: seg.text });
-              });
-              r.words.forEach((w) => {
-                const absMid = (w.start + w.end) / 2 + pos;
-                if (absMid < cutoff || absMid >= nextCutoff) return;
-                allWords.push({ word: w.word, start: w.start + pos, end: w.end + pos });
-              });
-
-              if (allSegments.length) {
-                const tailText = allSegments.slice(-2).map(s => s.text).join(' ');
-                rollingPrompt = (customPrompt ? customPrompt + '. ' : '') + tailText;
+              const webChunks = [];
+              let pos = 0;
+              let cutoff = 0;
+              let idx = 0;
+              while (pos < totalDuration - 0.1) {
+                const chunkEnd = Math.min(pos + chunkDuration, totalDuration);
+                const isLast = chunkEnd >= totalDuration - 0.1;
+                const nextCutoff = isLast ? totalDuration + 100 : (pos + chunkDuration - overlap / 2);
+                const startSample = Math.floor(pos * sampleRate);
+                const endSample = Math.min(Math.floor(chunkEnd * sampleRate), channelData.length);
+                if (endSample - startSample >= sampleRate) {
+                  webChunks.push({
+                    index: idx,
+                    pos,
+                    cutoff,
+                    nextCutoff,
+                    startSample,
+                    endSample
+                  });
+                }
+                cutoff = nextCutoff;
+                pos += advance;
+                idx++;
               }
 
-              cutoff = nextCutoff;
-              pos += advance;
-              c++;
+              let completedChunks = 0;
+              const totalChunks = webChunks.length;
+              const orderedResults = await runWithConcurrency(
+                webChunks,
+                PARALLEL_CHUNK_CONCURRENCY,
+                async (ch, cIdx) => {
+                  if (signal.aborted) throw new Error('Отменено пользователем.');
+                  const chunkSamples = channelData.subarray(ch.startSample, ch.endSample);
+                  const wavBlob = encodeWAV(chunkSamples, sampleRate);
+                  const r = await sendToGroq(wavBlob, `chunk_${cIdx}.wav`, model, customPrompt, signal);
+                  completedChunks++;
+                  setProgress(18 + Math.round((completedChunks / Math.max(1, totalChunks)) * 38));
+                  statusEl.innerText = `🚀 Распознано ${completedChunks} из ${totalChunks} частей (параллельно)...`;
+                  return {
+                    index: cIdx,
+                    pos: ch.pos,
+                    cutoff: ch.cutoff,
+                    nextCutoff: ch.nextCutoff,
+                    segments: r.segments || [],
+                    words: r.words || []
+                  };
+                }
+              );
+
+              for (let cIdx = 0; cIdx < orderedResults.length; cIdx++) {
+                const item = orderedResults[cIdx];
+                if (!item) continue;
+                item.segments.forEach((seg) => {
+                  const absMid = (seg.start + seg.end) / 2 + item.pos;
+                  if (absMid < item.cutoff || absMid >= item.nextCutoff) return;
+                  allSegments.push({ start: seg.start + item.pos, end: seg.end + item.pos, text: seg.text });
+                });
+                item.words.forEach((w) => {
+                  const absMid = (w.start + w.end) / 2 + item.pos;
+                  if (absMid < item.cutoff || absMid >= item.nextCutoff) return;
+                  allWords.push({ word: w.word, start: w.start + item.pos, end: w.end + item.pos });
+                });
+              }
             }
           }
 

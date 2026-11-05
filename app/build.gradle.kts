@@ -11,8 +11,8 @@ android {
         applicationId = "com.fromsub.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -69,13 +69,12 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
 
-    // AndroidX Media3 ExoPlayer (Hardware-accelerated MKV/HEVC playback)
     val media3Version = "1.4.1"
     implementation("androidx.media3:media3-exoplayer:$media3Version")
     implementation("androidx.media3:media3-ui:$media3Version")
     implementation("androidx.media3:media3-common:$media3Version")
     implementation("androidx.media3:media3-extractor:$media3Version")
 
-    // WebView enhancements
     implementation("androidx.webkit:webkit:1.11.0")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }

@@ -289,6 +289,10 @@ fun HybridVideoApp(
                         databaseEnabled = true
                         allowFileAccess = true
                         allowContentAccess = true
+                        @Suppress("DEPRECATION")
+                        allowFileAccessFromFileURLs = true
+                        @Suppress("DEPRECATION")
+                        allowUniversalAccessFromFileURLs = true
                         mediaPlaybackRequiresUserGesture = false
                         mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                         cacheMode = WebSettings.LOAD_DEFAULT
@@ -314,6 +318,7 @@ fun HybridVideoApp(
                         }
                     }
 
+                    exoPlayerManager.attachWebView(this)
                     loadUrl("file:///android_asset/index.html")
                     onWebViewCreated(this)
                 }
