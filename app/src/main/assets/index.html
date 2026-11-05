@@ -3466,63 +3466,69 @@
               if (m4aChunks.length > 0) {
                 usedNativePipeline = true;
                 const totalChunks = m4aChunks.length;
-                let rollingPrompt = customPrompt;
+                let completedChunks = 0;
+                let latestRollingPrompt = customPrompt;
 
-                // Предзагрузка первого .m4a чанка из cacheDir
-                let nextBlobPromise = loadNativeM4aBlob(m4aChunks[0]);
+                // Параллельно отправляем до 4 .m4a чанков одновременно и передаём контекст (prompt) из последних распознанных предложений
+                const orderedResults = await runWithConcurrency(
+                  m4aChunks,
+                  4,
+                  async (chunkMeta, idx) => {
+                    if (signal.aborted) throw new Error('Отменено пользователем.');
+                    const pos = Number(chunkMeta.startSec) || 0;
+                    const endSec = Number(chunkMeta.endSec) || pos;
+                    const m4aBlob = await loadNativeM4aBlob(chunkMeta);
 
-                for (let idx = 0; idx < totalChunks; idx++) {
-                  if (signal.aborted) throw new Error('Отменено пользователем.');
-                  const chunkMeta = m4aChunks[idx];
-                  const pos = Number(chunkMeta.startSec) || 0;
-                  const endSec = Number(chunkMeta.endSec) || pos;
+                    const r = await sendToGroq(
+                      m4aBlob,
+                      chunkMeta.fileName || `chunk_${idx}.m4a`,
+                      model,
+                      latestRollingPrompt,
+                      signal
+                    );
 
-                  const m4aBlob = await nextBlobPromise;
-                  // Пока текущий .m4a отправляется в Groq, параллельно подгружаем следующий .m4a с диска
-                  if (idx + 1 < totalChunks) {
-                    nextBlobPromise = loadNativeM4aBlob(m4aChunks[idx + 1]);
+                    const segs = r.segments || [];
+                    const lastSentences = extractLastSentences(segs, 3);
+                    if (lastSentences) {
+                      latestRollingPrompt = (customPrompt ? customPrompt + '. ' : '') + lastSentences;
+                    }
+
+                    completedChunks++;
+                    const progressMsg = `🚀 Распознано M4A: ${completedChunks} из ${totalChunks} (${Math.round(pos)}–${Math.round(endSec)} с)...`;
+                    statusEl.innerText = progressMsg;
+                    setProgress(22 + Math.round((completedChunks / totalChunks) * 35));
+                    if (bridge && typeof bridge.updateForegroundNotification === 'function') {
+                      try { bridge.updateForegroundNotification(progressMsg); } catch (e) {}
+                    }
+
+                    return {
+                      index: idx,
+                      pos,
+                      segments: segs,
+                      words: r.words || []
+                    };
                   }
+                );
 
-                  const progressMsg = `🚀 Распознавание M4A: часть ${idx + 1} из ${totalChunks} (${Math.round(pos)}–${Math.round(endSec)} с)...`;
-                  statusEl.innerText = progressMsg;
-                  setProgress(22 + Math.round((idx / totalChunks) * 35));
-                  if (bridge && typeof bridge.updateForegroundNotification === 'function') {
-                    try { bridge.updateForegroundNotification(progressMsg); } catch (e) {}
-                  }
-
-                  // 3. Передаём контекст (последние 2–3 предложения из предыдущего куска) в параметр prompt FormData
-                  const r = await sendToGroq(
-                    m4aBlob,
-                    chunkMeta.fileName || `chunk_${idx}.m4a`,
-                    model,
-                    rollingPrompt,
-                    signal
-                  );
-
-                  const segs = r.segments || [];
-                  const words = r.words || [];
-
-                  segs.forEach((seg) => {
+                // Строгая хронологическая склейка по индексу чанка (0 .. totalChunks - 1)
+                for (let idx = 0; idx < orderedResults.length; idx++) {
+                  const item = orderedResults[idx];
+                  if (!item) continue;
+                  const pos = item.pos;
+                  item.segments.forEach((seg) => {
                     allSegments.push({
                       start: seg.start + pos,
                       end: seg.end + pos,
                       text: seg.text
                     });
                   });
-
-                  words.forEach((w) => {
+                  item.words.forEach((w) => {
                     allWords.push({
                       word: w.word,
                       start: w.start + pos,
                       end: w.end + pos
                     });
                   });
-
-                  // Формируем prompt из последних 2–3 предложений текущего успешно распознанного куска для следующего куска
-                  const lastSentences = extractLastSentences(segs, 3);
-                  if (lastSentences) {
-                    rollingPrompt = (customPrompt ? customPrompt + '. ' : '') + lastSentences;
-                  }
                 }
               }
             } catch (nativeErr) {
