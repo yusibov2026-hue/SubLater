@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.PermissionRequest
@@ -20,17 +21,20 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
@@ -88,6 +92,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Приятный серый фон для системных баров вместо чёрного
+        val grayBg = Color.parseColor("#24272D")
+        window.statusBarColor = grayBg
+        window.navigationBarColor = grayBg
 
         exoPlayerManager = ExoPlayerManager(applicationContext)
 
@@ -160,12 +169,17 @@ fun HybridVideoApp(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(ComposeColor(0xFF121212))
+            .background(ComposeColor(0xFF24272D))
     ) {
         val maxW = maxWidth
         val maxH = maxHeight
 
-        val playerModifier = if (bounds.isFullscreen) {
+        val playerModifier = if (!bounds.isVisible) {
+            Modifier
+                .width(0.dp)
+                .height(0.dp)
+                .alpha(0f)
+        } else if (bounds.isFullscreen) {
             Modifier.fillMaxSize()
         } else {
             Modifier
@@ -175,16 +189,17 @@ fun HybridVideoApp(
                 )
                 .width(maxW * bounds.widthRatio)
                 .height(maxH * bounds.heightRatio)
+                .clip(RoundedCornerShape(16.dp))
         }
 
-        // Layer 1 (Background): Native AndroidX Media3 ExoPlayer
+        // Layer 1 (Background): Native AndroidX Media3 ExoPlayer with TextureView for clean clipping & z-order
         AndroidView(
             factory = { ctx ->
-                PlayerView(ctx).apply {
+                (LayoutInflater.from(ctx).inflate(R.layout.player_view, null, false) as PlayerView).apply {
                     player = exoPlayerManager.exoPlayer
                     useController = false
                     this.resizeMode = resizeMode
-                    setShutterBackgroundColor(Color.BLACK)
+                    setShutterBackgroundColor(Color.parseColor("#181A20"))
                     setKeepContentOnPlayerReset(true)
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -198,7 +213,7 @@ fun HybridVideoApp(
             modifier = playerModifier
         )
 
-        // Layer 2 (Foreground): Transparent WebView with index.html and ExoPlayerManager JS Bridge
+        // Layer 2 (Foreground): Transparent WebView with SubLater UI & Custom Subtitle Overlay
         AndroidView(
             factory = { ctx ->
                 WebView(ctx).apply {

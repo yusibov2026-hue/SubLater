@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#121212">
+  <meta name="theme-color" content="#24272d">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="GROQ SUBS">
-  <title>GROQ SUBS</title>
+  <meta name="apple-mobile-web-app-title" content="SubLater">
+  <title>SubLater</title>
 
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='26' fill='%23181818' stroke='%2300e5ff' stroke-width='6'/><text x='50' y='64' font-family='sans-serif' font-weight='900' font-size='38' fill='%2300e5ff' text-anchor='middle'>SUB</text></svg>">
-  <link rel="manifest" href='data:application/manifest+json,{"name":"GROQ SUBS","short_name":"GROQ SUBS","start_url":".","display":"standalone","background_color":"#121212","theme_color":"#00e5ff","icons":[{"src":"data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" rx=\"26\" fill=\"%23181818\"/><text x=\"50\" y=\"64\" font-family=\"sans-serif\" font-weight=\"900\" font-size=\"38\" fill=\"%2300e5ff\" text-anchor=\"middle\">SUB</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='26' fill='%2324272d' stroke='%230099ff' stroke-width='6'/><text x='50' y='64' font-family='sans-serif' font-weight='900' font-size='38' fill='%230099ff' text-anchor='middle'>SUB</text></svg>">
+  <link rel="manifest" href='data:application/manifest+json,{"name":"SubLater","short_name":"SubLater","start_url":".","display":"standalone","background_color":"#24272d","theme_color":"#0099ff","icons":[{"src":"data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" rx=\"26\" fill=\"%2324272d\"/><text x=\"50\" y=\"64\" font-family=\"sans-serif\" font-weight=\"900\" font-size=\"38\" fill=\"%230099ff\" text-anchor=\"middle\">SUB</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,7 +23,11 @@
       --sub-bottom: 12%;
       --sub-font: 'Inter', -apple-system, sans-serif;
       --bg-opacity: 62;
-      --accent: #00e5ff;
+      --accent: #0099ff;
+      --bg-main: #24272d;
+      --bg-surface: #2f333b;
+      --bg-elevated: #2a2e36;
+      --border-soft: #3e434f;
     }
 
     * {
@@ -33,14 +37,27 @@
       touch-action: manipulation;
     }
 
+    html {
+      background: var(--bg-main);
+    }
+
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       -webkit-font-smoothing: antialiased;
-      background: #121212;
-      color: #fff;
+      background: var(--bg-main);
+      color: #f3f4f6;
       padding: 20px;
       max-width: 640px;
       margin: auto;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    #appTopSection {
+      background: var(--bg-main);
+      position: relative;
+      z-index: 5;
+      padding-bottom: 4px;
     }
 
     .app-header {
@@ -64,7 +81,7 @@
     #settingsToggle {
       width: 44px; height: 44px;
       border-radius: 13px;
-      background: #1e1e1e;
+      background: var(--bg-surface);
       border: 1.5px solid var(--accent);
       color: var(--accent);
       box-shadow: 0 0 5px color-mix(in srgb, var(--accent) 10%, transparent);
@@ -79,14 +96,14 @@
         box-shadow 0.25s ease;
     }
     #settingsToggle:hover {
-      background: color-mix(in srgb, var(--accent) 14%, #1e1e1e);
+      background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
     }
     #settingsToggle:active {
       transform: scale(0.88) rotate(90deg);
     }
     #settingsToggle.open { 
       transform: rotate(225deg); 
-      background: color-mix(in srgb, var(--accent) 18%, #1e1e1e);
+      background: color-mix(in srgb, var(--accent) 18%, var(--bg-surface));
       box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 18%, transparent);
     }
     #settingsToggle svg { width: 22px; height: 22px; fill: currentColor; }
@@ -109,8 +126,8 @@
       transform: translate(-50%, -46%) scale(0.92);
       width: 92%; max-width: 400px;
       max-height: 85vh; overflow-y: auto;
-      background: #181818;
-      border: 1px solid #2a2a2a;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-soft);
       border-radius: 20px;
       padding: 20px;
       z-index: 100;
@@ -132,7 +149,7 @@
     .settings-header {
       display: flex; justify-content: space-between; align-items: center;
       font-size: 16px; font-weight: 700; color: var(--accent);
-      border-bottom: 1px solid #2a2a2a; padding-bottom: 10px; margin-bottom: 4px;
+      border-bottom: 1px solid var(--border-soft); padding-bottom: 10px; margin-bottom: 4px;
     }
     .close-btn {
       background: #2a2a2a; border: none; color: #ccc;
@@ -180,8 +197,8 @@
 
     input:not([type="color"]):not([type="range"]):not([type="checkbox"]), select {
       width: 100%; padding: 13px 14px; margin: 6px 0;
-      border-radius: 12px; border: 1px solid #2a2a2a;
-      background: #1e1e1e; color: #fff;
+      border-radius: 12px; border: 1px solid var(--border-soft);
+      background: var(--bg-surface); color: #fff;
       font-family: inherit; font-size: 14px;
       transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
     }
@@ -198,7 +215,7 @@
     .file-box {
       display: flex; align-items: center; gap: 12px;
       padding: 8px 12px; margin: 6px 0;
-      border-radius: 12px; border: 1px solid #2a2a2a; background: #1e1e1e;
+      border-radius: 12px; border: 1px solid var(--border-soft); background: var(--bg-surface);
       cursor: pointer; user-select: none;
       transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease;
     }
@@ -257,7 +274,7 @@
 
     #progressWrap {
       width: 92%; height: 5px; margin: 4px auto 8px;
-      background: #222; border-radius: 4px; overflow: hidden; display: none;
+      background: #323741; border-radius: 4px; overflow: hidden; display: none;
     }
     #progressBar {
       width: 0%; height: 100%; background: var(--accent);
@@ -275,7 +292,7 @@
       margin: 0;
       padding: 13px 14px;
       border-radius: 999px;
-      background: #1e1e1e;
+      background: var(--bg-surface);
       color: var(--accent);
       border: 1.5px solid var(--accent);
       font-family: inherit;
@@ -293,16 +310,16 @@
         background 0.2s ease, 
         box-shadow 0.2s ease;
     }
-    .action-row select option { background: #121212; color: #fff; }
+    .action-row select option { background: var(--bg-elevated); color: #fff; }
     .action-row select:hover,
     #dlBtn:hover {
-      background: color-mix(in srgb, var(--accent) 14%, #1e1e1e);
+      background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
       box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 14%, transparent);
     }
     .action-row select:active,
     #dlBtn:active {
       transform: scale(0.93);
-      background: color-mix(in srgb, var(--accent) 22%, #1e1e1e);
+      background: color-mix(in srgb, var(--accent) 22%, var(--bg-surface));
     }
     
     #openBtn {
@@ -334,8 +351,8 @@
 
     /* Панель ИИ-видео в стиле YouTube (Вопросы по видео с Gemini) */
     #aiSummaryBox {
-      background: #161616;
-      border: 1px solid #2c2c2c;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-soft);
       border-radius: 18px;
       padding: 14px;
       margin: 14px 0;
@@ -411,7 +428,7 @@
     }
     .ai-Prompts-row::-webkit-scrollbar { display: none; }
     .ai-prompt-chip {
-      background: #222;
+      background: #323741;
       border: 1px solid #333;
       color: #e4e4e4;
       padding: 7px 12px;
@@ -458,7 +475,7 @@
     }
     .ai-msg.bot {
       align-self: flex-start;
-      background: #202020;
+      background: #323741;
       border: 1px solid #2e2e2e;
       color: #e8e8e8;
       border-bottom-left-radius: 4px;
@@ -491,7 +508,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      background: #202020;
+      background: #323741;
       border: 1px solid #333;
       border-radius: 999px;
       padding: 4px 6px 4px 14px;
@@ -531,7 +548,7 @@
     #aiSendBtn svg { width: 17px; height: 17px; fill: currentColor; }
 
     #vttPanel {
-      background: #181818; padding: 12px; border-radius: 14px; border: 1px solid #2a2a2a;
+      background: var(--bg-elevated); padding: 12px; border-radius: 14px; border: 1px solid var(--border-soft);
       overflow-x: auto; max-height: 210px; font-size: 12px; white-space: pre-wrap;
       font-family: 'Consolas', 'Monaco', monospace; color: #ddd; cursor: pointer; margin-bottom: 12px;
       transition: transform 0.2s ease, border-color 0.2s ease;
@@ -543,53 +560,60 @@
       position: relative;
       display: none;
       width: 100%;
-      margin: 14px auto 0;
+      min-height: 200px;
+      margin: 14px auto 24px;
       padding: 0;
-      background: #000;
+      background: #181a20;
       border-radius: 16px;
       overflow: hidden;
-      border: 1px solid #1a1a1a;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      border: 1.5px solid var(--border-soft);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
       align-items: center;
       justify-content: center;
       aspect-ratio: 16/9;
+      z-index: 2;
+      touch-action: manipulation;
     }
     
-    video {
+    video#videoPlayer {
       width: 100%;
       height: 100%;
       max-height: 75vh;
       margin: 0 auto;
       padding: 0;
       display: block;
-      background: #000;
+      background: transparent;
       object-fit: contain;
       object-position: center center;
       border: none;
       outline: none;
       transition: transform 0.2s ease;
     }
-    video.fill-crop { object-fit: cover; }
-    video.fill-stretch { object-fit: fill; }
+    video#videoPlayer.fill-crop { object-fit: cover; }
+    video#videoPlayer.fill-stretch { object-fit: fill; }
     
     #playerContainer:fullscreen,
-    #playerContainer:-webkit-full-screen {
-      width: 100vw;
-      height: 100vh;
-      max-width: none;
-      margin: 0;
-      padding: 0;
-      inset: 0;
-      aspect-ratio: auto;
-      border: none;
-      border-radius: 0;
-      display: flex;
+    #playerContainer:-webkit-full-screen,
+    #playerContainer.is-fullscreen {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      aspect-ratio: auto !important;
+      border: none !important;
+      border-radius: 0 !important;
+      display: flex !important;
       align-items: center;
       justify-content: center;
-      background: #000;
+      background: #14161b;
+      z-index: 95 !important;
     }
-    #playerContainer:fullscreen video,
-    #playerContainer:-webkit-full-screen video {
+    #playerContainer:fullscreen video#videoPlayer,
+    #playerContainer:-webkit-full-screen video#videoPlayer,
+    #playerContainer.is-fullscreen video#videoPlayer {
       width: 100%;
       height: 100%;
       max-height: 100vh;
@@ -751,27 +775,31 @@
 
     .hidden { display: none !important; }
 
-    html.native-exo-mode,
-    body.native-exo-mode {
+    /* Гибридный режим Android ExoPlayer: серый фон вокруг плеера + прозрачное окно ровно внутри #playerContainer */
+    html.native-exo-active,
+    body.native-exo-active {
       background: transparent !important;
     }
-    body.native-exo-mode #playerContainer {
+    body.native-exo-active #playerContainer {
       background: transparent !important;
-      box-shadow: none;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35), 0 0 0 2000px var(--bg-main) !important;
     }
-    body.native-exo-mode #playerContainer:fullscreen,
-    body.native-exo-mode #playerContainer:-webkit-full-screen {
+    body.native-exo-active #playerContainer:fullscreen,
+    body.native-exo-active #playerContainer:-webkit-full-screen,
+    body.native-exo-active #playerContainer.is-fullscreen {
       background: transparent !important;
+      box-shadow: none !important;
     }
-    body.native-exo-mode video#videoPlayer {
+    body.native-exo-active video#videoPlayer {
       opacity: 0 !important;
-      background: transparent !important;
+      pointer-events: none !important;
     }
   </style>
 </head>
 <body>
+  <div id="appTopSection">
   <header class="app-header">
-    <h2>GROQ SUBS</h2>
+    <h2>SubLater</h2>
     <button id="settingsToggle" aria-label="Настройки">
       <svg viewBox="0 0 24 24">
         <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
@@ -789,7 +817,7 @@
     
     <div class="global-row">
       <span>Цвет акцента</span>
-      <input type="color" id="accentColor" value="#00e5ff">
+      <input type="color" id="accentColor" value="#0099ff">
     </div>
     
     <div class="global-row">
@@ -818,12 +846,12 @@
       </label>
     </div>
 
-    <div class="global-row" style="margin-top: 10px; border-top: 1px solid #2a2a2a; padding-top: 14px;">
+    <div class="global-row" style="margin-top: 10px; border-top: 1px solid var(--border-soft); padding-top: 14px;">
       <span>API Ключи Groq (Субтитры)</span>
     </div>
     <input type="password" id="apiKey" placeholder="Ключ(и) Groq (gsk_1..., gsk_2...)" style="margin:0 0 6px 0;" />
 
-    <div class="global-row" style="margin-top: 6px; border-top: 1px solid #2a2a2a; padding-top: 12px;">
+    <div class="global-row" style="margin-top: 6px; border-top: 1px solid var(--border-soft); padding-top: 12px;">
       <span>API Ключ Gemini (ИИ-видео)</span>
     </div>
     <input type="password" id="geminiApiKey" placeholder="Ключ Gemini (AIzaSy...)" style="margin:0 0 6px 0;" />
@@ -946,9 +974,10 @@
   <div id="vttPanelWrapper">
     <pre id="vttPanel" class="hidden" title="Нажмите, чтобы скопировать текст"></pre>
   </div>
+  </div><!-- /#appTopSection -->
 
   <div id="playerContainer">
-    <video id="videoPlayer" playsinline></video>
+    <video id="videoPlayer" playsinline poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
 
     <div id="subtitleOverlay">
       <div id="subtitleText" class="bg-on"></div>
@@ -1011,6 +1040,9 @@
     </div>
 
     <div id="playerControls">
+      <button class="ctrl-btn" id="playPauseBtn" aria-label="Воспроизведение / Пауза">
+        <svg id="playPauseIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </button>
       <span id="timeText">0:00 / 0:00</span>
       <input type="range" id="seekBar" min="0" max="100" value="0" step="0.1">
       
@@ -1077,24 +1109,24 @@
       try { localStorage.setItem(k, v); } catch (e) {}
     }
 
-    /* ---------------- Акцентный цвет ---------------- */
+    /* ---------------- Акцентный цвет (по умолчанию #0099ff — середина между голубым и синим) ---------------- */
+    const DEFAULT_ACCENT = '#0099ff';
     const accentColorEl = $('accentColor');
-    const savedAccent = safeGetStorage('groq_accent', '#00e5ff');
+    const savedAccent = safeGetStorage('sublater_accent', DEFAULT_ACCENT);
     accentColorEl.value = savedAccent;
     document.documentElement.style.setProperty('--accent', savedAccent);
 
-    /* ---------------- Мульти-ключ API Groq и Gemini ---------------- */
+    /* ---------------- Ключи API Groq и Gemini (без захардкоженных ключей) ---------------- */
     const keyInput = $('apiKey');
     const geminiKeyInput = $('geminiApiKey');
     const geminiModelSelect = $('geminiModel');
     const aiActiveModelBadge = $('aiActiveModelBadge');
-    const defaultKeys = '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, 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';
-    
-    if (!safeGetStorage('groq_key')) {
-      safeSetStorage('groq_key', defaultKeys);
-    }
-    keyInput.value = safeGetStorage('groq_key', defaultKeys);
-    keyInput.addEventListener('input', () => safeSetStorage('groq_key', keyInput.value.trim()));
+
+    // Полностью очищаем случайно сохранённый старый ключ из localStorage
+    try { localStorage.removeItem('groq_key'); } catch (e) {}
+
+    keyInput.value = safeGetStorage('sublater_groq_key', '');
+    keyInput.addEventListener('input', () => safeSetStorage('sublater_groq_key', keyInput.value.trim()));
 
     geminiKeyInput.value = safeGetStorage('gemini_key', '');
     geminiKeyInput.addEventListener('input', () => safeSetStorage('gemini_key', geminiKeyInput.value.trim()));
@@ -1312,7 +1344,7 @@
     accentColorEl.addEventListener('input', (e) => {
       const color = e.target.value;
       document.documentElement.style.setProperty('--accent', color);
-      safeSetStorage('groq_accent', color);
+      safeSetStorage('sublater_accent', color);
       if (cues.length) {
         exportData.ass = generateASS(cues);
         if (exportFormat.value === 'ass') updateExportPreview();
@@ -1378,6 +1410,8 @@
     });
 
     /* ---------------- Плеер ---------------- */
+    const playPauseBtn = $('playPauseBtn');
+    const playPauseIcon = $('playPauseIcon');
     const seekBar = $('seekBar');
     const timeText = $('timeText');
     const fsBtn = $('fsBtn');
@@ -1404,14 +1438,24 @@
       timeText.innerText = `${formatTime(videoEl.currentTime)} / ${formatTime(videoEl.duration)}`;
     }
 
+    function syncPlayPauseIcon() {
+      if (!playPauseIcon) return;
+      playPauseIcon.innerHTML = videoEl.paused
+        ? '<path d="M8 5v14l11-7z"/>'
+        : '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+    }
+
     function updatePlayState() {
+      syncPlayPauseIcon();
       if (videoEl.paused) {
         controlsEl.classList.remove('hidden-controls');
         clearTimeout(hideControlsTimer);
         stopRenderLoop();
         releaseWakeLock();
       } else {
-        initAudio();
+        if (!window.ExoPlayerManager && !window.AndroidBridge) {
+          initAudio();
+        }
         requestWakeLock();
         showControls();
         startRenderLoop();
@@ -1446,7 +1490,9 @@
     }
 
     function togglePlay() {
-      initAudio();
+      if (!window.ExoPlayerManager && !window.AndroidBridge) {
+        initAudio();
+      }
       if (videoEl.paused) {
         videoEl.play().catch(() => {});
         showPlayFlash(true);
@@ -1454,7 +1500,14 @@
         videoEl.pause();
         showPlayFlash(false);
       }
+      syncPlayPauseIcon();
     }
+
+    playPauseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      togglePlay();
+      showControls();
+    });
 
     videoEl.addEventListener('play', updatePlayState);
     videoEl.addEventListener('pause', updatePlayState);
@@ -1475,12 +1528,29 @@
       updateSubtitleFrame();
     });
 
-    fsBtn.addEventListener('click', () => {
-      if (!document.fullscreenElement) {
-        playerBox.requestFullscreen?.().catch(()=>{});
+    function toggleFullscreen() {
+      const isCssFs = playerBox.classList.contains('is-fullscreen');
+      const isDomFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      if (!isCssFs && !isDomFs) {
+        playerBox.classList.add('is-fullscreen');
+        if (playerBox.requestFullscreen && !window.ExoPlayerManager && !window.AndroidBridge) {
+          playerBox.requestFullscreen().catch(() => {});
+        }
       } else {
-        document.exitFullscreen?.();
+        playerBox.classList.remove('is-fullscreen');
+        if (isDomFs && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
       }
+      setTimeout(() => {
+        updateOverlayGeometry();
+        if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
+      }, 60);
+    }
+
+    fsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleFullscreen();
     });
 
     settingsBtn.addEventListener('click', (e) => {
@@ -1536,8 +1606,9 @@
     let seekAccum = 0;
     let firstTapPlayState = null;
 
-    videoEl.addEventListener('click', (e) => {
-      const rect = videoEl.getBoundingClientRect();
+    playerBox.addEventListener('click', (e) => {
+      if (controlsEl.contains(e.target) || settingsMenu.contains(e.target)) return;
+      const rect = playerBox.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const side = x < rect.width / 2 ? 'left' : 'right';
 
@@ -1631,6 +1702,7 @@
       if (f) {
         currentFileName = f.name.replace(/\.[^/.]+$/, '');
         applySettings();
+        setupPlayer(f);
       }
       aiSummaryBox.classList.remove('show');
       updateButtonLabel();
@@ -1716,7 +1788,7 @@
       if (bridge && typeof bridge.saveSubtitleFile === 'function') {
         const ok = bridge.saveSubtitleFile(`${currentFileName}.${fmt}`, content, fmt);
         if (ok) {
-          statusEl.innerText = `✅ Файл ${currentFileName}.${fmt} сохранён в папку «Загрузки» телефона!`;
+          statusEl.innerText = `✅ Файл ${currentFileName}.${fmt} сохранён в папку «Загрузки»!`;
           return;
         }
       }
@@ -1738,11 +1810,24 @@
 
     vttPanel.addEventListener('click', () => {
       if (!vttPanel.innerText) return;
-      navigator.clipboard?.writeText(vttPanel.innerText).then(() => {
+      const showCopied = () => {
         const prev = statusEl.innerText;
         statusEl.innerText = 'Текст субтитров скопирован в буфер обмена!';
         setTimeout(() => { statusEl.innerText = prev; }, 2000);
-      }).catch(() => {});
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(vttPanel.innerText).then(showCopied).catch(() => {
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = vttPanel.innerText;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+            showCopied();
+          } catch (e) {}
+        });
+      }
     });
 
     /* ---------------- ИИ-видео в стиле YouTube (Вопросы по видео через Gemini API) ---------------- */
@@ -2395,6 +2480,10 @@
       playerBox.style.display = 'flex';
       videoEl.playbackRate = parseFloat(speedSlider.value) || 1;
       playerActive = true;
+      if (bridge) {
+        document.documentElement.classList.add('native-exo-active');
+        document.body.classList.add('native-exo-active');
+      }
 
       currentCueIdx = -2;
       wordSpans = [];
@@ -2405,6 +2494,11 @@
       updatePlayState();
       updateOverlayGeometry();
       updateSubtitleFrame();
+      if (window.__syncNativePlayerBounds) {
+        window.__syncNativePlayerBounds();
+        requestAnimationFrame(() => window.__syncNativePlayerBounds());
+        setTimeout(() => window.__syncNativePlayerBounds(), 120);
+      }
     }
 
     function startRenderLoop() {
@@ -2737,18 +2831,23 @@
       return new Blob([buffer], { type: 'audio/wav' });
     }
 
-
-    /* ================ ГИБРИДНЫЙ МОСТ ANDROID EXOPLAYER (40ms SYNC) ================ */
+    /* ==================== ГИБРИДНЫЙ МОСТ ANDROID EXOPLAYER ==================== */
     const nativeBridge = window.ExoPlayerManager || window.AndroidBridge || null;
     if (nativeBridge) {
-      document.documentElement.classList.add('native-exo-mode');
-      document.body.classList.add('native-exo-mode');
-
       let nativePaused = true;
       let nativeCurrentTime = 0;
       let nativeDuration = 0;
+      let lastUserPlayActionAt = 0;
 
-      // Shim videoEl properties so existing subtitle & UI code works seamlessly with native ExoPlayer
+      // Сразу прячем нативный плеер на старте, пока #playerContainer ещё не открыт
+      try {
+        if (typeof nativeBridge.setPlayerVisibility === 'function') {
+          nativeBridge.setPlayerVisibility(false);
+        } else if (typeof nativeBridge.setPlayerBounds === 'function') {
+          nativeBridge.setPlayerBounds(-2000, -2000, 1, 1, 1000, 1000, false);
+        }
+      } catch (e) {}
+
       try {
         Object.defineProperty(videoEl, 'currentTime', {
           get() {
@@ -2758,6 +2857,7 @@
           set(val) {
             const sec = Math.max(0, Number(val) || 0);
             nativeCurrentTime = sec;
+            lastUserPlayActionAt = Date.now();
             try { nativeBridge.seekTo(sec); } catch (e) {}
           },
           configurable: true
@@ -2775,8 +2875,15 @@
 
         Object.defineProperty(videoEl, 'paused', {
           get() {
-            try { return !nativeBridge.isPlaying(); }
-            catch (e) { return nativePaused; }
+            if (Date.now() - lastUserPlayActionAt < 320) {
+              return nativePaused;
+            }
+            try {
+              if (typeof nativeBridge.isPlaying === 'function') {
+                return !Boolean(nativeBridge.isPlaying());
+              }
+              return nativePaused;
+            } catch (e) { return nativePaused; }
           },
           configurable: true
         });
@@ -2799,8 +2906,10 @@
 
         videoEl.play = function () {
           try {
-            nativeBridge.play();
             nativePaused = false;
+            lastUserPlayActionAt = Date.now();
+            nativeBridge.play();
+            syncPlayPauseIcon();
             videoEl.dispatchEvent(new Event('play'));
           } catch (e) {}
           return Promise.resolve();
@@ -2808,8 +2917,10 @@
 
         videoEl.pause = function () {
           try {
-            nativeBridge.pause();
             nativePaused = true;
+            lastUserPlayActionAt = Date.now();
+            nativeBridge.pause();
+            syncPlayPauseIcon();
             videoEl.dispatchEvent(new Event('pause'));
           } catch (e) {}
         };
@@ -2818,10 +2929,24 @@
       }
 
       function syncNativePlayerBounds() {
-        if (!playerActive) return;
+        if (!playerActive || playerBox.style.display === 'none') {
+          try {
+            if (typeof nativeBridge.setPlayerVisibility === 'function') {
+              nativeBridge.setPlayerVisibility(false);
+            }
+          } catch (e) {}
+          return;
+        }
         try {
+          if (typeof nativeBridge.setPlayerVisibility === 'function') {
+            nativeBridge.setPlayerVisibility(true);
+          }
           const rect = playerBox.getBoundingClientRect();
-          const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+          const isFs = Boolean(
+            playerBox.classList.contains('is-fullscreen') ||
+            document.fullscreenElement ||
+            document.webkitFullscreenElement
+          );
           nativeBridge.setPlayerBounds(
             rect.left,
             rect.top,
@@ -2834,23 +2959,27 @@
         } catch (e) {}
       }
 
+      window.__syncNativePlayerBounds = syncNativePlayerBounds;
       window.addEventListener('scroll', syncNativePlayerBounds, { passive: true });
       window.addEventListener('resize', syncNativePlayerBounds);
       document.addEventListener('fullscreenchange', syncNativePlayerBounds);
 
-      // High-precision 40ms native ExoPlayer synchronization timer (YouTube-grade subtitle timing)
       setInterval(() => {
         if (!playerActive) return;
         try {
-          const playingNow = Boolean(nativeBridge.isPlaying());
-          if (playingNow === nativePaused) {
-            nativePaused = !playingNow;
-            videoEl.dispatchEvent(new Event(playingNow ? 'play' : 'pause'));
+          if (Date.now() - lastUserPlayActionAt >= 320) {
+            const playingNow = Boolean(nativeBridge.isPlaying());
+            if (playingNow === nativePaused) {
+              nativePaused = !playingNow;
+              syncPlayPauseIcon();
+              videoEl.dispatchEvent(new Event(playingNow ? 'play' : 'pause'));
+            }
           }
           nativeCurrentTime = Number(nativeBridge.getCurrentTime()) || 0;
           const dur = Number(nativeBridge.getDuration()) || 0;
           if (dur > 0 && Math.abs(dur - nativeDuration) > 0.1) {
             nativeDuration = dur;
+            updateOverlayGeometry();
             videoEl.dispatchEvent(new Event('loadedmetadata'));
           }
           syncTimeUI();
@@ -2859,7 +2988,6 @@
         } catch (e) {}
       }, 40);
 
-      // Sync Volume, Speed, and ResizeMode to Native ExoPlayer
       volSlider.addEventListener('input', (e) => {
         try { nativeBridge.setVolume(parseInt(e.target.value, 10) || 100); } catch (err) {}
       });

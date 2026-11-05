@@ -36,8 +36,9 @@ data class VideoBounds(
     val leftRatio: Float = 0f,
     val topRatio: Float = 0f,
     val widthRatio: Float = 1f,
-    val heightRatio: Float = 1f,
-    val isFullscreen: Boolean = true
+    val heightRatio: Float = 0f,
+    val isFullscreen: Boolean = false,
+    val isVisible: Boolean = false
 )
 
 @OptIn(UnstableApi::class)
@@ -139,24 +140,19 @@ class ExoPlayerManager(private val context: Context) {
     }
 
     @JavascriptInterface
-    fun getCurrentTime(): Double {
-        return cachedPositionMs / 1000.0
-    }
+    fun getCurrentTime(): Double = cachedPositionMs / 1000.0
 
     @JavascriptInterface
-    fun getCurrentTimeMs(): Long {
-        return cachedPositionMs
-    }
+    fun getCurrentTimeMs(): Long = cachedPositionMs
 
     @JavascriptInterface
-    fun getDuration(): Double {
-        return cachedDurationMs / 1000.0
-    }
+    fun getDuration(): Double = cachedDurationMs / 1000.0
 
     @JavascriptInterface
-    fun isPlaying(): Boolean {
-        return cachedIsPlaying
-    }
+    fun isPlaying(): Boolean = cachedIsPlaying
+
+    @JavascriptInterface
+    fun isPaused(): Boolean = !cachedIsPlaying
 
     @JavascriptInterface
     fun getVideoWidth(): Int = cachedVideoWidth
@@ -169,6 +165,7 @@ class ExoPlayerManager(private val context: Context) {
 
     @JavascriptInterface
     fun play() {
+        cachedIsPlaying = true
         mainHandler.post {
             if (exoPlayer.playbackState == Player.STATE_IDLE && currentVideoUri != null) {
                 exoPlayer.prepare()
@@ -182,6 +179,7 @@ class ExoPlayerManager(private val context: Context) {
 
     @JavascriptInterface
     fun pause() {
+        cachedIsPlaying = false
         mainHandler.post {
             exoPlayer.pause()
             syncStateOnMainThread()
@@ -191,6 +189,7 @@ class ExoPlayerManager(private val context: Context) {
     @JavascriptInterface
     fun togglePlay(): Boolean {
         val nextPlay = !cachedIsPlaying
+        cachedIsPlaying = nextPlay
         mainHandler.post {
             if (exoPlayer.isPlaying) {
                 exoPlayer.pause()
@@ -279,6 +278,13 @@ class ExoPlayerManager(private val context: Context) {
     }
 
     @JavascriptInterface
+    fun setPlayerVisibility(visible: Boolean) {
+        mainHandler.post {
+            videoBoundsState.value = videoBoundsState.value.copy(isVisible = visible)
+        }
+    }
+
+    @JavascriptInterface
     fun setPlayerBounds(
         leftCss: Float,
         topCss: Float,
@@ -289,13 +295,15 @@ class ExoPlayerManager(private val context: Context) {
         isFullscreen: Boolean
     ) {
         if (viewportW <= 0f || viewportH <= 0f) return
+        val visible = widthCss >= 10f && heightCss >= 10f && (topCss + heightCss) > 0f && topCss < viewportH
         mainHandler.post {
             videoBoundsState.value = VideoBounds(
-                leftRatio = (leftCss / viewportW).coerceIn(0f, 1f),
-                topRatio = (topCss / viewportH).coerceIn(0f, 1f),
+                leftRatio = (leftCss / viewportW).coerceIn(-1f, 2f),
+                topRatio = (topCss / viewportH).coerceIn(-3f, 3f),
                 widthRatio = (widthCss / viewportW).coerceIn(0.05f, 1f),
                 heightRatio = (heightCss / viewportH).coerceIn(0.05f, 1f),
-                isFullscreen = isFullscreen
+                isFullscreen = isFullscreen,
+                isVisible = visible || isFullscreen
             )
         }
     }
@@ -324,7 +332,7 @@ class ExoPlayerManager(private val context: Context) {
 
             val baos = ByteArrayOutputStream()
             scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 75, baos)
-            if (scaledBitmap !== rawBitmap) {
+            if (scaledBitmap != rawBitmap) {
                 scaledBitmap.recycle()
             }
             rawBitmap.recycle()
@@ -341,7 +349,7 @@ class ExoPlayerManager(private val context: Context) {
 
     @JavascriptInterface
     fun saveSubtitleFile(fileName: String, content: String, format: String): Boolean {
-        val safeName = fileName.replace(Regex("[^a-zA-Z0-9._\\-а-яА-ЯёЁ ]"), "_").ifBlank {
+        val safeName = fileName.replace(Regex("[^a-zA-Z0-9._\-а-яА-ЯёЁ ]"), "_").ifBlank {
             "subtitles.${format.ifBlank { "vtt" }}"
         }
         val mimeType = when (format.lowercase()) {
