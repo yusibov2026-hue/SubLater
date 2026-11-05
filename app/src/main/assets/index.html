@@ -120,71 +120,116 @@
     }
     #settingsToggle svg { width: 22px; height: 22px; fill: currentColor; }
 
-    /* Модальное окно настроек */
+    /* Модальное окно глобальных настроек — абсолютно непрозрачный сплошной фон #1e1e1e без backdrop-filter и rgba */
     #settingsBackdrop {
-      position: fixed; inset: 0;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      z-index: 9998;
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.35s ease;
+      position: fixed;
+      inset: 0;
+      background: #121212 !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      z-index: 99998;
+      display: none;
+      opacity: 1 !important;
     }
-    #settingsBackdrop.show { opacity: 1; pointer-events: auto; }
+    #settingsBackdrop.show {
+      display: block !important;
+    }
+
+    body.global-settings-open #playerContainer {
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
 
     #globalSettings {
       position: fixed;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -46%) scale(0.92);
-      width: 92%; max-width: 400px;
-      max-height: 85vh; overflow-y: auto;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border-soft);
-      border-radius: 20px;
-      padding: 20px;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.85);
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1), transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 92%;
+      max-width: 410px;
+      isolation: isolate;
+      background-image: linear-gradient(#1e1e1e, #1e1e1e) !important;
+      max-height: 86vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      background: #1e1e1e !important;
+      background-color: #1e1e1e !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      border: 1px solid #383838;
+      border-radius: 18px;
+      padding: 18px;
+      z-index: 99999;
+      display: none;
+      box-shadow: 0 12px 36px #000000;
+      opacity: 1 !important;
     }
-    #globalSettings.show { 
-      opacity: 1; pointer-events: auto; 
-      transform: translate(-50%, -50%) scale(1); 
+    #globalSettings.show {
+      display: block !important;
     }
-    
+    #globalSettings > * + * {
+      margin-top: 12px;
+    }
+
     #globalSettings::-webkit-scrollbar { width: 4px; }
-    #globalSettings::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+    #globalSettings::-webkit-scrollbar-thumb { background: #444444; border-radius: 4px; }
 
     .settings-header {
-      display: flex; justify-content: space-between; align-items: center;
-      font-size: 16px; font-weight: 700; color: var(--accent);
-      border-bottom: 1px solid var(--border-soft); padding-bottom: 10px; margin-bottom: 4px;
-    }
-    .close-btn {
-      background: #2a2a2a; border: none; color: #ccc;
-      width: 30px; height: 30px; border-radius: 9px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; font-size: 16px;
-      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s, color 0.2s;
-    }
-    .close-btn:hover { background: #ff6b6b; color: #fff; }
-    .close-btn:active { transform: scale(0.85); }
-
-    .global-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 10px;
-      font-size: 13px;
-      color: #ccc;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent);
+      border-bottom: 1px solid #333333;
+      padding-bottom: 10px;
+      margin-bottom: 6px;
+    }
+    .close-btn {
+      background: #2c2c2c;
+      border: 1px solid #3d3d3d;
+      color: #e0e0e0;
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+    .close-btn:hover { background: #ff5252; color: #ffffff; border-color: #ff5252; }
+    .close-btn:active { transform: scale(0.9); }
+
+    .global-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px 12px;
+      padding: 4px 2px;
+      font-size: 13.5px;
+      color: #eaeaea;
       font-weight: 500;
+      line-height: 1.35;
+    }
+    .global-row > span:first-child {
+      flex: 1 1 0%;
+      min-width: 130px;
+      padding-right: 8px;
+      word-break: break-word;
     }
     .global-row select {
-      width: auto; margin: 0; padding: 7px 10px;
-      font-size: 12px; border-radius: 8px;
+      flex: 0 0 auto;
+      width: auto;
+      margin: 0;
+      padding: 7px 10px;
+      font-size: 12.5px;
+      border-radius: 8px;
+      background: #2a2a2a;
+      border: 1px solid #444444;
+      color: #ffffff;
     }
 
     input[type="color"] {
@@ -633,13 +678,13 @@
       padding: 0;
       background: #000000;
       border-radius: 16px;
-      overflow: hidden;
+      overflow: visible;
       border: 1px solid var(--border-soft);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+      box-shadow: 0 8px 24px #000000;
       align-items: center;
       justify-content: center;
       aspect-ratio: 16/9;
-      z-index: 10;
+      z-index: 20;
       touch-action: manipulation;
       user-select: none;
     }
@@ -659,6 +704,7 @@
       border: none !important;
       border-radius: 0 !important;
       box-shadow: none !important;
+      overflow: hidden !important;
       display: flex !important;
       align-items: center;
       justify-content: center;
@@ -667,6 +713,7 @@
     }
 
     video#videoPlayer {
+      border-radius: 15px;
       width: 100%;
       height: 100%;
       max-height: 75vh;
@@ -697,6 +744,7 @@
       width: 100%;
       height: 100%;
       max-height: 100dvh;
+      border-radius: 0 !important;
       object-position: center center;
       background: #000000;
     }
@@ -726,7 +774,7 @@
 
     #subtitleText.bg-on {
       background: rgba(0, 0, 0, calc(var(--bg-opacity, 62) / 100));
-      backdrop-filter: blur(4px);
+      backdrop-filter: none;
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
     }
     #subtitleText.bg-off {
@@ -784,113 +832,213 @@
 
     #timeText { color: #ccc; font-size: 12px; font-variant-numeric: tabular-nums; margin: 0; white-space: nowrap; font-weight: 500; margin-right: 4px; }
 
-    /* Меню настроек плеера в стиле YouTube: компактные аккордеоны и сплошной тёмный непрозрачный фон */
+    /* Меню настроек плеера в стиле YouTube: сплошной цвет #1e1e1e без прозрачности, чёткие строки и плавный аккордеон */
     #settingsMenu {
       position: absolute;
-      bottom: 48px;
+      bottom: 52px;
       right: 10px;
-      background: #1c1f26;
-      border: 1px solid #383d4a;
+      background: #1e1e1e !important;
+      background-color: #1e1e1e !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      border: 1px solid #383838;
       border-radius: 14px;
-      padding: 6px;
-      width: 238px;
-      max-height: calc(100% - 58px);
+      padding: 8px;
+      width: 276px;
+      isolation: isolate;
+      background-image: linear-gradient(#1e1e1e, #1e1e1e) !important;
+      max-width: calc(100vw - 24px);
+      max-height: min(340px, 68vh);
       overflow-y: auto;
-      z-index: 30;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.9);
-      opacity: 0;
-      pointer-events: none;
-      transform: translateY(8px) scale(0.95);
-      transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      z-index: 500;
+      display: none;
+      box-shadow: 0 12px 32px #000000;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+    body.player-fullscreen-open #settingsMenu,
+    #playerContainer:fullscreen #settingsMenu,
+    #playerContainer:-webkit-full-screen #settingsMenu {
+      max-height: calc(100dvh - 68px);
     }
     #settingsMenu.show {
-      opacity: 1;
-      pointer-events: auto;
-      transform: translateY(0) scale(1);
+      display: block !important;
     }
     #settingsMenu::-webkit-scrollbar { width: 4px; }
-    #settingsMenu::-webkit-scrollbar-thumb { background: #3e434f; border-radius: 4px; }
+    #settingsMenu::-webkit-scrollbar-thumb { background: #484848; border-radius: 4px; }
 
     .yt-acc-item {
-      border-radius: 9px;
-      background: transparent;
+      display: block;
+      width: 100%;
+      margin-bottom: 4px;
+      border-radius: 10px;
+      background: #1e1e1e;
+      border: 1px solid transparent;
       overflow: hidden;
-      transition: background 0.18s ease;
+    }
+    .yt-acc-item:last-child {
+      margin-bottom: 0;
     }
     .yt-acc-item.open {
-      background: #252932;
+      background: #262626;
+      border-color: #3a3a3a;
     }
+
     .yt-acc-header {
       width: 100%;
-      background: transparent;
+      min-height: 40px;
+      background: #1e1e1e;
       border: none;
-      color: #eef0f4;
-      padding: 8px 10px;
+      color: #f5f5f5;
+      padding: 10px 12px;
       font-family: inherit;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 13px;
+      line-height: 1.35;
+      font-weight: 500;
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
+      gap: 6px 10px;
       cursor: pointer;
       text-align: left;
       border-radius: 9px;
     }
-    .yt-acc-header:hover {
-      background: rgba(255, 255, 255, 0.06);
+    .yt-acc-item.open .yt-acc-header {
+      background: #262626;
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
     }
+    .yt-acc-header:hover,
+    .yt-acc-header:active {
+      background: #2a2a2a;
+    }
+
+    /* Текст заголовка с весом 1f (flex: 1 1 0%), чтобы не выталкивать значение и не наезжать на цифры */
+    .yt-acc-label {
+      flex: 1 1 0%;
+      min-width: 105px;
+      color: #f5f5f5;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.35;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      padding-right: 6px;
+    }
+
+    /* Значение параметра строго выровнено по правому краю и не сжимается */
     .yt-acc-val {
+      flex: 0 0 auto;
+      flex-shrink: 0;
+      margin-left: auto;
+      text-align: right;
+      white-space: nowrap;
       color: var(--accent);
-      font-size: 11.5px;
+      font-size: 13px;
       font-weight: 600;
+      line-height: 1.35;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      justify-content: flex-end;
+      gap: 5px;
     }
     .yt-acc-val::after {
       content: '▸';
-      color: #8b92a5;
+      color: #9ca3af;
       font-size: 11px;
+      display: inline-block;
       transition: transform 0.2s ease;
     }
     .yt-acc-item.open .yt-acc-val::after {
       transform: rotate(90deg);
       color: var(--accent);
     }
+
+    /* Плавное раскрытие аккордеона с аккуратными отступами для ползунка */
     .yt-acc-body {
-      display: none;
-      padding: 4px 10px 9px;
-      flex-direction: column;
-      gap: 6px;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      padding: 0 16px;
+      background: #222222;
+      border-top: 0 solid #363636;
+      transition: max-height 0.22s ease, opacity 0.18s ease, padding 0.22s ease;
     }
     .yt-acc-item.open .yt-acc-body {
-      display: flex;
+      max-height: 76px;
+      opacity: 1;
+      padding: 12px 16px 14px 16px;
+      border-top: 1px solid #363636;
     }
+
     .yt-inline-row {
+      width: 100%;
+      min-height: 40px;
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
-      padding: 7px 10px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #eef0f4;
+      gap: 6px 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.35;
+      color: #f5f5f5;
+      background: #1e1e1e;
       border-radius: 9px;
     }
-    .setting-item label {
-      display: flex; justify-content: space-between; align-items: center;
-      font-size: 11px; color: #ccc; margin-bottom: 2px; font-weight: 500;
+    .yt-inline-row .yt-acc-label {
+      flex: 1 1 0%;
+      min-width: 105px;
     }
+
+    /* Чёткий ползунок внутри раскрытой строки с отступами по краям */
     .yt-acc-body input[type="range"] {
-      width: 100%; height: 16px; margin: 0; padding: 0; border: none; background: transparent; cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+      width: calc(100% - 8px);
+      height: 6px;
+      margin: 5px auto;
+      padding: 0;
+      display: block;
+      border: none;
+      border-radius: 999px;
+      background: #484848;
+      cursor: pointer;
     }
-    .yt-acc-body select,
-    .yt-inline-row select {
-      width: 100%; margin: 0; padding: 6px 8px; font-size: 11.5px; border-radius: 7px;
-      background: #181b21; border: 1px solid #3a3f4d; color: #fff;
+    .yt-acc-body input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 4px #000000;
+      cursor: pointer;
+    }
+    .yt-acc-body input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 4px #000000;
+      cursor: pointer;
+    }
+
+    .yt-acc-body select {
+      width: 100%;
+      margin: 0;
+      padding: 8px 10px;
+      font-size: 12.5px;
+      border-radius: 8px;
+      background: #181818;
+      border: 1px solid #444444;
+      color: #ffffff;
     }
 
     .switch { position: relative; display: inline-block; width: 34px; height: 19px; flex-shrink: 0; }
@@ -971,6 +1119,200 @@
       </svg>
     </button>
   </header>
+<select id="model">
+    <option value="whisper-large-v3-turbo">whisper-large-v3-turbo (Быстрая)</option>
+    <option value="whisper-large-v3">whisper-large-v3 (Точная)</option>
+  </select>
+
+  <select id="translateLang">
+    <option value="">Без перевода</option>
+    <option value="Russian">Перевести на русский</option>
+    <option value="English">Перевести на английский</option>
+    <option value="Turkish">Перевести на турецкий</option>
+    <option value="Azerbaijani">Перевести на азербайджанский</option>
+  </select>
+
+  <label class="file-box" for="mediaFile">
+    <span class="file-pill">Файл</span>
+    <span id="fileName">Не выбран</span>
+    <input type="file" id="mediaFile" accept="video/*,audio/*,.mkv" style="display:none" />
+  </label>
+
+  <button id="btn">Создать субтитры</button>
+  <div id="progressWrap"><div id="progressBar"></div></div>
+  
+  <div class="action-row" id="actionRow">
+    <button type="button" id="retryBtn">↻ Ещё раз</button>
+    <div class="dl-wrap">
+      <button type="button" id="dlBtn">Скачать ▾</button>
+      <div id="dlFormatMenu">
+        <button type="button" class="dl-fmt-item" data-fmt="vtt"><span>Стандарт</span><span class="fmt-ext">.VTT</span></button>
+        <button type="button" class="dl-fmt-item" data-fmt="ass"><span>Караоке</span><span class="fmt-ext">.ASS</span></button>
+        <button type="button" class="dl-fmt-item" data-fmt="srt"><span>Универсальный</span><span class="fmt-ext">.SRT</span></button>
+        <button type="button" class="dl-fmt-item" data-fmt="txt"><span>Только текст</span><span class="fmt-ext">.TXT</span></button>
+      </div>
+    </div>
+    <select id="exportFormat" style="display:none;">
+      <option value="vtt">.VTT</option>
+      <option value="ass">.ASS</option>
+      <option value="srt">.SRT</option>
+      <option value="txt">.TXT</option>
+    </select>
+    <button id="openBtn">Текст</button>
+  </div>
+
+  <p id="status"></p>
+
+  <!-- Панель ИИ-видео в стиле YouTube (Вопросы по видео через Gemini) -->
+  <div id="aiSummaryBox">
+    <div class="ai-title">
+      <div class="ai-title-left">
+        <span class="ai-sparkle-badge">✨ ИИ-видео</span>
+        <span class="ai-model-pill" id="aiActiveModelBadge">Gemini 3.8 Flash</span>
+      </div>
+      <div class="ai-header-actions">
+        <button type="button" class="ai-clear-btn" id="clearAiChatBtn">Очистить</button>
+        <button type="button" class="close-btn" id="closeAiBox" style="width:26px;height:26px;font-size:13px;">✕</button>
+      </div>
+    </div>
+
+    <div class="ai-Prompts-row" id="aiQuickPrompts">
+      <button type="button" class="ai-prompt-chip" data-q="О чём это видео? Расскажи кратко и понятно.">📝 О чём это видео?</button>
+      <button type="button" class="ai-prompt-chip" data-q="Выдели ключевые моменты видео с точными таймкодами в формате [ММ:СС].">⏱ Ключевые таймкоды</button>
+      <button type="button" class="ai-prompt-chip" data-q="Какие главные выводы и полезные мысли можно вынести из этого видео?">💡 Главные выводы</button>
+      <button type="button" class="ai-prompt-chip" data-q="Что сейчас происходит в видео и о чём говорится на этом моменте?">👁 Что сейчас в кадре?</button>
+    </div>
+
+    <div id="aiChatList">
+      <div class="ai-msg bot" id="aiSummaryText">Привет! Я ИИ-помощник по видео (как в YouTube). Задайте любой вопрос по видео ниже или выберите быстрый вопрос выше. Нажимайте на таймкоды в ответах для перехода к моменту.</div>
+    </div>
+    <div id="aiChaptersList" class="hidden"></div>
+
+    <div class="ai-input-row">
+      <input type="text" id="aiQuestionInput" placeholder="Спросите что угодно по видео..." autocomplete="off" />
+      <button type="button" id="aiSendBtn" aria-label="Отправить вопрос">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+  
+  <div id="vttPanelWrapper">
+    <pre id="vttPanel" class="hidden" title="Нажмите, чтобы скопировать текст"></pre>
+  </div>
+  </div><!-- /#appTopSection -->
+
+  <div id="playerContainer">
+    <video id="videoPlayer" playsinline preload="metadata" poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
+
+    <div id="subtitleOverlay">
+      <div id="subtitleText" class="bg-on"></div>
+    </div>
+
+    <div id="settingsMenu">
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
+          <span class="yt-acc-label">Размер</span>
+          <span class="yt-acc-val" id="subSizeVal">18px</span>
+        </button>
+        <div class="yt-acc-body">
+          <input type="range" id="subSize" min="12" max="48" step="1" value="18">
+        </div>
+      </div>
+
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
+          <span class="yt-acc-label">Ширина</span>
+          <span class="yt-acc-val" id="subWidthVal">85%</span>
+        </button>
+        <div class="yt-acc-body">
+          <input type="range" id="subWidth" min="30" max="100" step="1" value="85">
+        </div>
+      </div>
+
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
+          <span class="yt-acc-label">Высота</span>
+          <span class="yt-acc-val" id="subBottomVal">12%</span>
+        </button>
+        <div class="yt-acc-body">
+          <input type="range" id="subBottom" min="5" max="35" step="1" value="12">
+        </div>
+      </div>
+
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
+          <span class="yt-acc-label">Сдвиг (появление)</span>
+          <span class="yt-acc-val" id="subOffsetVal">0 мс</span>
+        </button>
+        <div class="yt-acc-body">
+          <input type="range" id="subOffset" min="-1000" max="1000" step="50" value="0">
+        </div>
+      </div>
+
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
+          <span class="yt-acc-label">Задержка (исчезновение)</span>
+          <span class="yt-acc-val" id="subHoldVal">400 мс</span>
+        </button>
+        <div class="yt-acc-body">
+          <input type="range" id="subHold" min="0" max="1500" step="50" value="400">
+        </div>
+      </div>
+
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
+          <span class="yt-acc-label">Режим слов</span>
+          <span class="yt-acc-val" id="wordModeVal">Пословно</span>
+        </button>
+        <div class="yt-acc-body">
+          <select id="wordModeSelect">
+            <option value="hidden">Пословно</option>
+            <option value="karaoke">Караоке</option>
+            <option value="full">Целиком</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="yt-inline-row">
+        <span class="yt-acc-label">Фон</span>
+        <label class="switch">
+          <input type="checkbox" id="bgToggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- Скрытые контролы для совместимости аудио/скорости/экрана -->
+      <div style="display:none !important;" aria-hidden="true">
+        <span id="volVal">100%</span>
+        <input type="range" id="volSlider" min="0" max="200" value="100">
+        <span id="speedVal">1.0x</span>
+        <input type="range" id="speedSlider" min="0.5" max="2.0" step="0.25" value="1">
+        <span id="fitModeVal">Вписать</span>
+        <select id="fitModeSelect">
+          <option value="contain">Вписать</option>
+          <option value="cover">Заполнить</option>
+          <option value="fill">Растянуть</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="playerControls">
+      <span id="timeText">0:00 / 0:00</span>
+      <input type="range" id="seekBar" min="0" max="100" value="0" step="0.1">
+      
+      <button class="ctrl-btn" id="settingsBtn">
+        <svg viewBox="0 0 24 24">
+          <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+        </svg>
+      </button>
+
+      <button class="ctrl-btn" id="fsBtn">
+        <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+      </button>
+    </div>
+  </div>
+
+
 
   <div id="settingsBackdrop"></div>
 
@@ -1079,219 +1421,7 @@
     </div>
   </div>
 
-  <select id="model">
-    <option value="whisper-large-v3-turbo">whisper-large-v3-turbo (Быстрая)</option>
-    <option value="whisper-large-v3">whisper-large-v3 (Точная)</option>
-  </select>
-
-  <select id="translateLang">
-    <option value="">Без перевода</option>
-    <option value="Russian">Перевести на русский</option>
-    <option value="English">Перевести на английский</option>
-    <option value="Turkish">Перевести на турецкий</option>
-    <option value="Azerbaijani">Перевести на азербайджанский</option>
-  </select>
-
-  <label class="file-box" for="mediaFile">
-    <span class="file-pill">Файл</span>
-    <span id="fileName">Не выбран</span>
-    <input type="file" id="mediaFile" accept="video/*,audio/*,.mkv" style="display:none" />
-  </label>
-
-  <button id="btn">Создать субтитры</button>
-  <div id="progressWrap"><div id="progressBar"></div></div>
   
-  <div class="action-row" id="actionRow">
-    <button type="button" id="retryBtn">↻ Ещё раз</button>
-    <div class="dl-wrap">
-      <button type="button" id="dlBtn">Скачать ▾</button>
-      <div id="dlFormatMenu">
-        <button type="button" class="dl-fmt-item" data-fmt="vtt"><span>Стандарт</span><span class="fmt-ext">.VTT</span></button>
-        <button type="button" class="dl-fmt-item" data-fmt="ass"><span>Караоке</span><span class="fmt-ext">.ASS</span></button>
-        <button type="button" class="dl-fmt-item" data-fmt="srt"><span>Универсальный</span><span class="fmt-ext">.SRT</span></button>
-        <button type="button" class="dl-fmt-item" data-fmt="txt"><span>Только текст</span><span class="fmt-ext">.TXT</span></button>
-      </div>
-    </div>
-    <select id="exportFormat" style="display:none;">
-      <option value="vtt">.VTT</option>
-      <option value="ass">.ASS</option>
-      <option value="srt">.SRT</option>
-      <option value="txt">.TXT</option>
-    </select>
-    <button id="openBtn">Текст</button>
-  </div>
-
-  <p id="status"></p>
-
-  <!-- Панель ИИ-видео в стиле YouTube (Вопросы по видео через Gemini) -->
-  <div id="aiSummaryBox">
-    <div class="ai-title">
-      <div class="ai-title-left">
-        <span class="ai-sparkle-badge">✨ ИИ-видео</span>
-        <span class="ai-model-pill" id="aiActiveModelBadge">Gemini 3.8 Flash</span>
-      </div>
-      <div class="ai-header-actions">
-        <button type="button" class="ai-clear-btn" id="clearAiChatBtn">Очистить</button>
-        <button type="button" class="close-btn" id="closeAiBox" style="width:26px;height:26px;font-size:13px;">✕</button>
-      </div>
-    </div>
-
-    <div class="ai-Prompts-row" id="aiQuickPrompts">
-      <button type="button" class="ai-prompt-chip" data-q="О чём это видео? Расскажи кратко и понятно.">📝 О чём это видео?</button>
-      <button type="button" class="ai-prompt-chip" data-q="Выдели ключевые моменты видео с точными таймкодами в формате [ММ:СС].">⏱ Ключевые таймкоды</button>
-      <button type="button" class="ai-prompt-chip" data-q="Какие главные выводы и полезные мысли можно вынести из этого видео?">💡 Главные выводы</button>
-      <button type="button" class="ai-prompt-chip" data-q="Что сейчас происходит в видео и о чём говорится на этом моменте?">👁 Что сейчас в кадре?</button>
-    </div>
-
-    <div id="aiChatList">
-      <div class="ai-msg bot" id="aiSummaryText">Привет! Я ИИ-помощник по видео (как в YouTube). Задайте любой вопрос по видео ниже или выберите быстрый вопрос выше. Нажимайте на таймкоды в ответах для перехода к моменту.</div>
-    </div>
-    <div id="aiChaptersList" class="hidden"></div>
-
-    <div class="ai-input-row">
-      <input type="text" id="aiQuestionInput" placeholder="Спросите что угодно по видео..." autocomplete="off" />
-      <button type="button" id="aiSendBtn" aria-label="Отправить вопрос">
-        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-      </button>
-    </div>
-  </div>
-  
-  <div id="vttPanelWrapper">
-    <pre id="vttPanel" class="hidden" title="Нажмите, чтобы скопировать текст"></pre>
-  </div>
-  </div><!-- /#appTopSection -->
-
-  <div id="playerContainer">
-    <video id="videoPlayer" playsinline preload="metadata" poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
-
-    <div id="subtitleOverlay">
-      <div id="subtitleText" class="bg-on"></div>
-    </div>
-
-    <div id="settingsMenu">
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span>Громкость</span>
-          <span class="yt-acc-val" id="volVal">100%</span>
-        </button>
-        <div class="yt-acc-body">
-          <input type="range" id="volSlider" min="0" max="200" value="100">
-        </div>
-      </div>
-
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span>Скорость видео</span>
-          <span class="yt-acc-val" id="speedVal">1.0x</span>
-        </button>
-        <div class="yt-acc-body">
-          <input type="range" id="speedSlider" min="0.5" max="2.0" step="0.25" value="1">
-        </div>
-      </div>
-
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span>Размер</span>
-          <span class="yt-acc-val" id="subSizeVal">18px</span>
-        </button>
-        <div class="yt-acc-body">
-          <input type="range" id="subSize" min="12" max="48" step="1" value="18">
-        </div>
-      </div>
-
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span>Ширина</span>
-          <span class="yt-acc-val" id="subWidthVal">85%</span>
-        </button>
-        <div class="yt-acc-body">
-          <input type="range" id="subWidth" min="30" max="100" step="1" value="85">
-        </div>
-      </div>
-
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span>Высота</span>
-          <span class="yt-acc-val" id="subBottomVal">12%</span>
-        </button>
-        <div class="yt-acc-body">
-          <input type="range" id="subBottom" min="5" max="35" step="1" value="12">
-        </div>
-      </div>
-
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span>Сдвиг (появление)</span>
-          <span class="yt-acc-val" id="subOffsetVal">0 мс</span>
-        </button>
-        <div class="yt-acc-body">
-          <input type="range" id="subOffset" min="-1000" max="1000" step="50" value="0">
-        </div>
-      </div>
-
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span>Задержка (исчезновение)</span>
-          <span class="yt-acc-val" id="subHoldVal">400 мс</span>
-        </button>
-        <div class="yt-acc-body">
-          <input type="range" id="subHold" min="0" max="1500" step="50" value="400">
-        </div>
-      </div>
-
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span>Экран</span>
-          <span class="yt-acc-val" id="fitModeVal">Вписать</span>
-        </button>
-        <div class="yt-acc-body">
-          <select id="fitModeSelect">
-            <option value="contain">Вписать</option>
-            <option value="cover">Заполнить</option>
-            <option value="fill">Растянуть</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span>Режим слов</span>
-          <span class="yt-acc-val" id="wordModeVal">Пословно</span>
-        </button>
-        <div class="yt-acc-body">
-          <select id="wordModeSelect">
-            <option value="hidden">Пословно</option>
-            <option value="karaoke">Караоке</option>
-            <option value="full">Целиком</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="yt-inline-row">
-        <span>Фон</span>
-        <label class="switch">
-          <input type="checkbox" id="bgToggle" checked>
-          <span class="slider"></span>
-        </label>
-      </div>
-    </div>
-
-    <div id="playerControls">
-      <span id="timeText">0:00 / 0:00</span>
-      <input type="range" id="seekBar" min="0" max="100" value="0" step="0.1">
-      
-      <button class="ctrl-btn" id="settingsBtn">
-        <svg viewBox="0 0 24 24">
-          <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
-        </svg>
-      </button>
-
-      <button class="ctrl-btn" id="fsBtn">
-        <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-      </button>
-    </div>
-  </div>
-
   <script>
   (function () {
     'use strict';
@@ -1322,11 +1452,15 @@
     const closeSettingsBtn = $('closeSettingsBtn');
 
     function openSettings() {
+      document.body.classList.add('global-settings-open');
+      if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
       globalSettings.classList.add('show');
       settingsBackdrop.classList.add('show');
       settingsToggle.classList.add('open');
     }
     function closeSettings() {
+      document.body.classList.remove('global-settings-open');
+      if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
       globalSettings.classList.remove('show');
       settingsBackdrop.classList.remove('show');
       settingsToggle.classList.remove('open');
@@ -1835,7 +1969,12 @@
         settingsMenu.querySelectorAll('.yt-acc-item.open').forEach((other) => {
           other.classList.remove('open');
         });
-        if (!wasOpen) item.classList.add('open');
+        if (!wasOpen) {
+          item.classList.add('open');
+          setTimeout(() => {
+            try { item.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (err) {}
+          }, 120);
+        }
       });
     });
 
@@ -3201,7 +3340,7 @@
       } catch (e) {}
 
       function syncNativePlayerBounds() {
-        if (!playerActive || !usingNativeExoFallback || playerBox.style.display === 'none') {
+        if (!playerActive || !usingNativeExoFallback || playerBox.style.display === 'none' || document.body.classList.contains('global-settings-open')) {
           try {
             if (typeof nativeBridge.setPlayerVisibility === 'function') {
               nativeBridge.setPlayerVisibility(false);

@@ -278,7 +278,6 @@ fun HybridVideoApp(
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
                     setBackgroundColor(Color.TRANSPARENT)
-                    setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
                     settings.apply {
                         javaScriptEnabled = true
