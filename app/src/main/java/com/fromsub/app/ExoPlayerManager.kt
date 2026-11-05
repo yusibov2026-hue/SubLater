@@ -2,6 +2,7 @@ package com.fromsub.app
 
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.media.audiofx.LoudnessEnhancer
@@ -353,6 +354,25 @@ class ExoPlayerManager(private val context: Context) {
             try {
                 retriever.release()
             } catch (_: Exception) {
+            }
+        }
+    }
+
+    @JavascriptInterface
+    fun openWithExternalApp() {
+        val uri = currentVideoUri ?: return
+        mainHandler.post {
+            try {
+                val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, context.contentResolver.getType(uri) ?: "video/*")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                val chooser = Intent.createChooser(viewIntent, "Открыть с помощью...").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(chooser)
+            } catch (e: Exception) {
+                Toast.makeText(context, "Не удалось открыть меню: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
