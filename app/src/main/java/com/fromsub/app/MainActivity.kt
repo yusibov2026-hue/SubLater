@@ -158,6 +158,10 @@ class MainActivity : ComponentActivity() {
         }
 
         exoPlayerManager = ExoPlayerManager(applicationContext, this)
+        addOnNewIntentListener { newIntent ->
+            setIntent(newIntent)
+            handleIncomingIntent(newIntent)
+        }
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -204,8 +208,55 @@ class MainActivity : ComponentActivity() {
                 },
                 onWebViewCreated = { wv ->
                     webViewRef = wv
+                    wv.postDelayed({ handleIncomingIntent(intent) }, 400L)
                 }
             )
+        }
+    }
+
+    private fun handleIncomingIntent(intent: Intent?) {
+        if (intent == null) return
+        val action = intent.action
+        val uri: Uri? = when (action) {
+            Intent.ACTION_VIEW -> intent.data
+            Intent.ACTION_SEND -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
+                } ?: intent.data
+            }
+            else -> intent.data
+        }
+
+        if (uri != null) {
+            try {
+                contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) {
+            }
+
+            val mimeType = contentResolver.getType(uri) ?: ""
+            val pathStr = uri.toString().lowercase()
+            val isSubtitleFile = pathStr.endsWith(".vtt") || pathStr.endsWith(".srt") || pathStr.endsWith(".ass")
+            if (!isSubtitleFile) {
+                exoPlayerManager.storeMediaUri(uri)
+                val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "video"
+                val jsCall = "(function() { " +
+                    "try { " +
+                    "  const fNameEl = document.getElementById('fileName'); if (fNameEl) fNameEl.innerText = '${fileName.replace("'", "\\'")}'; " +
+                    "  const vEl = document.getElementById('videoPlayer'); if (vEl) { vEl.src = '${uri.toString().replace("'", "\\'")}'; vEl.load(); } " +
+                    "  const pBox = document.getElementById('playerContainer'); if (pBox) pBox.style.display = 'flex'; " +
+                    "  if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds(); " +
+                    "} catch (e) {} " +
+                    "})()"
+                runOnUiThread {
+                    webViewRef?.evaluateJavascript(jsCall, null)
+                }
+            }
         }
     }
 

@@ -16,6 +16,23 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Unbounded:wght@800&family=Roboto:wght@500;700&family=Montserrat:wght@500;700&display=swap" rel="stylesheet">
   <style>
+    /* Плавность и воздушность интерфейса */
+    :root {
+      --fluidity: 1;
+      --spring-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --anim-duration: 0.3s;
+    }
+    body.max-airiness * {
+      transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    }
+    body.max-airiness button:active {
+      transform: scale(0.91) !important;
+    }
+    body.max-airiness .file-box:active,
+    body.max-airiness .dl-fmt-item:active {
+      transform: scale(0.95) !important;
+    }
+
     :root {
       --sub-color: #ffffff;
       --sub-size: 18px;
@@ -385,12 +402,12 @@
       display: inline-block;
     }
     #dlBtn svg.btn-icon-caret {
-      width: 18px;
-      height: 18px;
+      width: 22px;
+      height: 22px;
       fill: currentColor;
       flex-shrink: 0;
       display: inline-block;
-      transition: transform 0.2s ease;
+      transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     .dl-wrap.open #dlBtn svg.btn-icon-caret {
       transform: rotate(180deg);
@@ -717,9 +734,26 @@
       align-items: center;
       justify-content: center;
       aspect-ratio: 16/9;
+      max-height: 78vh;
       z-index: 20;
       touch-action: manipulation;
       user-select: none;
+      transition: aspect-ratio 0.25s ease, max-height 0.25s ease;
+    }
+
+    /* Для вертикальных видео (portrait): контейнер идеально подстраивается под пропорции видео, убирая чёрные полосы сверху и снизу */
+    #playerContainer.is-vertical {
+      max-height: 72vh;
+      width: auto;
+      max-width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    #playerContainer.is-vertical video#videoPlayer {
+      object-fit: cover !important;
+      width: 100%;
+      height: 100%;
     }
 
     body.player-fullscreen-open #playerContainer,
@@ -750,7 +784,7 @@
     video#videoPlayer {
       width: 100%;
       height: 100%;
-      max-height: 75vh;
+      max-height: 78vh;
       margin: 0 auto;
       padding: 0;
       display: block;
@@ -806,6 +840,43 @@
       word-break: break-word;
       opacity: 0;
       transition: opacity 0.12s ease, background 0.2s ease;
+    }
+
+    /* Режим жёсткой фиксации субтитров внизу (без прыжков при пословном появлении и переносе строк) */
+    #playerContainer.fixed-subs-on #subtitleOverlay {
+      position: absolute !important;
+      left: 0 !important;
+      right: 0 !important;
+      top: auto !important;
+      bottom: var(--sub-bottom, 12%) !important;
+      width: 100% !important;
+      height: auto !important;
+      min-height: 2.8em !important;
+      padding-bottom: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: flex-end !important;
+      align-items: center !important;
+      pointer-events: none !important;
+    }
+
+    #playerContainer.fixed-subs-on #subtitleText {
+      min-height: 2.7em;
+      width: auto;
+      max-width: var(--sub-width, 85%);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      text-align: center;
+      transition: opacity 0.1s ease;
+    }
+
+    #playerContainer.fixed-subs-on #subtitleText .cue-lines-wrap {
+      display: block;
+      width: 100%;
+      text-align: center;
+      line-height: 1.35;
     }
 
     #subtitleText.bg-on {
@@ -1347,10 +1418,28 @@
         </div>
       </div>
 
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
+          <span class="yt-acc-label">Прозрачность фона</span>
+          <span class="yt-acc-val" id="playerBgOpacityVal">62%</span>
+        </button>
+        <div class="yt-acc-body">
+          <input type="range" id="playerBgOpacity" min="0" max="100" value="62">
+        </div>
+      </div>
+
       <div class="yt-inline-row">
         <span class="yt-acc-label">Фон</span>
         <label class="switch">
           <input type="checkbox" id="bgToggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="yt-inline-row">
+        <span class="yt-acc-label">Фиксация внизу</span>
+        <label class="switch">
+          <input type="checkbox" id="fixedSubsToggle" checked>
           <span class="slider"></span>
         </label>
       </div>
@@ -1418,6 +1507,10 @@
         <input type="checkbox" id="autoPlayToggle" checked>
         <span class="slider"></span>
       </label>
+    </div>
+    <div class="global-row">
+      <span>Плавность (воздушность)</span>
+      <input type="range" id="uiFluidity" min="0" max="100" value="85" style="width: 105px;">
     </div>
 
     <div class="global-row" style="margin-top: 10px; border-top: 1px solid #333333; padding-top: 14px;">
@@ -1500,6 +1593,7 @@
         wakeLock = null;
       }
     }
+
 
     /* ---------------- Настройки и Модальное окно ---------------- */
     const settingsToggle = $('settingsToggle');
@@ -1865,7 +1959,63 @@
       el.addEventListener('change', applySettings);
     });
 
-    accentColorEl.addEventListener('input', (e) => {
+    /* ---------------- Плавность (воздушность), Прозрачность фона в плеере и Фиксация субтитров ---------------- */
+    const uiFluidityEl = $('uiFluidity');
+    const playerBgOpacityEl = $('playerBgOpacity');
+    const playerBgOpacityVal = $('playerBgOpacityVal');
+    const fixedSubsToggle = $('fixedSubsToggle');
+
+    function applyFluidity() {
+      const val = parseInt(uiFluidityEl ? uiFluidityEl.value : 85, 10);
+      safeSetStorage('sublater_fluidity', String(val));
+      document.body.classList.toggle('max-airiness', val >= 60);
+      const factor = val / 100;
+      document.documentElement.style.setProperty('--fluidity', String(factor));
+      document.documentElement.style.setProperty('--anim-duration', (0.18 + factor * 0.22) + 's');
+    }
+    if (uiFluidityEl) {
+      uiFluidityEl.value = safeGetStorage('sublater_fluidity', '85');
+      uiFluidityEl.addEventListener('input', applyFluidity);
+      applyFluidity();
+    }
+
+    function syncBgOpacityControls(rawVal) {
+      const clamped = Math.min(100, Math.max(0, parseInt(rawVal, 10) || 0));
+      if (bgOpacityEl) bgOpacityEl.value = String(clamped);
+      if (playerBgOpacityEl) playerBgOpacityEl.value = String(clamped);
+      if (playerBgOpacityVal) playerBgOpacityVal.textContent = clamped + '%';
+      applySettings();
+    }
+    if (playerBgOpacityEl) {
+      playerBgOpacityEl.value = bgOpacityEl ? bgOpacityEl.value : '62';
+      if (playerBgOpacityVal) playerBgOpacityVal.textContent = playerBgOpacityEl.value + '%';
+      playerBgOpacityEl.addEventListener('input', (e) => syncBgOpacityControls(e.target.value));
+    }
+    if (bgOpacityEl) {
+      bgOpacityEl.addEventListener('input', (e) => {
+        if (playerBgOpacityEl) playerBgOpacityEl.value = e.target.value;
+        if (playerBgOpacityVal) playerBgOpacityVal.textContent = e.target.value + '%';
+      });
+    }
+
+    function applyFixedSubsMode() {
+      const isFixed = fixedSubsToggle ? fixedSubsToggle.checked : true;
+      playerBox.classList.toggle('fixed-subs-on', isFixed);
+      safeSetStorage('sublater_fixed_subs', isFixed ? '1' : '0');
+      updateOverlayGeometry();
+      if (currentCueIdx >= 0 && cues[currentCueIdx]) {
+        rebuildCueDOM(cues[currentCueIdx]);
+        updateSubtitleFrame();
+      }
+    }
+    if (fixedSubsToggle) {
+      const savedFixed = safeGetStorage('sublater_fixed_subs', '1');
+      fixedSubsToggle.checked = (savedFixed !== '0');
+      fixedSubsToggle.addEventListener('change', applyFixedSubsMode);
+      playerBox.classList.toggle('fixed-subs-on', fixedSubsToggle.checked);
+    }
+
+        accentColorEl.addEventListener('input', (e) => {
       const color = e.target.value;
       document.documentElement.style.setProperty('--accent', color);
       safeSetStorage('sublater_accent', color);
@@ -2014,11 +2164,27 @@
 
     videoEl.addEventListener('play', updatePlayState);
     videoEl.addEventListener('pause', updatePlayState);
+    function updatePlayerAspectRatio() {
+      if (videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
+        const vw = videoEl.videoWidth;
+        const vh = videoEl.videoHeight;
+        const isVertical = vh > vw;
+        playerBox.classList.toggle('is-vertical', isVertical);
+        playerBox.style.aspectRatio = `${vw} / ${vh}`;
+        if (isVertical) {
+          videoEl.style.objectFit = 'cover';
+        }
+        updateOverlayGeometry();
+        if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
+      }
+    }
+
     videoEl.addEventListener('loadedmetadata', () => {
       syncTimeUI();
-      if (videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
-        playerBox.style.aspectRatio = `${videoEl.videoWidth} / ${videoEl.videoHeight}`;
-      }
+      updatePlayerAspectRatio();
+    });
+    videoEl.addEventListener('loadeddata', () => {
+      updatePlayerAspectRatio();
     });
     videoEl.addEventListener('seeked', () => {
       syncTimeUI();
@@ -3060,13 +3226,32 @@
       const ch = playerBox.clientHeight;
       if (!cw || !ch) return;
 
+      const isFixedMode = playerBox.classList.contains('fixed-subs-on');
+      const bottomPct = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--sub-bottom')
+      ) || 12;
+
+      if (isFixedMode) {
+        // В режиме жёсткой фиксации отступ всегда считается от низа контейнера плеера и не зависит от высоты текста
+        overlayEl.style.left = '0px';
+        overlayEl.style.right = '0px';
+        overlayEl.style.width = '100%';
+        overlayEl.style.top = 'auto';
+        overlayEl.style.height = 'auto';
+        overlayEl.style.bottom = bottomPct + '%';
+        overlayEl.style.paddingBottom = '0px';
+        overlayEl.style.alignItems = 'center';
+        overlayEl.style.justifyContent = 'flex-end';
+        return;
+      }
+
       const vw = videoEl.videoWidth || cw;
       const vh = videoEl.videoHeight || ch;
       const fitMode = fitModeSelect.value || 'contain';
 
       let dw = cw;
       let dh = ch;
-      if (fitMode === 'contain') {
+      if (fitMode === 'contain' && !playerBox.classList.contains('is-vertical')) {
         const scale = Math.min(cw / vw, ch / vh);
         dw = Math.round(vw * scale);
         dh = Math.round(vh * scale);
@@ -3082,9 +3267,6 @@
       overlayEl.style.height = dh + 'px';
       overlayEl.style.bottom = 'auto';
       overlayEl.style.alignItems = 'flex-end';
-      const bottomPct = parseFloat(
-        getComputedStyle(document.documentElement).getPropertyValue('--sub-bottom')
-      ) || 12;
       overlayEl.style.paddingBottom = (dh * bottomPct / 100) + 'px';
     }
 
@@ -3156,6 +3338,9 @@
       }
 
       playerBox.style.display = 'flex';
+      if (fixedSubsToggle) {
+        playerBox.classList.toggle('fixed-subs-on', fixedSubsToggle.checked);
+      }
       videoEl.playbackRate = parseFloat(speedSlider.value) || 1;
       playerActive = true;
 
@@ -3198,15 +3383,22 @@
       subtitleEl.style.opacity = '0';
       if (!cue) return;
 
+      // Все слова текущей реплики добавляются в DOM одновременно (с opacity: 0),
+      // чтобы браузер сразу рассчитал перенос строк и появление слов через opacity не сдвигало текст
+      const linesWrap = document.createElement('span');
+      linesWrap.className = 'cue-lines-wrap';
+
       cue.words.forEach((w, i) => {
-        if (i > 0) subtitleEl.appendChild(document.createTextNode(' '));
+        if (i > 0) linesWrap.appendChild(document.createTextNode(' '));
         const span = document.createElement('span');
         span.className = 'word';
         span.textContent = w.word;
         span.dataset.state = 'h';
-        subtitleEl.appendChild(span);
+        linesWrap.appendChild(span);
         wordSpans.push(span);
       });
+
+      subtitleEl.appendChild(linesWrap);
     }
 
     function updateSubtitleFrame() {
