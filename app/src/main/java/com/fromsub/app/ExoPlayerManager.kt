@@ -140,19 +140,29 @@ class ExoPlayerManager(private val context: Context) {
     }
 
     @JavascriptInterface
-    fun getCurrentTime(): Double = cachedPositionMs / 1000.0
+    fun getCurrentTime(): Double {
+        return cachedPositionMs / 1000.0
+    }
 
     @JavascriptInterface
-    fun getCurrentTimeMs(): Long = cachedPositionMs
+    fun getCurrentTimeMs(): Long {
+        return cachedPositionMs
+    }
 
     @JavascriptInterface
-    fun getDuration(): Double = cachedDurationMs / 1000.0
+    fun getDuration(): Double {
+        return cachedDurationMs / 1000.0
+    }
 
     @JavascriptInterface
-    fun isPlaying(): Boolean = cachedIsPlaying
+    fun isPlaying(): Boolean {
+        return cachedIsPlaying
+    }
 
     @JavascriptInterface
-    fun isPaused(): Boolean = !cachedIsPlaying
+    fun isPaused(): Boolean {
+        return !cachedIsPlaying
+    }
 
     @JavascriptInterface
     fun getVideoWidth(): Int = cachedVideoWidth
@@ -349,7 +359,7 @@ class ExoPlayerManager(private val context: Context) {
 
     @JavascriptInterface
     fun saveSubtitleFile(fileName: String, content: String, format: String): Boolean {
-        val safeName = fileName.replace(Regex("[^a-zA-Z0-9._\-а-яА-ЯёЁ ]"), "_").ifBlank {
+        val safeName = fileName.replace(Regex("[^a-zA-Z0-9._\\-а-яА-ЯёЁ ]"), "_").ifBlank {
             "subtitles.${format.ifBlank { "vtt" }}"
         }
         val mimeType = when (format.lowercase()) {
