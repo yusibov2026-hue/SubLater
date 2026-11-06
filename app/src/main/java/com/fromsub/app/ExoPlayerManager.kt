@@ -216,10 +216,10 @@ class ExoPlayerManager(
         /** Строго 16000 Гц (16 кГц) — частота, на которой обучен Whisper для максимальной точности */
         const val WHISPER_SAMPLE_RATE_HZ = 16000
         const val WHISPER_CHANNELS_MONO = 1
-        const val CHUNK_DURATION_SEC = 120         // Нарезка по 2 минуты (120 секунд) для быстрого старта и параллелизма
+        const val CHUNK_DURATION_SEC = 600         // 10 минут (~19.2 МБ WAV 16kHz Mono — идеально под лимит Groq 25 МБ)
         const val CHUNK_OVERLAP_SEC = 6            // 6 секунд перекрытия для сохранения слов на стыках
-        const val PARALLEL_GROQ_CONCURRENCY = 8    // Параллельная отправка 8 чанков одновременно
-        const val FFMPEG_PARALLEL_CONCURRENCY = 3  // Параллельная экстракция до 3 чанков одновременно через FFmpeg
+        const val PARALLEL_GROQ_CONCURRENCY = 2    // Ровно 2 параллельных потока под 2 API-ключа Groq без HTTP 429
+        const val FFMPEG_PARALLEL_CONCURRENCY = 2  // 2 параллельных потока FFmpeg для нарезки фоном во время отправки
         const val MAX_CHUNK_RETRIES = 2            // До 2 повторных попыток при таймауте/сбое
 
         private val HALLUCINATION_REGEX = Regex(
@@ -944,6 +944,11 @@ class ExoPlayerManager(
                         launch(Dispatchers.IO) {
                             for (chunk in chunkChannel) {
                                 ensureActive()
+                                val estNow = maxOf(chunk.index + 1, totalChunksEstimate.get())
+                                reportProgress(
+                                    (26 + completedCounter.get() * 68 / estNow).coerceIn(26, 94),
+                                    "🚀 Отправка в Groq: ${minOf(completedCounter.get() + 1, estNow)} из $estNow (2 потока, ключи 1 и 2)..."
+                                )
                                 val prevTail = if (chunk.index > 0) chunkTails[chunk.index - 1].orEmpty() else ""
                                 val res = sendChunkToGroqWithRetry(
                                     chunk = chunk,
@@ -970,7 +975,7 @@ class ExoPlayerManager(
                                 val est = maxOf(done, totalChunksEstimate.get())
                                 reportProgress(
                                     (26 + done * 68 / est).coerceIn(26, 95),
-                                    "🚀 Распознано: $done из $est (${chunk.startSec.toInt()}–${chunk.endSec.toInt()} с)..."
+                                    "🚀 Отправка в Groq: $done из $est (2 потока, ключи 1 и 2)..."
                                 )
                             }
                         }
@@ -1125,7 +1130,7 @@ class ExoPlayerManager(
         onStatus: (String) -> Unit
     ): ChunkTranscriptionResult {
         var lastError: Throwable? = null
-        val timeoutMs = (25_000L + chunk.endSec.toLong() * 250L).coerceIn(20_000L, 90_000L)
+        val timeoutMs = (25_000L + chunk.endSec.toLong() * 250L).coerceIn(20_000L, 180_000L)
         val effectivePrompt = if (prevChunkTailText.isNotBlank()) {
             "$fullContextPrompt Продолжение предыдущего фрагмента: $prevChunkTailText".trim()
         } else {
@@ -1471,7 +1476,7 @@ class ExoPlayerManager(
                             )
                             val done = extractedCount.incrementAndGet()
                             val pct = ((done.toDouble() / plannedChunks.size.toDouble()) * 95.0).toInt().coerceIn(5, 99)
-                            onProgress(pct, "⚡ FFmpeg 16 кГц (WAV): чанк $done из ${plannedChunks.size}...")
+                            onProgress(pct, "⚡ Нарезка WAV (16 кГц): чанк $done из ${plannedChunks.size}...")
                             onChunkReady(meta)
                         }
                     }
@@ -1794,7 +1799,7 @@ class ExoPlayerManager(
                                 val pct = ((ptsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
                                 if (pct >= lastPct + 4) {
                                     lastPct = pct
-                                    onProgress(pct, "⚡ Потоковая нарезка WAV (16 кГц): $pct% (чанк ${chunkIndex + 1})...")
+                                    onProgress(pct, "⚡ Нарезка WAV (16 кГц): чанк ${chunkIndex + 1} из ${maxOf(chunkIndex + 1, totalChunksEstimate.get())}...")
                                 }
                             }
                         }
