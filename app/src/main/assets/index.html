@@ -1351,14 +1351,6 @@
     <option value="whisper-large-v3">whisper-large-v3 (Точная)</option>
   </select>
 
-  <select id="sourceLang" aria-label="Язык оригинала аудио">
-    <option value="auto">Язык аудио: Авто (по имени файла)</option>
-    <option value="ru">Язык аудио: Русский (ru)</option>
-    <option value="en">Язык аудио: Английский (en)</option>
-    <option value="tr">Язык аудио: Турецкий (tr)</option>
-    <option value="az">Язык аудио: Азербайджанский (az)</option>
-  </select>
-
   <select id="translateLang">
     <option value="">Без перевода</option>
     <option value="Russian">Перевести на русский</option>
@@ -1458,12 +1450,6 @@
     <div id="playerControls">
       <span id="timeText">0:00 / 0:00</span>
       <input type="range" id="seekBar" min="0" max="100" value="0" step="0.1">
-
-      <button class="ctrl-btn" id="playerSubBtn" title="Создать субтитры (Groq)" aria-label="Создать субтитры">
-        <svg viewBox="0 0 24 24">
-          <path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/>
-        </svg>
-      </button>
 
       <button class="ctrl-btn" id="settingsBtn">
         <svg viewBox="0 0 24 24">
@@ -2683,9 +2669,17 @@
       vttPanel.classList.add('hidden');
       actionRow.style.display = 'none';
 
-      // Чисто сворачиваем интерфейс в режим плеера без верхних плиток (.file-box) и пустых блоков
-      document.documentElement.classList.add('intent-player-mode', 'player-fullscreen-open');
-      document.body.classList.add('intent-player-mode', 'player-fullscreen-open');
+      // Открываем внешний файл («Открыть с помощью...») по умолчанию в главном окне приложения, а не в полноэкранном плеере
+      document.documentElement.classList.remove('intent-player-mode', 'player-fullscreen-open');
+      document.body.classList.remove('intent-player-mode', 'player-fullscreen-open');
+      const extBridge = window.ExoPlayerManager || window.AndroidBridge;
+      if (extBridge && typeof extBridge.setImmersiveFullscreen === 'function') {
+        try { extBridge.setImmersiveFullscreen(false); } catch (e) {}
+      }
+      if (extBridge && typeof extBridge.toggleLandscape === 'function') {
+        try { extBridge.toggleLandscape(false); } catch (e) {}
+      }
+      statusEl.innerText = `Видео загружено: ${externalMediaName}. Нажмите «Создать субтитры» или запустите просмотр.`;
       applySettings();
 
       playerBox.style.display = 'flex';

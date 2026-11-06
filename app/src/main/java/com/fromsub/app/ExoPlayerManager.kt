@@ -7,12 +7,10 @@ import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.media.AudioFormat
 import android.media.MediaCodec
-import android.media.MediaCodecInfo
 import android.media.MediaCodecList
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
-import android.media.MediaMuxer
 import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
 import android.os.Build
@@ -78,13 +76,13 @@ import java.io.DataOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.RandomAccessFile
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.ByteOrder
 import java.security.KeyStore
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -132,178 +130,79 @@ data class ChunkTranscriptionResult(
 )
 
 /**
- * Асинхронный кодировщик одного чанка M4A (AAC LC, строго 16000 Гц, Mono, 32 kbps),
- * использующий MediaCodec в неблокирующем режиме CALLBACK (MediaCodec.Callback) + MediaMuxer
- * на выделенном HandlerThread без блокировки основного потока.
+ * Прямой потоковый писатель сырого PCM (WAV 16kHz, Mono, 16-bit) без повторного кодирования через MediaCodec.
+ * Записывает PCM-байты напрямую на диск и при закрытии чанка формирует 44-байтный WAV-заголовок через RandomAccessFile.
  */
-private class AsyncM4aChunkMuxer(
+private class AsyncWavChunkWriter(
     val outputFile: File,
-    private val sampleRate: Int = 16000,
-    private val bitRate: Int = 32000
+    private val sampleRate: Int = 16000
 ) {
-    private val encoderThread = HandlerThread("SubLaterM4aEncoder").apply { start() }
-    private val encoderHandler = Handler(encoderThread.looper)
-    private val encoder: MediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
-    private val muxer: MediaMuxer
-    private val pcmQueue = ConcurrentLinkedQueue<ByteArray>()
-    private var currentPcmBlock: ByteArray? = null
-    private var currentPcmOffset: Int = 0
-
-    private val availableInputIndices = ConcurrentLinkedQueue<Int>()
-    private val inputEosRequested = AtomicBoolean(false)
-    private val inputEosSent = AtomicBoolean(false)
-    private val outputDoneLatch = CountDownLatch(1)
-    private val closed = AtomicBoolean(false)
+    private val outputStream = FileOutputStream(outputFile)
+    private var totalBytesWritten = 0L
     private val lock = Object()
 
-    private var trackIndex = -1
-    private var muxerStarted = false
+    init {
+        outputStream.write(ByteArray(44)) // Резервируем место под WAV-заголовок
+    }
 
     @Volatile
     var totalSamplesWritten: Long = 0L
         private set
 
-    init {
-        if (outputFile.exists()) outputFile.delete()
-        muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-
-        val format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, 1).apply {
-            setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
-            setInteger(MediaFormat.KEY_BIT_RATE, bitRate)
-            setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 32768)
-        }
-
-        encoder.setCallback(object : MediaCodec.Callback() {
-            override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
-                synchronized(lock) {
-                    if (closed.get()) return
-                    availableInputIndices.offer(index)
-                    feedAvailableEncoderInputsLocked(codec)
-                }
-            }
-
-            override fun onOutputBufferAvailable(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {
-                synchronized(lock) {
-                    if (closed.get()) return
-                    try {
-                        val outBuf = codec.getOutputBuffer(index)
-                        if ((info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-                            info.size = 0
-                        }
-                        if (info.size > 0 && muxerStarted && outBuf != null) {
-                            outBuf.position(info.offset)
-                            outBuf.limit(info.offset + info.size)
-                            muxer.writeSampleData(trackIndex, outBuf, info)
-                        }
-                        codec.releaseOutputBuffer(index, false)
-                        if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                            outputDoneLatch.countDown()
-                        }
-                    } catch (_: Exception) {
-                        outputDoneLatch.countDown()
-                    }
-                }
-            }
-
-            override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
-                synchronized(lock) {
-                    if (closed.get() || muxerStarted) return
-                    try {
-                        trackIndex = muxer.addTrack(format)
-                        muxer.start()
-                        muxerStarted = true
-                    } catch (_: Exception) {
-                    }
-                }
-            }
-
-            override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
-                outputDoneLatch.countDown()
-            }
-        }, encoderHandler)
-
-        encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-        encoder.start()
-    }
-
     fun enqueuePcm16Mono(pcmBytes: ByteArray, length: Int) {
-        if (length <= 0 || closed.get()) return
-        val copy = ByteArray(length)
-        System.arraycopy(pcmBytes, 0, copy, 0, length)
+        if (length <= 0) return
         synchronized(lock) {
-            pcmQueue.offer(copy)
-            feedAvailableEncoderInputsLocked(encoder)
-        }
-    }
-
-    private fun feedAvailableEncoderInputsLocked(codec: MediaCodec) {
-        while (availableInputIndices.isNotEmpty() && !inputEosSent.get()) {
-            val inIdx = availableInputIndices.peek() ?: break
-            val inBuf = try {
-                codec.getInputBuffer(inIdx)
-            } catch (_: Exception) {
-                null
-            } ?: break
-
-            inBuf.clear()
-            var bytesFilled = 0
-
-            while (bytesFilled < inBuf.remaining()) {
-                if (currentPcmBlock == null || currentPcmOffset >= (currentPcmBlock?.size ?: 0)) {
-                    currentPcmBlock = pcmQueue.poll()
-                    currentPcmOffset = 0
-                }
-                val block = currentPcmBlock ?: break
-                val toCopy = minOf(block.size - currentPcmOffset, inBuf.remaining())
-                inBuf.put(block, currentPcmOffset, toCopy)
-                currentPcmOffset += toCopy
-                bytesFilled += toCopy
-            }
-
-            if (bytesFilled > 0) {
-                availableInputIndices.poll()
-                val ptsUs = (totalSamplesWritten * 1_000_000L) / sampleRate.toLong()
-                totalSamplesWritten += (bytesFilled / 2).toLong()
-                val isEosNow = inputEosRequested.get() && pcmQueue.isEmpty() &&
-                    (currentPcmBlock == null || currentPcmOffset >= (currentPcmBlock?.size ?: 0))
-                val flags = if (isEosNow) MediaCodec.BUFFER_FLAG_END_OF_STREAM else 0
-                codec.queueInputBuffer(inIdx, 0, bytesFilled, ptsUs, flags)
-                if (isEosNow) {
-                    inputEosSent.set(true)
-                }
-            } else if (inputEosRequested.get()) {
-                availableInputIndices.poll()
-                val ptsUs = (totalSamplesWritten * 1_000_000L) / sampleRate.toLong()
-                codec.queueInputBuffer(inIdx, 0, 0, ptsUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                inputEosSent.set(true)
-            } else {
-                break
-            }
+            try {
+                outputStream.write(pcmBytes, 0, length)
+                totalBytesWritten += length
+                totalSamplesWritten += (length / 2).toLong()
+            } catch (_: Exception) {}
         }
     }
 
     fun finishAndClose() {
-        if (!closed.compareAndSet(false, true)) return
         synchronized(lock) {
-            closed.set(false)
-            inputEosRequested.set(true)
             try {
-                feedAvailableEncoderInputsLocked(encoder)
-            } catch (_: Exception) {
-            }
+                outputStream.flush()
+                val header = createWavHeader(sampleRate, 1, 16, totalBytesWritten)
+                val raf = RandomAccessFile(outputFile, "rw")
+                raf.seek(0)
+                raf.write(header)
+                raf.close()
+                outputStream.close()
+            } catch (_: Exception) {}
         }
-        try {
-            outputDoneLatch.await(4, TimeUnit.SECONDS)
-        } catch (_: InterruptedException) {
-        }
-        synchronized(lock) {
-            closed.set(true)
-            try { encoder.stop() } catch (_: Exception) {}
-            try { encoder.release() } catch (_: Exception) {}
-            try { if (muxerStarted) muxer.stop() } catch (_: Exception) {}
-            try { muxer.release() } catch (_: Exception) {}
-            try { encoderThread.quitSafely() } catch (_: Exception) {}
-        }
+    }
+
+    private fun createWavHeader(sampleRate: Int, channels: Int, bitsPerSample: Int, dataLength: Long): ByteArray {
+        val header = ByteArray(44)
+        val byteRate = sampleRate * channels * bitsPerSample / 8
+        val blockAlign = channels * bitsPerSample / 8
+        val totalLength = dataLength + 36
+
+        header[0] = 'R'.code.toByte(); header[1] = 'I'.code.toByte(); header[2] = 'F'.code.toByte(); header[3] = 'F'.code.toByte()
+        writeIntLE(header, 4, totalLength.toInt())
+        header[8] = 'W'.code.toByte(); header[9] = 'A'.code.toByte(); header[10] = 'V'.code.toByte(); header[11] = 'E'.code.toByte()
+        header[12] = 'f'.code.toByte(); header[13] = 'm'.code.toByte(); header[14] = 't'.code.toByte(); header[15] = ' '.code.toByte()
+        writeIntLE(header, 16, 16)
+        writeShortLE(header, 20, 1) // PCM format
+        writeShortLE(header, 22, channels)
+        writeIntLE(header, 24, sampleRate)
+        writeIntLE(header, 28, byteRate)
+        writeShortLE(header, 32, blockAlign)
+        writeShortLE(header, 34, bitsPerSample)
+        header[36] = 'd'.code.toByte(); header[37] = 'a'.code.toByte(); header[38] = 't'.code.toByte(); header[39] = 'a'.code.toByte()
+        writeIntLE(header, 40, dataLength.toInt())
+        return header
+    }
+
+    private fun writeIntLE(b: ByteArray, offset: Int, value: Int) {
+        b[offset] = (value and 0xff).toByte(); b[offset + 1] = ((value shr 8) and 0xff).toByte()
+        b[offset + 2] = ((value shr 16) and 0xff).toByte(); b[offset + 3] = ((value shr 24) and 0xff).toByte()
+    }
+
+    private fun writeShortLE(b: ByteArray, offset: Int, value: Int) {
+        b[offset] = (value and 0xff).toByte(); b[offset + 1] = ((value shr 8) and 0xff).toByte()
     }
 }
 
@@ -317,7 +216,6 @@ class ExoPlayerManager(
         /** Строго 16000 Гц (16 кГц) — частота, на которой обучен Whisper для максимальной точности */
         const val WHISPER_SAMPLE_RATE_HZ = 16000
         const val WHISPER_CHANNELS_MONO = 1
-        const val WHISPER_AAC_BITRATE = 32000      // 32 kbps (16kHz mono речь прозрачна на 32k, upload в 2 раза меньше)
         const val CHUNK_DURATION_SEC = 120         // Нарезка по 2 минуты (120 секунд) для быстрого старта и параллелизма
         const val CHUNK_OVERLAP_SEC = 6            // 6 секунд перекрытия для сохранения слов на стыках
         const val PARALLEL_GROQ_CONCURRENCY = 8    // Параллельная отправка 8 чанков одновременно
@@ -906,11 +804,11 @@ class ExoPlayerManager(
         }
     }
 
-    /* ==================== ПОТОКОВЫЙ PRODUCER-CONSUMER КОНВЕЙЕР КОТЛИН (16 КГЦ M4A 32 KBPS + GROQ 8 ПОТОКОВ):
+    /* ==================== ПОТОКОВЫЙ PRODUCER-CONSUMER КОНВЕЙЕР КОТЛИН (16 КГЦ WAV PCM 16-BIT + GROQ 8 ПОТОКОВ):
        1. JS вызывает configureGroqSession(apiKey, audioLang) один раз при старте.
        2. JS вызывает generateSubtitlesNative(...) для запуска конвейера в Kotlin.
-       3. Producer нарезает аудио в M4A (AAC, 16000 Гц, Mono, 32 kbps) по 120 с с overlap 6 с и сразу отправляет
-          готовые чанки в Channel<AudioChunkMeta>(Channel.BUFFERED).
+       3. Producer нарезает аудио в сырой PCM WAV (16000 Гц, Mono, 16-bit) по 120 с с overlap 6 с без AAC-перекодирования
+          и сразу отправляет готовые чанки в Channel<AudioChunkMeta>(Channel.BUFFERED).
        4. 8 Consumer-воркеров параллельно забирают чанки из канала и стриминг-запросами (HttpURLConnection с keep-alive)
           отправляют их в Groq с передачей контекста предыдущего чанка (chunkTails).
        5. Kotlin собирает все ответы в единый JSON и один раз возвращает его в JS. ==================== */
@@ -967,7 +865,7 @@ class ExoPlayerManager(
     /**
      * Главная функция, вызываемая из JavaScript:
      * запускает Producer-Consumer конвейер на базе Channel<AudioChunkMeta>(Channel.BUFFERED),
-     * где экстракция 120-секундных M4A-чанков (32 kbps) и их отправка в Groq (8 параллельных воркеров)
+     * где экстракция 120-секундных WAV-чанков (16 кГц, Mono, 16-bit PCM) и их отправка в Groq (8 параллельных воркеров)
      * идут одновременно с передачей контекста на стыках чанков (chunkTails).
      */
     @JavascriptInterface
@@ -994,7 +892,7 @@ class ExoPlayerManager(
         activeSubtitleJob?.cancel()
         cancelAudioExtraction = false
         setWebViewHardwareAcceleration(false)
-        startForegroundService("Подготовка аудио 16 кГц (M4A)...")
+        startForegroundService("Подготовка аудио 16 кГц (WAV)...")
 
         activeSubtitleJob = ioScope.launch {
             try {
@@ -1020,7 +918,7 @@ class ExoPlayerManager(
                 val chunkTails = ConcurrentHashMap<Int, String>()
 
                 coroutineScope {
-                    // Producer: потоковая экстракция чанков по мере готовности
+                    // Producer: потоковая экстракция WAV-чанков по мере готовности
                     launch(Dispatchers.IO) {
                         try {
                             extractHybridAudioToM4aStreaming(
@@ -1041,7 +939,7 @@ class ExoPlayerManager(
                         }
                     }
 
-                    // Consumers: PARALLEL_GROQ_CONCURRENCY (8) воркеров сразу читают готовые чанки и шлют в Groq
+                    // Consumers: PARALLEL_GROQ_CONCURRENCY (8) воркеров сразу читают готовые WAV-чанки и шлют в Groq
                     repeat(PARALLEL_GROQ_CONCURRENCY) {
                         launch(Dispatchers.IO) {
                             for (chunk in chunkChannel) {
@@ -1213,7 +1111,7 @@ class ExoPlayerManager(
     }
 
     /**
-     * Отправляет один M4A-чанк напрямую в Groq API через HttpURLConnection с адаптивным таймаутом
+     * Отправляет один WAV-чанк напрямую в Groq API через HttpURLConnection с адаптивным таймаутом
      * и передачей хвоста предыдущего чанка (prevChunkTailText) для бесшовной склейки на стыках.
      */
     private suspend fun sendChunkToGroqWithRetry(
@@ -1314,10 +1212,10 @@ class ExoPlayerManager(
                 writeFormField("language", language)
             }
 
-            // Стримим бинарный M4A-файл напрямую с диска в сокет без Base64 и без загрузки в ОЗУ
+            // Стримим бинарный WAV-файл напрямую с диска в сокет без Base64 и без загрузки в ОЗУ
             out.writeBytes("--$boundary\r\n")
             out.writeBytes("Content-Disposition: form-data; name=\"file\"; filename=\"${chunk.file.name}\"\r\n")
-            out.writeBytes("Content-Type: audio/mp4\r\n\r\n")
+            out.writeBytes("Content-Type: audio/wav\r\n\r\n")
 
             FileInputStream(chunk.file).use { fileIn ->
                 val buffer = ByteArray(65536)
@@ -1397,7 +1295,7 @@ class ExoPlayerManager(
     }
 
     /**
-     * Потоковая экстракция и нарезка аудио в M4A (AAC, 16000 Гц, Mono, 32 kbps) по 120 секунд с overlap 6 с:
+     * Потоковая экстракция и нарезка аудио в WAV (PCM 16-bit, 16000 Гц, Mono) по 120 секунд с overlap 6 с:
      * каждый готовый чанк немедленно передаётся в onChunkReady(chunk), не дожидаясь окончания всего файла.
      */
     private suspend fun extractHybridAudioToM4aStreaming(
@@ -1410,7 +1308,7 @@ class ExoPlayerManager(
         if (!chunkDir.exists()) chunkDir.mkdirs()
         chunkDir.listFiles()?.forEach { it.delete() }
 
-        // 1. Попытка параллельной потоковой нарезки через FFmpeg (Semaphore(3)) с единой overlap-логикой
+        // 1. Попытка параллельной потоковой нарезки через FFmpeg (Semaphore(3)) в WAV (pcm_s16le)
         val ffmpegSuccess = tryExtractWithFFmpegKitStreaming(
             uri = uri,
             chunkDir = chunkDir,
@@ -1424,7 +1322,7 @@ class ExoPlayerManager(
             throw InterruptedException("Отменено пользователем.")
         }
 
-        // 2. Фоллбэк: асинхронный MediaCodec в режиме CALLBACK + MediaMuxer с немедленной отдачей каждого чанка
+        // 2. Фоллбэк: декодирование через MediaCodec.Callback + прямой AsyncWavChunkWriter без AAC-энкодера
         extractWithAsyncMediaCodecCallbackStreaming(
             uri = uri,
             chunkDir = chunkDir,
@@ -1447,7 +1345,7 @@ class ExoPlayerManager(
             val ffmpegKitConfigClass = Class.forName("com.arthenica.ffmpegkit.FFmpegKitConfig")
             val returnCodeClass = Class.forName("com.arthenica.ffmpegkit.ReturnCode")
 
-            onProgress(5, "⚡ FFmpeg: подготовка аудио 16 кГц (M4A)...")
+            onProgress(5, "⚡ FFmpeg: подготовка аудио 16 кГц (WAV)...")
 
             val inputPath: String = when (uri.scheme) {
                 "file" -> uri.path ?: return false
@@ -1539,11 +1437,11 @@ class ExoPlayerManager(
                             if (cancelAudioExtraction) throw InterruptedException("Отменено пользователем.")
                             if (!allSucceeded.get()) return@withPermit
 
-                            val outFile = File(chunkDir, "chunk_${plan.index}.m4a")
+                            val outFile = File(chunkDir, "chunk_${plan.index}.wav")
                             if (outFile.exists()) outFile.delete()
                             val curDur = plan.endSec - plan.startSec
 
-                            val cmd = "-y -ss ${plan.startSec} -t $curDur -i \"$inputPath\" -vn -ac $WHISPER_CHANNELS_MONO -ar $WHISPER_SAMPLE_RATE_HZ -c:a aac -b:a $WHISPER_AAC_BITRATE -movflags +faststart \"${outFile.absolutePath}\""
+                            val cmd = "-y -ss ${plan.startSec} -t $curDur -i \"$inputPath\" -vn -ac $WHISPER_CHANNELS_MONO -ar $WHISPER_SAMPLE_RATE_HZ -c:a pcm_s16le \"${outFile.absolutePath}\""
                             val session = ffmpegKitClass.getMethod("execute", String::class.java).invoke(null, cmd)
                             if (session == null) {
                                 allSucceeded.set(false)
@@ -1573,7 +1471,7 @@ class ExoPlayerManager(
                             )
                             val done = extractedCount.incrementAndGet()
                             val pct = ((done.toDouble() / plannedChunks.size.toDouble()) * 95.0).toInt().coerceIn(5, 99)
-                            onProgress(pct, "⚡ FFmpeg 16 кГц (M4A): чанк $done из ${plannedChunks.size}...")
+                            onProgress(pct, "⚡ FFmpeg 16 кГц (WAV): чанк $done из ${plannedChunks.size}...")
                             onChunkReady(meta)
                         }
                     }
@@ -1618,9 +1516,9 @@ class ExoPlayerManager(
     }
 
     /**
-     * Потоковый конвейер декодирования и сжатия аудио через MediaCodec в режиме CALLBACK + MediaMuxer:
-     * приводит сэмплы строго к 16000 Гц Mono (32 kbps AAC) и при закрытии каждого 120-секундного чанка
-     * немедленно вызывает onChunkReady(chunk), чтобы сетевые воркеры сразу отправляли его в Groq.
+     * Потоковый конвейер декодирования аудио через MediaCodec в режиме CALLBACK + прямой AsyncWavChunkWriter:
+     * приводит сэмплы строго к 16000 Гц Mono (16-bit PCM WAV) без создания AAC-кодека и при закрытии каждого
+     * 120-секундного чанка немедленно вызывает onChunkReady(chunk) для отправки в Groq.
      */
     private suspend fun extractWithAsyncMediaCodecCallbackStreaming(
         uri: Uri,
@@ -1634,7 +1532,7 @@ class ExoPlayerManager(
         var tempCopiedFile: File? = null
         var decoder: MediaCodec? = null
         var decoderThread: HandlerThread? = null
-        var currentWriter: AsyncM4aChunkMuxer? = null
+        var currentWriter: AsyncWavChunkWriter? = null
 
         try {
             var dataSourceSet = false
@@ -1727,7 +1625,6 @@ class ExoPlayerManager(
             }
 
             val targetSampleRate = WHISPER_SAMPLE_RATE_HZ // Строго 16000 Гц
-            val targetBitRate = WHISPER_AAC_BITRATE       // 32000 бит/с AAC
             val chunkDurationSec = CHUNK_DURATION_SEC     // 120 секунд (2 минуты)
             val overlapSec = CHUNK_OVERLAP_SEC           // 6 секунд перекрытия
             val advanceSec = (chunkDurationSec - overlapSec).coerceAtLeast(1)
@@ -1749,16 +1646,15 @@ class ExoPlayerManager(
             var currentChunkStartSample = 0L
             var totalWrittenMonoSamples = 0L
 
-            currentWriter = AsyncM4aChunkMuxer(
-                File(chunkDir, "chunk_0.m4a"),
-                targetSampleRate,
-                targetBitRate
+            currentWriter = AsyncWavChunkWriter(
+                File(chunkDir, "chunk_0.wav"),
+                targetSampleRate
             )
 
             val pcmBatchBuf = ByteArray(32768)
             var pcmBatchUsed = 0
 
-            fun flushBatchToM4a() {
+            fun flushBatchToWav() {
                 if (pcmBatchUsed > 0) {
                     currentWriter?.enqueuePcm16Mono(pcmBatchBuf, pcmBatchUsed)
                     pcmBatchUsed = 0
@@ -1766,7 +1662,7 @@ class ExoPlayerManager(
             }
 
             fun finalizeCurrentChunk(isLast: Boolean) {
-                flushBatchToM4a()
+                flushBatchToWav()
                 val writer = currentWriter ?: return
                 writer.finishAndClose()
                 val writtenSamples = writer.totalSamplesWritten
@@ -1803,10 +1699,9 @@ class ExoPlayerManager(
             fun rotateNextChunk() {
                 finalizeCurrentChunk(isLast = false)
                 chunkIndex++
-                val nextWriter = AsyncM4aChunkMuxer(
-                    File(chunkDir, "chunk_${chunkIndex}.m4a"),
-                    targetSampleRate,
-                    targetBitRate
+                val nextWriter = AsyncWavChunkWriter(
+                    File(chunkDir, "chunk_${chunkIndex}.wav"),
+                    targetSampleRate
                 )
                 currentWriter = nextWriter
                 val overlapSamples = (overlapFilled / 2).toLong()
@@ -1832,7 +1727,7 @@ class ExoPlayerManager(
                 pcmBatchBuf[pcmBatchUsed++] = lo
                 pcmBatchBuf[pcmBatchUsed++] = hi
                 if (pcmBatchUsed >= pcmBatchBuf.size - 2) {
-                    flushBatchToM4a()
+                    flushBatchToWav()
                 }
                 overlapRing[overlapWritePos] = lo
                 overlapRing[(overlapWritePos + 1) % overlapBytesCount] = hi
@@ -1899,7 +1794,7 @@ class ExoPlayerManager(
                                 val pct = ((ptsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
                                 if (pct >= lastPct + 4) {
                                     lastPct = pct
-                                    onProgress(pct, "⚡ Потоковая нарезка M4A (16 кГц): $pct% (чанк ${chunkIndex + 1})...")
+                                    onProgress(pct, "⚡ Потоковая нарезка WAV (16 кГц): $pct% (чанк ${chunkIndex + 1})...")
                                 }
                             }
                         }
