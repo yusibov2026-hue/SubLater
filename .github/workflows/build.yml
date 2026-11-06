@@ -33,8 +33,8 @@ jobs:
       - name: Create GitHub Release and Attach APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: SubLater Release v1.0.${{ github.run_number }}
+          tag_name: v2.4.0-${{ github.run_number }}
+          name: SubLater Release v2.4.0 (#${{ github.run_number }})
           body: |
             Автоматическая сборка гибридного Android-приложения **SubLater** (Media3 ExoPlayer + Transparent WebView + JS Bridge).
             Скачайте прикрепленный файл `app-debug.apk` ниже для установки на Android.
