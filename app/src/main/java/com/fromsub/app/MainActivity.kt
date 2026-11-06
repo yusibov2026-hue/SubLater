@@ -41,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.unit.dp
@@ -124,10 +125,61 @@ class MainActivity : ComponentActivity() {
         return if (!seg.isNullOrBlank()) seg else "external_video.mp4"
     }
 
+    /**
+     * Переключает аппаратное ускорение WebView (LAYER_TYPE_SOFTWARE на время обработки длинных видео,
+     * LAYER_TYPE_HARDWARE при обычном воспроизведении) для предотвращения зависаний и нехватки ОЗУ.
+     */
+    fun setWebViewHardwareAcceleration(enabled: Boolean) {
+        runOnUiThread {
+            val wv = webViewRef ?: return@runOnUiThread
+            val targetLayerType = if (enabled) {
+                View.LAYER_TYPE_HARDWARE
+            } else {
+                View.LAYER_TYPE_SOFTWARE
+            }
+            if (wv.layerType != targetLayerType) {
+                wv.setLayerType(targetLayerType, null)
+            }
+        }
+    }
+
+    /**
+     * Полная очистка ресурсов WebView в onDestroy() и при закрытии плеера:
+     * удаляет WebView из родительского ViewGroup, очищает историю/кэш, вызывает destroy() и обнуляет ссылки.
+     */
+    fun cleanupWebView() {
+        runOnUiThread {
+            filePathCallback?.onReceiveValue(null)
+            filePathCallback = null
+
+            val wv = webViewRef ?: return@runOnUiThread
+            webViewRef = null
+            if (::exoPlayerManager.isInitialized) {
+                exoPlayerManager.detachWebView()
+            }
+
+            try {
+                wv.stopLoading()
+                wv.onPause()
+                wv.pauseTimers()
+                wv.removeJavascriptInterface("ExoPlayerManager")
+                wv.removeJavascriptInterface("AndroidBridge")
+                wv.removeJavascriptInterface("Android")
+                wv.loadUrl("about:blank")
+                wv.clearHistory()
+                wv.clearCache(false)
+                (wv.parent as? ViewGroup)?.removeView(wv)
+                wv.removeAllViews()
+                wv.webChromeClient = null
+                wv.destroy()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     fun applyImmersiveMode(fullscreen: Boolean) {
         runOnUiThread {
             if (fullscreen) {
-                // Игнорируем сдвиг выреза камеры (display cutout), чтобы левая и правая чёрные полосы в полном экране были идеально равны!
                 WindowCompat.setDecorFitsSystemWindows(window, false)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     window.attributes = window.attributes.apply {
@@ -217,10 +269,10 @@ class MainActivity : ComponentActivity() {
                 val wv = webViewRef
                 if (wv != null) {
                     wv.evaluateJavascript(
-                        "(function(){ if (document.body.classList.contains('player-fullscreen-open')) { document.getElementById('fsBtn').click(); return 'handled'; } return 'exit'; })()"
+                        "(function(){ if (document.body.classList.contains('global-settings-open')) { document.getElementById('closeSettingsBtn').click(); return 'handled'; } if (document.body.classList.contains('player-fullscreen-open') && !document.body.classList.contains('intent-player-mode')) { document.getElementById('fsBtn').click(); return 'handled'; } return 'exit'; })()"
                     ) { res ->
                         if (res != null && res.contains("handled")) {
-                            // Вышли из полноэкранного плеера обратно в главное меню
+                            // Закрыли модальное окно или вышли из полноэкранного режима
                         } else if (wv.canGoBack()) {
                             wv.goBack()
                         } else {
@@ -241,7 +293,7 @@ class MainActivity : ComponentActivity() {
                 onOpenFileChooser = { callback, fileChooserParams ->
                     filePathCallback?.onReceiveValue(null)
                     filePathCallback = callback
-                    val intent = try {
+                    val chooserIntent = try {
                         fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                             addCategory(Intent.CATEGORY_OPENABLE)
                             type = "*/*"
@@ -252,11 +304,14 @@ class MainActivity : ComponentActivity() {
                             type = "*/*"
                         }
                     }
-                    fileChooserLauncher.launch(intent)
+                    fileChooserLauncher.launch(chooserIntent)
                     true
                 },
                 onWebViewCreated = { wv ->
                     webViewRef = wv
+                },
+                onWebViewDisposed = {
+                    cleanupWebView()
                 }
             )
         }
@@ -313,9 +368,11 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        cleanupWebView()
+        if (::exoPlayerManager.isInitialized) {
+            exoPlayerManager.release()
+        }
         super.onDestroy()
-        webViewRef?.destroy()
-        exoPlayerManager.release()
     }
 }
 
@@ -325,14 +382,17 @@ class MainActivity : ComponentActivity() {
 fun HybridVideoApp(
     exoPlayerManager: ExoPlayerManager,
     onOpenFileChooser: (ValueCallback<Array<Uri>>, WebChromeClient.FileChooserParams?) -> Boolean,
-    onWebViewCreated: (WebView) -> Unit
+    onWebViewCreated: (WebView) -> Unit,
+    onWebViewDisposed: () -> Unit = {}
 ) {
     val resizeMode by exoPlayerManager.resizeModeState
     val bounds by exoPlayerManager.videoBoundsState
     val zoomScale by exoPlayerManager.videoZoomState
 
     DisposableEffect(Unit) {
-        onDispose { }
+        onDispose {
+            onWebViewDisposed()
+        }
     }
 
     BoxWithConstraints(
@@ -345,8 +405,9 @@ fun HybridVideoApp(
 
         val playerModifier = if (!bounds.isVisible) {
             Modifier
-                .width(maxW * 0f)
-                .height(maxH * 0f)
+                .width(0.dp)
+                .height(0.dp)
+                .alpha(0f)
         } else if (bounds.isFullscreen) {
             Modifier.fillMaxSize()
         } else {
@@ -360,7 +421,7 @@ fun HybridVideoApp(
                 .clip(RoundedCornerShape(16.dp))
         }
 
-        // Layer 1 (Background): Native AndroidX Media3 ExoPlayer + FFmpeg Audio Decoder (строго по центру экрана)
+        // Layer 1 (Background): Native AndroidX Media3 ExoPlayer + FFmpeg Audio Decoder
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -385,7 +446,7 @@ fun HybridVideoApp(
             modifier = playerModifier
         )
 
-        // Layer 2 (Foreground): WebView with SubLater UI & Subtitle Overlay
+        // Layer 2 (Foreground): WebView with lightweight SubLater UI & Subtitle Overlay
         AndroidView(
             factory = { ctx ->
                 WebView(ctx).apply {
@@ -394,6 +455,7 @@ fun HybridVideoApp(
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
                     setBackgroundColor(Color.TRANSPARENT)
+                    setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
                     settings.apply {
                         javaScriptEnabled = true

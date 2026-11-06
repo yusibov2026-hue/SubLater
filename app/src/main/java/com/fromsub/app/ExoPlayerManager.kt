@@ -18,12 +18,14 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.widget.Toast
@@ -49,15 +51,40 @@ import androidx.media3.extractor.ts.TsExtractor
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.nio.ByteBuffer
+import java.net.HttpURLConnection
+import java.net.URL
 import java.nio.ByteOrder
 import java.security.KeyStore
-import java.util.concurrent.Executors
+import java.util.UUID
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -72,105 +99,206 @@ data class VideoBounds(
     val isVisible: Boolean = false
 )
 
+data class AudioChunkMeta(
+    val index: Int,
+    val file: File,
+    val startSec: Double,
+    val endSec: Double,
+    val cutoffSec: Double,
+    val nextCutoffSec: Double
+)
+
+data class TranscribedSegment(
+    val start: Double,
+    val end: Double,
+    val text: String
+)
+
+data class TranscribedWord(
+    val word: String,
+    val start: Double,
+    val end: Double
+)
+
+data class ChunkTranscriptionResult(
+    val chunk: AudioChunkMeta,
+    val segments: List<TranscribedSegment>,
+    val words: List<TranscribedWord>
+)
+
 /**
- * Синхронный аппаратный кодировщик в сжатый AAC (M4A, 16000 Гц, Mono, 64 kbps) без колбэков и без риска Deadlock.
- * Уменьшает размер чанка в 8 раз по сравнению с WAV (~2.3 МБ на 5 минут вместо 19 МБ).
+ * Асинхронный кодировщик одного 5-минутного чанка M4A (AAC LC, строго 16000 Гц, Mono, 64 kbps),
+ * использующий MediaCodec в неблокирующем режиме CALLBACK (MediaCodec.Callback) + MediaMuxer
+ * на выделенном HandlerThread без блокировки основного потока.
  */
-private class SyncM4aChunkWriter(
+private class AsyncM4aChunkMuxer(
     val outputFile: File,
     private val sampleRate: Int = 16000,
     private val bitRate: Int = 64000
 ) {
+    private val encoderThread = HandlerThread("SubLaterM4aEncoder").apply { start() }
+    private val encoderHandler = Handler(encoderThread.looper)
     private val encoder: MediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
     private val muxer: MediaMuxer
-    private val bufferInfo = MediaCodec.BufferInfo()
+    private val pcmQueue = ConcurrentLinkedQueue<ByteArray>()
+    private var currentPcmBlock: ByteArray? = null
+    private var currentPcmOffset: Int = 0
+
+    private val availableInputIndices = ConcurrentLinkedQueue<Int>()
+    private val inputEosRequested = AtomicBoolean(false)
+    private val inputEosSent = AtomicBoolean(false)
+    private val outputDoneLatch = CountDownLatch(1)
+    private val closed = AtomicBoolean(false)
+    private val lock = Object()
+
     private var trackIndex = -1
     private var muxerStarted = false
+
+    @Volatile
     var totalSamplesWritten: Long = 0L
         private set
 
     init {
         if (outputFile.exists()) outputFile.delete()
+        muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+
         val format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, 1).apply {
             setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
             setInteger(MediaFormat.KEY_BIT_RATE, bitRate)
             setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 32768)
         }
+
+        encoder.setCallback(object : MediaCodec.Callback() {
+            override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
+                synchronized(lock) {
+                    if (closed.get()) return
+                    availableInputIndices.offer(index)
+                    feedAvailableEncoderInputsLocked(codec)
+                }
+            }
+
+            override fun onOutputBufferAvailable(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {
+                synchronized(lock) {
+                    if (closed.get()) return
+                    try {
+                        val outBuf = codec.getOutputBuffer(index)
+                        if ((info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
+                            info.size = 0
+                        }
+                        if (info.size > 0 && muxerStarted && outBuf != null) {
+                            outBuf.position(info.offset)
+                            outBuf.limit(info.offset + info.size)
+                            muxer.writeSampleData(trackIndex, outBuf, info)
+                        }
+                        codec.releaseOutputBuffer(index, false)
+                        if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                            outputDoneLatch.countDown()
+                        }
+                    } catch (_: Exception) {
+                        outputDoneLatch.countDown()
+                    }
+                }
+            }
+
+            override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
+                synchronized(lock) {
+                    if (closed.get() || muxerStarted) return
+                    try {
+                        trackIndex = muxer.addTrack(format)
+                        muxer.start()
+                        muxerStarted = true
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+
+            override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
+                outputDoneLatch.countDown()
+            }
+        }, encoderHandler)
+
         encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         encoder.start()
-        muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
     }
 
-    fun writePcmShorts(pcmBytes: ByteArray, length: Int) {
-        var offset = 0
-        while (offset < length) {
-            drainOutput(endOfStream = false)
-            val inIdx = encoder.dequeueInputBuffer(5000L)
-            if (inIdx >= 0) {
-                val inBuf = encoder.getInputBuffer(inIdx)
-                if (inBuf != null) {
-                    inBuf.clear()
-                    val toCopy = minOf(length - offset, inBuf.remaining())
-                    inBuf.put(pcmBytes, offset, toCopy)
-                    val ptsUs = (totalSamplesWritten * 1_000_000L) / sampleRate.toLong()
-                    encoder.queueInputBuffer(inIdx, 0, toCopy, ptsUs, 0)
-                    totalSamplesWritten += (toCopy / 2).toLong()
-                    offset += toCopy
-                } else {
-                    break
-                }
-            } else {
-                drainOutput(endOfStream = false)
-            }
+    fun enqueuePcm16Mono(pcmBytes: ByteArray, length: Int) {
+        if (length <= 0 || closed.get()) return
+        val copy = ByteArray(length)
+        System.arraycopy(pcmBytes, 0, copy, 0, length)
+        synchronized(lock) {
+            pcmQueue.offer(copy)
+            feedAvailableEncoderInputsLocked(encoder)
         }
-        drainOutput(endOfStream = false)
     }
 
-    private fun drainOutput(endOfStream: Boolean) {
-        if (endOfStream) {
-            val inIdx = encoder.dequeueInputBuffer(5000L)
-            if (inIdx >= 0) {
+    private fun feedAvailableEncoderInputsLocked(codec: MediaCodec) {
+        while (availableInputIndices.isNotEmpty() && !inputEosSent.get()) {
+            val inIdx = availableInputIndices.peek() ?: break
+            val inBuf = try {
+                codec.getInputBuffer(inIdx)
+            } catch (_: Exception) {
+                null
+            } ?: break
+
+            inBuf.clear()
+            var bytesFilled = 0
+
+            while (bytesFilled < inBuf.remaining()) {
+                if (currentPcmBlock == null || currentPcmOffset >= (currentPcmBlock?.size ?: 0)) {
+                    currentPcmBlock = pcmQueue.poll()
+                    currentPcmOffset = 0
+                }
+                val block = currentPcmBlock ?: break
+                val toCopy = minOf(block.size - currentPcmOffset, inBuf.remaining())
+                inBuf.put(block, currentPcmOffset, toCopy)
+                currentPcmOffset += toCopy
+                bytesFilled += toCopy
+            }
+
+            if (bytesFilled > 0) {
+                availableInputIndices.poll()
                 val ptsUs = (totalSamplesWritten * 1_000_000L) / sampleRate.toLong()
-                encoder.queueInputBuffer(inIdx, 0, 0, ptsUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-            }
-        }
-        var tries = 0
-        val maxTries = if (endOfStream) 40 else 15
-        while (tries < maxTries) {
-            val outIdx = encoder.dequeueOutputBuffer(bufferInfo, if (endOfStream) 2000L else 0L)
-            if (outIdx == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                if (!endOfStream) break
-                tries++
-            } else if (outIdx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                if (!muxerStarted) {
-                    trackIndex = muxer.addTrack(encoder.outputFormat)
-                    muxer.start()
-                    muxerStarted = true
+                totalSamplesWritten += (bytesFilled / 2).toLong()
+                val isEosNow = inputEosRequested.get() && pcmQueue.isEmpty() &&
+                    (currentPcmBlock == null || currentPcmOffset >= (currentPcmBlock?.size ?: 0))
+                val flags = if (isEosNow) MediaCodec.BUFFER_FLAG_END_OF_STREAM else 0
+                codec.queueInputBuffer(inIdx, 0, bytesFilled, ptsUs, flags)
+                if (isEosNow) {
+                    inputEosSent.set(true)
                 }
-            } else if (outIdx >= 0) {
-                val outBuf = encoder.getOutputBuffer(outIdx)
-                if ((bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-                    bufferInfo.size = 0
-                }
-                if (bufferInfo.size > 0 && muxerStarted && outBuf != null) {
-                    outBuf.position(bufferInfo.offset)
-                    outBuf.limit(bufferInfo.offset + bufferInfo.size)
-                    muxer.writeSampleData(trackIndex, outBuf, bufferInfo)
-                }
-                encoder.releaseOutputBuffer(outIdx, false)
-                if ((bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                    break
-                }
+            } else if (inputEosRequested.get()) {
+                availableInputIndices.poll()
+                val ptsUs = (totalSamplesWritten * 1_000_000L) / sampleRate.toLong()
+                codec.queueInputBuffer(inIdx, 0, 0, ptsUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                inputEosSent.set(true)
+            } else {
+                break
             }
         }
     }
 
-    fun close() {
-        try { drainOutput(endOfStream = true) } catch (_: Exception) {}
-        try { encoder.stop() } catch (_: Exception) {}
-        try { encoder.release() } catch (_: Exception) {}
-        try { if (muxerStarted) muxer.stop() } catch (_: Exception) {}
-        try { muxer.release() } catch (_: Exception) {}
+    fun finishAndClose() {
+        if (!closed.compareAndSet(false, true)) return
+        synchronized(lock) {
+            closed.set(false)
+            inputEosRequested.set(true)
+            try {
+                feedAvailableEncoderInputsLocked(encoder)
+            } catch (_: Exception) {
+            }
+        }
+        try {
+            outputDoneLatch.await(4, TimeUnit.SECONDS)
+        } catch (_: InterruptedException) {
+        }
+        synchronized(lock) {
+            closed.set(true)
+            try { encoder.stop() } catch (_: Exception) {}
+            try { encoder.release() } catch (_: Exception) {}
+            try { if (muxerStarted) muxer.stop() } catch (_: Exception) {}
+            try { muxer.release() } catch (_: Exception) {}
+            try { encoderThread.quitSafely() } catch (_: Exception) {}
+        }
     }
 }
 
@@ -180,16 +308,49 @@ class ExoPlayerManager(
     private val activity: MainActivity? = null
 ) {
 
+    companion object {
+        /** Строго 16000 Гц (16 кГц) — частота, на которой обучен Whisper для максимальной точности */
+        const val WHISPER_SAMPLE_RATE_HZ = 16000
+        const val WHISPER_CHANNELS_MONO = 1
+        const val WHISPER_AAC_BITRATE = 64000
+        const val CHUNK_DURATION_SEC = 300 // Нарезка ровно по 5 минут (300 секунд)
+        const val CHUNK_OVERLAP_SEC = 6    // 6 секунд перекрытия для сохранения слов на стыках
+        const val PARALLEL_GROQ_CONCURRENCY = 4 // Параллельная отправка 4 чанков одновременно
+        const val CHUNK_TIMEOUT_MS = 45_000L    // Таймаут 45 секунд на один чанк
+        const val MAX_CHUNK_RETRIES = 2         // До 2 повторных попыток при таймауте/сбое
+
+        private val HALLUCINATION_REGEX = Regex(
+            "(субтитры\\s+(сделал|создал|добавил|подготовил|писал)|редактор\\s+субтитров|корректор\\s+|dimatorzok|продолжение\\s+следует|amara\\.org|подписывайтесь\\s+на\\s+канал|ставь(те)?\\s+лайк)",
+            RegexOption.IGNORE_CASE
+        )
+    }
+
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val audioExecutor = Executors.newSingleThreadExecutor()
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var activeSubtitleJob: Job? = null
+
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private var currentVideoUri: Uri? = null
     private var currentDisplayName: String = ""
     private var isExternalIntentMedia: Boolean = false
+
+    @Volatile
     private var webViewRef: WebView? = null
 
     @Volatile
     private var cancelAudioExtraction: Boolean = false
+
+    @Volatile
+    private var activeFFmpegSessionId: Long? = null
+
+    // Сессионные параметры Groq, передаваемые один раз при старте из JS
+    @Volatile
+    private var sessionGroqApiKey: String = ""
+
+    @Volatile
+    private var sessionAudioLanguage: String = "auto"
+
+    private val activeKeyIndex = AtomicInteger(0)
 
     val isVideoReady = mutableStateOf(false)
     val resizeModeState = mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT)
@@ -272,17 +433,37 @@ class ExoPlayerManager(
             if (videoBoundsState.value.isVisible) {
                 syncStateOnMainThread()
             }
-            mainHandler.postDelayed(this, 30L)
+            mainHandler.postDelayed(this, 60L)
         }
     }
 
     init {
         ensureCleanUserKeystore()
+        sessionGroqApiKey = getApiKey()
         mainHandler.post(positionPoller)
     }
 
     fun attachWebView(webView: WebView) {
         this.webViewRef = webView
+    }
+
+    fun detachWebView() {
+        this.webViewRef = null
+    }
+
+    /**
+     * Переключает аппаратное ускорение WebView (LAYER_TYPE_SOFTWARE на время обработки длинных видео).
+     */
+    @JavascriptInterface
+    fun setWebViewHardwareAcceleration(enabled: Boolean) {
+        activity?.setWebViewHardwareAcceleration(enabled)
+        mainHandler.post {
+            val wv = webViewRef ?: return@post
+            val targetLayer = if (enabled) View.LAYER_TYPE_HARDWARE else View.LAYER_TYPE_SOFTWARE
+            if (wv.layerType != targetLayer) {
+                wv.setLayerType(targetLayer, null)
+            }
+        }
     }
 
     private fun evalJsOnWebView(script: String) {
@@ -721,14 +902,48 @@ class ExoPlayerManager(
         }
     }
 
-    /* ==================== ГИБРИДНЫЙ ПОДХОД ИЗВЛЕЧЕНИЯ АУДИО (КАК НА ФОТО 1):
-       1. Если звук простой (AAC) — аппаратно через MediaExtractor + MediaMuxer за ~2 секунды сразу в .m4a!
-       2. Если звук сложный (DTS / AC3 / E-AC3 / Opus) — декодируем и кодируем сразу в сжатый AAC (.m4a, 16кГц Mono 64kbps), а не в тяжёлый WAV! ==================== */
+    /* ==================== ПОЛНОСТЬЮ НАТИВНЫЙ КОНВЕЙЕР КОТЛИН (ИЗВЛЕЧЕНИЕ 16 КГЦ M4A + ПАРАЛЛЕЛЬНАЯ ОТПРАВКА В GROQ):
+       1. JS вызывает configureGroqSession(apiKey, audioLang) один раз при старте.
+       2. JS вызывает generateSubtitlesNative(...) для запуска полного цикла в Kotlin.
+       3. Kotlin нарезает аудио в M4A (AAC, 16000 Гц, Mono) по 5 минут (FFmpegKit или асинхронный MediaCodec.Callback).
+       4. Kotlin через Coroutines (Semaphore(4)) и HttpURLConnection параллельно отправляет M4A-файлы напрямую в Groq
+          без передачи тяжелых Base64-строк через WebView.
+       5. Kotlin собирает все ответы (слова и сегменты с таймкодами) в единый JSON и один раз возвращает его в JS! ==================== */
+
+    /**
+     * Принимает ключ Groq и язык аудио из JavaScript один раз при старте (или при изменении настроек).
+     */
+    @JavascriptInterface
+    fun configureGroqSession(apiKey: String, audioLanguage: String) {
+        val cleanKey = apiKey.trim()
+        if (cleanKey.isNotEmpty()) {
+            sessionGroqApiKey = cleanKey
+            saveApiKey(cleanKey)
+        } else if (sessionGroqApiKey.isEmpty()) {
+            sessionGroqApiKey = getApiKey()
+        }
+        val cleanLang = audioLanguage.trim().lowercase()
+        sessionAudioLanguage = if (cleanLang.isNotEmpty()) cleanLang else "auto"
+    }
+
+    @JavascriptInterface
+    fun cancelNativeSubtitles() {
+        cancelAudioExtraction = true
+        activeSubtitleJob?.cancel()
+        activeFFmpegSessionId?.let { sessionId ->
+            try {
+                val ffmpegKitClass = Class.forName("com.arthenica.ffmpegkit.FFmpegKit")
+                ffmpegKitClass.getMethod("cancel", Long::class.javaPrimitiveType).invoke(null, sessionId)
+            } catch (_: Exception) {
+            }
+        }
+        stopForegroundService()
+        setWebViewHardwareAcceleration(true)
+    }
 
     @JavascriptInterface
     fun cancelNativeAudioExtraction() {
-        cancelAudioExtraction = true
-        stopForegroundService()
+        cancelNativeSubtitles()
     }
 
     @JavascriptInterface
@@ -744,60 +959,636 @@ class ExoPlayerManager(
         }
     }
 
+    /**
+     * Главная функция, вызываемая из JavaScript:
+     * выполняет извлечение аудио (16 кГц, M4A, по 5 минут), параллельную отправку чанков в Groq
+     * через Kotlin Coroutines + HttpURLConnection и возвращает один собранный JSON с таймкодами в JS.
+     */
     @JavascriptInterface
-    fun readChunkBase64(filePath: String): String {
-        return try {
-            val f = File(filePath)
-            if (!f.exists() || !f.canRead()) return ""
-            Base64.encodeToString(f.readBytes(), Base64.NO_WRAP)
-        } catch (_: Exception) {
-            ""
+    fun generateSubtitlesNative(
+        apiKey: String,
+        model: String,
+        audioLanguage: String,
+        customPrompt: String,
+        filterHallucinations: Boolean
+    ) {
+        configureGroqSession(apiKey, audioLanguage)
+        val keys = parseApiKeys(sessionGroqApiKey.ifBlank { getApiKey() })
+        if (keys.isEmpty()) {
+            evalJsOnWebView("window.__onNativeSubtitlesError && window.__onNativeSubtitlesError('Укажите API ключ Groq в настройках (⚙️)!');")
+            return
         }
-    }
 
-    @JavascriptInterface
-    fun startNativeAudioExtraction(uriString: String = "") {
+        val targetUri = currentVideoUri
+        if (targetUri == null) {
+            evalJsOnWebView("window.__onNativeSubtitlesError && window.__onNativeSubtitlesError('Видеофайл не выбран!');")
+            return
+        }
+
+        activeSubtitleJob?.cancel()
         cancelAudioExtraction = false
-        startForegroundService("Генерация субтитров: быстрое гибридное извлечение M4A...")
-        audioExecutor.execute {
+        setWebViewHardwareAcceleration(false)
+        startForegroundService("Подготовка аудио 16 кГц (M4A)...")
+
+        activeSubtitleJob = ioScope.launch {
             try {
-                val targetUri = if (uriString.isNotBlank() && !uriString.startsWith("blob:")) {
-                    Uri.parse(uriString)
-                } else {
-                    currentVideoUri
-                }
-
-                if (targetUri == null) {
-                    evalJsOnWebView("window.__onNativeAudioError && window.__onNativeAudioError('Не найден URI видеофайла');")
-                    return@execute
-                }
-
-                val resultJson = extractHybridAudioToM4a(targetUri) { pct, msg ->
+                val reportProgress: (Int, String) -> Unit = { pct, msg ->
                     updateForegroundNotification(msg)
-                    val safeMsg = msg.replace("'", "\\'")
-                    evalJsOnWebView("window.__onNativeAudioProgress && window.__onNativeAudioProgress($pct, '$safeMsg');")
+                    val safeMsg = JSONObject.quote(msg)
+                    evalJsOnWebView("window.__onNativeSubtitlesProgress && window.__onNativeSubtitlesProgress($pct, $safeMsg);")
                 }
 
-                val escapedJson = JSONObject.quote(resultJson)
-                evalJsOnWebView("window.__onNativeAudioDone && window.__onNativeAudioDone($escapedJson);")
-            } catch (e: Exception) {
-                val safeErr = (e.message ?: "Ошибка гибридного извлечения аудио").replace("'", "\\'")
-                evalJsOnWebView("window.__onNativeAudioError && window.__onNativeAudioError('$safeErr');")
+                // Шаг 1: Извлечение и нарезка аудио по 5 минут в M4A (AAC, 16000 Гц, Mono)
+                val chunks = extractHybridAudioToM4a(targetUri) { extractPct, extractMsg ->
+                    val scaledPct = 5 + ((extractPct * 20) / 100)
+                    reportProgress(scaledPct.coerceIn(5, 25), extractMsg)
+                }
+
+                ensureActive()
+                if (chunks.isEmpty()) {
+                    throw IllegalStateException("Не удалось извлечь аудиодорожку из видео.")
+                }
+
+                // Формируем контекстный промпт (название фильма/сериала из имени файла + словарь имен/терминов)
+                val fullContextPrompt = buildContextualPrompt(currentDisplayName, customPrompt)
+                val resolvedLanguage = resolveExplicitAudioLanguage(audioLanguage.ifBlank { sessionAudioLanguage }, currentDisplayName, customPrompt)
+                val cleanModel = model.ifBlank { "whisper-large-v3-turbo" }
+
+                val totalChunks = chunks.size
+                val completedCounter = AtomicInteger(0)
+                val semaphore = Semaphore(PARALLEL_GROQ_CONCURRENCY)
+
+                reportProgress(
+                    26,
+                    "🚀 Параллельная отправка M4A в Groq (${minOf(PARALLEL_GROQ_CONCURRENCY, totalChunks)} потока, частей: $totalChunks)..."
+                )
+
+                // Шаг 2: Параллельная отправка M4A-чанков напрямую из Kotlin в Groq через Coroutines (по 4 чанка одновременно)
+                val results: List<ChunkTranscriptionResult> = coroutineScope {
+                    chunks.map { chunk ->
+                        async(Dispatchers.IO) {
+                            semaphore.withPermit {
+                                ensureActive()
+                                val res = sendChunkToGroqWithRetry(
+                                    chunk = chunk,
+                                    keys = keys,
+                                    model = cleanModel,
+                                    prompt = fullContextPrompt,
+                                    language = resolvedLanguage,
+                                    filterHallucinations = filterHallucinations,
+                                    onStatus = { retryMsg ->
+                                        reportProgress(
+                                            26 + ((completedCounter.get() * 68) / maxOf(1, totalChunks)),
+                                            retryMsg
+                                        )
+                                    }
+                                )
+                                val doneNow = completedCounter.incrementAndGet()
+                                val pct = 26 + ((doneNow * 68) / maxOf(1, totalChunks))
+                                reportProgress(
+                                    pct.coerceIn(26, 95),
+                                    "🚀 Распознано в Groq: $doneNow из $totalChunks (${chunk.startSec.toInt()}–${chunk.endSec.toInt()} с)..."
+                                )
+                                res
+                            }
+                        }
+                    }.awaitAll()
+                }
+
+                // Шаг 3: Сборка всех ответов от Groq в один большой JSON-объект (сегменты и слова с таймкодами)
+                val mergedSegments = JSONArray()
+                val mergedWords = JSONArray()
+
+                for (item in results.sortedBy { it.chunk.index }) {
+                    val cPos = item.chunk.startSec
+                    val cCutoff = item.chunk.cutoffSec
+                    val cNextCutoff = item.chunk.nextCutoffSec
+
+                    for (seg in item.segments) {
+                        val absMid = (seg.start + seg.end) / 2.0 + cPos
+                        if (absMid < cCutoff || absMid >= cNextCutoff) continue
+                        mergedSegments.put(JSONObject().apply {
+                            put("start", seg.start + cPos)
+                            put("end", seg.end + cPos)
+                            put("text", seg.text)
+                        })
+                    }
+
+                    for (w in item.words) {
+                        val absMid = (w.start + w.end) / 2.0 + cPos
+                        if (absMid < cCutoff || absMid >= cNextCutoff) continue
+                        mergedWords.put(JSONObject().apply {
+                            put("word", w.word)
+                            put("start", w.start + cPos)
+                            put("end", w.end + cPos)
+                        })
+                    }
+                }
+
+                if (mergedSegments.length() == 0) {
+                    throw IllegalStateException("В аудиодорожке не удалось распознать речь.")
+                }
+
+                val finalPayload = JSONObject().apply {
+                    put("segments", mergedSegments)
+                    put("words", mergedWords)
+                    put("language", resolvedLanguage)
+                    put("fileName", currentDisplayName)
+                }.toString()
+
+                val escapedPayload = JSONObject.quote(finalPayload)
+                evalJsOnWebView("window.__onNativeSubtitlesDone && window.__onNativeSubtitlesDone($escapedPayload);")
+            } catch (e: CancellationException) {
+                evalJsOnWebView("window.__onNativeSubtitlesError && window.__onNativeSubtitlesError('Отменено пользователем.');")
+            } catch (e: InterruptedException) {
+                evalJsOnWebView("window.__onNativeSubtitlesError && window.__onNativeSubtitlesError('Отменено пользователем.');")
+            } catch (e: Throwable) {
+                val safeErr = JSONObject.quote(e.message ?: "Ошибка генерации субтитров")
+                evalJsOnWebView("window.__onNativeSubtitlesError && window.__onNativeSubtitlesError($safeErr);")
+            } finally {
+                clearAudioCache()
+                stopForegroundService()
+                setWebViewHardwareAcceleration(true)
             }
         }
     }
 
+    private fun parseApiKeys(rawKeys: String): List<String> {
+        return rawKeys.split(Regex("[\\s,;]+"))
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+    }
+
+    private fun getNextApiKey(keys: List<String>, rotate: Boolean = false): String {
+        if (keys.isEmpty()) return ""
+        val idx = if (rotate && keys.size > 1) {
+            activeKeyIndex.incrementAndGet()
+        } else {
+            activeKeyIndex.get()
+        }
+        return keys[Math.floorMod(idx, keys.size)]
+    }
+
+    private fun buildContextualPrompt(rawFileName: String, customTerms: String): String {
+        val withoutExt = rawFileName.replace(Regex("\\.[^/.]+$"), "")
+            .replace(Regex("[._]+"), " ")
+        val cleanTitle = withoutExt
+            .replace(
+                Regex(
+                    "\\b(2160p|1080p|720p|480p|4k|uhd|web[-\\s]?dl|webrip|bdrip|bluray|hdrip|dvdrip|x264|x265|h264|h265|hevc|avc|aac|ac3|eac3|dts|10bit|hdr|proper|repack)\\b",
+                    RegexOption.IGNORE_CASE
+                ),
+                " "
+            )
+            .replace(Regex("\\[[^\\]]*\\]|\\([^)]*\\)"), " ")
+            .replace(Regex("\\s{2,}"), " ")
+            .trim()
+            .ifBlank { withoutExt.trim() }
+
+        val parts = mutableListOf<String>()
+        if (cleanTitle.isNotBlank()) {
+            parts.add("Фильм/сериал: $cleanTitle.")
+        }
+        val terms = customTerms.trim()
+        if (terms.isNotBlank()) {
+            parts.add("Ключевые термины и имена персонажей: $terms.")
+        }
+        return parts.joinToString(" ").take(800)
+    }
+
+    private fun resolveExplicitAudioLanguage(selectedLang: String, rawFileName: String, customTerms: String): String {
+        val cleanSelected = selectedLang.trim().lowercase()
+        if (cleanSelected.isNotEmpty() && cleanSelected != "auto") {
+            return cleanSelected
+        }
+        val lowerName = rawFileName.lowercase()
+        if (Regex("\\b(rus|ru|russian|рус|дубляж|озвучка)\\b").containsMatchIn(lowerName) ||
+            Regex("[а-яё]").containsMatchIn(lowerName)
+        ) {
+            return "ru"
+        }
+        if (Regex("\\b(eng|en|english)\\b").containsMatchIn(lowerName)) return "en"
+        if (Regex("\\b(tur|tr|turkish)\\b").containsMatchIn(lowerName)) return "tr"
+        if (Regex("\\b(aze|az|azerbaijani)\\b").containsMatchIn(lowerName)) return "az"
+        if (Regex("[а-яё]", RegexOption.IGNORE_CASE).containsMatchIn(customTerms)) return "ru"
+        return ""
+    }
+
+    private fun isWhisperHallucination(segObj: JSONObject, filterEnabled: Boolean): Boolean {
+        val text = segObj.optString("text", "").trim()
+        if (text.isEmpty()) return true
+        if (!filterEnabled) return false
+        if (HALLUCINATION_REGEX.containsMatchIn(text)) return true
+        val noSpeechProb = segObj.optDouble("no_speech_prob", 0.0)
+        val avgLogprob = segObj.optDouble("avg_logprob", 0.0)
+        if (noSpeechProb > 0.85 && (avgLogprob < -0.8 || text.length < 16)) return true
+        val compressionRatio = segObj.optDouble("compression_ratio", 1.0)
+        if (compressionRatio > 2.6) return true
+        return false
+    }
+
+    /**
+     * Отправляет один M4A-чанк напрямую в Groq API через HttpURLConnection с таймаутом 45 секунд
+     * и до 2 повторных попыток (плюс ротация ключей при HTTP 429).
+     */
+    private suspend fun sendChunkToGroqWithRetry(
+        chunk: AudioChunkMeta,
+        keys: List<String>,
+        model: String,
+        prompt: String,
+        language: String,
+        filterHallucinations: Boolean,
+        onStatus: (String) -> Unit
+    ): ChunkTranscriptionResult {
+        var lastError: Throwable? = null
+
+        for (attempt in 0..MAX_CHUNK_RETRIES) {
+            coroutineScope { ensureActive() }
+            try {
+                return withTimeout(CHUNK_TIMEOUT_MS) {
+                    executeGroqMultipartRequest(
+                        chunk = chunk,
+                        keys = keys,
+                        model = model,
+                        prompt = prompt,
+                        language = language,
+                        filterHallucinations = filterHallucinations,
+                        onStatus = onStatus
+                    )
+                }
+            } catch (e: CancellationException) {
+                if (cancelAudioExtraction) throw e
+                // Сработал 45-секундный withTimeout для данного чанка
+                lastError = IllegalStateException("Таймаут чанка ${chunk.file.name} (>45 сек)")
+                if (attempt < MAX_CHUNK_RETRIES) {
+                    onStatus("⏱ Таймаут ${chunk.file.name} (>45 с). Повторная отправка (${attempt + 1}/$MAX_CHUNK_RETRIES)...")
+                    delay(800L)
+                }
+            } catch (e: Throwable) {
+                if (cancelAudioExtraction) throw CancellationException("Отменено пользователем.")
+                lastError = e
+                if (attempt < MAX_CHUNK_RETRIES) {
+                    onStatus("🔄 Повтор отправки ${chunk.file.name} (${attempt + 1}/$MAX_CHUNK_RETRIES)...")
+                    delay(1200L * (attempt + 1))
+                }
+            }
+        }
+        throw lastError ?: IllegalStateException("Не удалось отправить ${chunk.file.name} в Groq")
+    }
+
+    private suspend fun executeGroqMultipartRequest(
+        chunk: AudioChunkMeta,
+        keys: List<String>,
+        model: String,
+        prompt: String,
+        language: String,
+        filterHallucinations: Boolean,
+        onStatus: (String) -> Unit
+    ): ChunkTranscriptionResult {
+        var keyRotations = 0
+        val maxKeyRotations = maxOf(1, keys.size)
+
+        while (true) {
+            coroutineScope { ensureActive() }
+            val apiKey = getNextApiKey(keys, rotate = false)
+            val boundary = "----SubLaterGroqBoundary" + UUID.randomUUID().toString().replace("-", "")
+            val url = URL("https://api.groq.com/openai/v1/audio/transcriptions")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                doInput = true
+                useCaches = false
+                connectTimeout = 20_000
+                readTimeout = 45_000
+                setRequestProperty("Authorization", "Bearer $apiKey")
+                setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                setChunkedStreamingMode(65536)
+            }
+
+            try {
+                DataOutputStream(BufferedOutputStream(conn.outputStream, 65536)).use { out ->
+                    fun writeFormField(name: String, value: String) {
+                        out.writeBytes("--$boundary\r\n")
+                        out.writeBytes("Content-Disposition: form-data; name=\"$name\"\r\n\r\n")
+                        out.write(value.toByteArray(Charsets.UTF_8))
+                        out.writeBytes("\r\n")
+                    }
+
+                    writeFormField("model", model)
+                    writeFormField("temperature", "0")
+                    writeFormField("response_format", "verbose_json")
+                    writeFormField("timestamp_granularities[]", "word")
+                    writeFormField("timestamp_granularities[]", "segment")
+                    if (prompt.isNotBlank()) {
+                        writeFormField("prompt", prompt)
+                    }
+                    if (language.isNotBlank() && language != "auto") {
+                        writeFormField("language", language)
+                    }
+
+                    // Стримим бинарный M4A-файл напрямую с диска в сокет без Base64 и без загрузки в ОЗУ
+                    out.writeBytes("--$boundary\r\n")
+                    out.writeBytes("Content-Disposition: form-data; name=\"file\"; filename=\"${chunk.file.name}\"\r\n")
+                    out.writeBytes("Content-Type: audio/mp4\r\n\r\n")
+
+                    FileInputStream(chunk.file).use { fileIn ->
+                        val buffer = ByteArray(65536)
+                        var read: Int
+                        while (fileIn.read(buffer).also { read = it } != -1) {
+                            if (cancelAudioExtraction) throw CancellationException("Отменено пользователем.")
+                            out.write(buffer, 0, read)
+                        }
+                    }
+
+                    out.writeBytes("\r\n--$boundary--\r\n")
+                    out.flush()
+                }
+
+                val statusCode = conn.responseCode
+                if (statusCode == 429) {
+                    if (keys.size > 1 && keyRotations < maxKeyRotations) {
+                        keyRotations++
+                        getNextApiKey(keys, rotate = true)
+                        onStatus("🔄 Лимит на ключе. Переключение на следующий ключ Groq...")
+                        continue
+                    }
+                    val retryAfterSec = conn.getHeaderField("retry-after")?.toLongOrNull()?.coerceIn(1L, 25L) ?: 4L
+                    onStatus("⏳ Лимит запросов Groq (429). Ожидание ${retryAfterSec} с...")
+                    delay(retryAfterSec * 1000L)
+                    throw IllegalStateException("HTTP 429 Rate Limit")
+                }
+
+                if (statusCode !in 200..299) {
+                    val errText = try {
+                        conn.errorStream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
+                    } catch (_: Exception) {
+                        ""
+                    }
+                    if (statusCode == 401) {
+                        throw IllegalStateException("Неверный API-ключ Groq (HTTP 401).")
+                    }
+                    throw IllegalStateException("Ошибка Groq HTTP $statusCode: ${errText.take(160)}")
+                }
+
+                val responseBody = conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+                val json = JSONObject(responseBody)
+
+                val segmentsList = mutableListOf<TranscribedSegment>()
+                val rawSegments = json.optJSONArray("segments")
+                if (rawSegments != null) {
+                    for (i in 0 until rawSegments.length()) {
+                        val sObj = rawSegments.optJSONObject(i) ?: continue
+                        if (isWhisperHallucination(sObj, filterHallucinations)) continue
+                        val start = sObj.optDouble("start", 0.0)
+                        val end = sObj.optDouble("end", 0.0)
+                        val text = sObj.optString("text", "").trim()
+                        if (text.isNotEmpty() && end > start) {
+                            segmentsList.add(TranscribedSegment(start = start, end = end, text = text))
+                        }
+                    }
+                }
+
+                val wordsList = mutableListOf<TranscribedWord>()
+                val rawWords = json.optJSONArray("words")
+                if (rawWords != null) {
+                    for (i in 0 until rawWords.length()) {
+                        val wObj = rawWords.optJSONObject(i) ?: continue
+                        val wordText = wObj.optString("word", "").trim()
+                        val start = wObj.optDouble("start", Double.NaN)
+                        var end = wObj.optDouble("end", Double.NaN)
+                        if (wordText.isNotEmpty() && !start.isNaN() && !end.isNaN()) {
+                            if (end <= start) end = start + 0.08
+                            wordsList.add(TranscribedWord(word = wordText, start = start, end = end))
+                        }
+                    }
+                }
+
+                return ChunkTranscriptionResult(
+                    chunk = chunk,
+                    segments = segmentsList,
+                    words = wordsList
+                )
+            } finally {
+                try { conn.disconnect() } catch (_: Exception) {}
+            }
+        }
+    }
+
+    /**
+     * Полностью переписанная функция извлечения и нарезки аудио в формат M4A (AAC, строго 16000 Гц, Mono)
+     * чанками по 5 минут (300 секунд):
+     * 1) Сначала пытается выполнить сверхбыструю нарезку через FFmpeg (ffmpeg-kit).
+     * 2) Если FFmpeg недоступен, использует асинхронный MediaCodec в режиме CALLBACK + MediaMuxer.
+     */
     private fun extractHybridAudioToM4a(
         uri: Uri,
         onProgress: (Int, String) -> Unit
-    ): String {
+    ): List<AudioChunkMeta> {
         val chunkDir = File(context.cacheDir, "sublater_chunks")
         if (!chunkDir.exists()) chunkDir.mkdirs()
         chunkDir.listFiles()?.forEach { it.delete() }
 
+        // 1. Попытка извлечения и нарезки по 5 минут через FFmpeg (ffmpeg-kit) в M4A (AAC, 16000 Гц, Mono)
+        val ffmpegChunks = tryExtractWithFFmpegKit(uri, chunkDir, onProgress)
+        if (!ffmpegChunks.isNullOrEmpty()) {
+            return ffmpegChunks
+        }
+
+        if (cancelAudioExtraction) {
+            throw InterruptedException("Отменено пользователем.")
+        }
+
+        // 2. Фоллбэк: асинхронный MediaCodec в режиме CALLBACK + MediaMuxer (строго 16000 Гц, Mono, M4A, чанки по 5 минут)
+        return extractWithAsyncMediaCodecCallback(uri, chunkDir, onProgress)
+    }
+
+    private fun tryExtractWithFFmpegKit(
+        uri: Uri,
+        chunkDir: File,
+        onProgress: (Int, String) -> Unit
+    ): List<AudioChunkMeta>? {
+        var tempInputFile: File? = null
+        return try {
+            val ffmpegKitClass = Class.forName("com.arthenica.ffmpegkit.FFmpegKit")
+            val ffmpegKitConfigClass = Class.forName("com.arthenica.ffmpegkit.FFmpegKitConfig")
+            val returnCodeClass = Class.forName("com.arthenica.ffmpegkit.ReturnCode")
+
+            onProgress(5, "⚡ FFmpeg: подготовка аудио 16 кГц (M4A)...")
+
+            val inputPath: String = when (uri.scheme) {
+                "file" -> uri.path ?: return null
+                "http", "https" -> uri.toString()
+                "content" -> {
+                    val safParam = try {
+                        ffmpegKitConfigClass
+                            .getMethod("getSafParameterForRead", Context::class.java, Uri::class.java)
+                            .invoke(null, context, uri) as? String
+                    } catch (_: Exception) {
+                        null
+                    }
+                    if (!safParam.isNullOrBlank()) {
+                        safParam
+                    } else {
+                        val tmp = File(chunkDir, "ffmpeg_input_temp.bin")
+                        context.contentResolver.openInputStream(uri)?.use { input ->
+                            FileOutputStream(tmp).use { output ->
+                                val buf = ByteArray(131072)
+                                var r: Int
+                                while (input.read(buf).also { r = it } != -1) {
+                                    if (cancelAudioExtraction) throw InterruptedException("Отменено пользователем.")
+                                    output.write(buf, 0, r)
+                                }
+                            }
+                        }
+                        if (!tmp.exists() || tmp.length() == 0L) return null
+                        tempInputFile = tmp
+                        tmp.absolutePath
+                    }
+                }
+                else -> return null
+            }
+
+            val totalDurationSec = resolveMediaDurationSec(uri).takeIf { it > 0.0 }
+                ?: (cachedDurationMs / 1000.0).takeIf { it > 0.0 }
+                ?: 0.0
+
+            val chunkDuration = CHUNK_DURATION_SEC.toDouble()
+            val overlap = CHUNK_OVERLAP_SEC.toDouble()
+            val advance = chunkDuration - overlap
+            val resultList = mutableListOf<AudioChunkMeta>()
+
+            if (totalDurationSec > chunkDuration + 1.0) {
+                var posSec = 0.0
+                var chunkIndex = 0
+                val estimatedTotalChunks = maxOf(1, Math.ceil((totalDurationSec - overlap) / advance).toInt())
+
+                while (posSec < totalDurationSec - 0.2) {
+                    if (cancelAudioExtraction) throw InterruptedException("Отменено пользователем.")
+                    val endSec = minOf(posSec + chunkDuration, totalDurationSec)
+                    val curDur = endSec - posSec
+                    if (curDur < 0.5) break
+
+                    val outFile = File(chunkDir, "chunk_${chunkIndex}.m4a")
+                    if (outFile.exists()) outFile.delete()
+
+                    val cmd = "-y -ss $posSec -t $curDur -i \"$inputPath\" -vn -ac $WHISPER_CHANNELS_MONO -ar $WHISPER_SAMPLE_RATE_HZ -c:a aac -b:a $WHISPER_AAC_BITRATE -movflags +faststart \"${outFile.absolutePath}\""
+                    val session = ffmpegKitClass.getMethod("execute", String::class.java).invoke(null, cmd) ?: return null
+                    activeFFmpegSessionId = try {
+                        session.javaClass.getMethod("getSessionId").invoke(session) as? Long
+                    } catch (_: Exception) {
+                        null
+                    }
+                    val returnCode = session.javaClass.getMethod("getReturnCode").invoke(session)
+                    val isSuccess = returnCodeClass.getMethod("isValueSuccess", returnCodeClass).invoke(null, returnCode) as? Boolean ?: false
+
+                    if (!isSuccess || !outFile.exists() || outFile.length() <= 128L) {
+                        outFile.delete()
+                        return null
+                    }
+
+                    val isLast = endSec >= totalDurationSec - 0.5
+                    val cutoffSec = if (chunkIndex == 0) 0.0 else (posSec + overlap / 2.0)
+                    val nextCutoffSec = if (isLast) (endSec + 100.0) else (endSec - overlap / 2.0)
+
+                    resultList.add(
+                        AudioChunkMeta(
+                            index = chunkIndex,
+                            file = outFile,
+                            startSec = posSec,
+                            endSec = endSec,
+                            cutoffSec = cutoffSec,
+                            nextCutoffSec = nextCutoffSec
+                        )
+                    )
+
+                    val pct = (((chunkIndex + 1).toDouble() / estimatedTotalChunks.toDouble()) * 95.0).toInt().coerceIn(5, 99)
+                    onProgress(pct, "⚡ FFmpeg 16 кГц (M4A): чанк ${chunkIndex + 1} из $estimatedTotalChunks...")
+
+                    if (isLast) break
+                    posSec += advance
+                    chunkIndex++
+                }
+            } else {
+                val pattern = File(chunkDir, "chunk_%d.m4a").absolutePath
+                val cmd = "-y -i \"$inputPath\" -vn -ac $WHISPER_CHANNELS_MONO -ar $WHISPER_SAMPLE_RATE_HZ -c:a aac -b:a $WHISPER_AAC_BITRATE -f segment -segment_time $CHUNK_DURATION_SEC -reset_timestamps 1 \"$pattern\""
+                val session = ffmpegKitClass.getMethod("execute", String::class.java).invoke(null, cmd) ?: return null
+                val returnCode = session.javaClass.getMethod("getReturnCode").invoke(session)
+                val isSuccess = returnCodeClass.getMethod("isValueSuccess", returnCodeClass).invoke(null, returnCode) as? Boolean ?: false
+                if (!isSuccess) return null
+
+                val generatedFiles = chunkDir.listFiles { f -> f.name.startsWith("chunk_") && f.name.endsWith(".m4a") && f.length() > 128L }
+                    ?.sortedBy { f -> f.name.removePrefix("chunk_").removeSuffix(".m4a").toIntOrNull() ?: 0 }
+                    ?: emptyList()
+
+                if (generatedFiles.isEmpty()) return null
+
+                for ((idx, file) in generatedFiles.withIndex()) {
+                    val startSec = idx * chunkDuration
+                    val isLast = idx == generatedFiles.lastIndex
+                    val endSec = if (isLast && totalDurationSec > startSec) totalDurationSec else (startSec + chunkDuration)
+                    resultList.add(
+                        AudioChunkMeta(
+                            index = idx,
+                            file = file,
+                            startSec = startSec,
+                            endSec = endSec,
+                            cutoffSec = startSec,
+                            nextCutoffSec = if (isLast) endSec + 100.0 else endSec
+                        )
+                    )
+                }
+            }
+
+            resultList
+        } catch (e: InterruptedException) {
+            throw e
+        } catch (_: Throwable) {
+            null
+        } finally {
+            activeFFmpegSessionId = null
+            try { tempInputFile?.delete() } catch (_: Exception) {}
+        }
+    }
+
+    private fun resolveMediaDurationSec(uri: Uri): Double {
+        val retriever = MediaMetadataRetriever()
+        var pfd: ParcelFileDescriptor? = null
+        return try {
+            if (uri.scheme == "content" || uri.scheme == "file") {
+                pfd = context.contentResolver.openFileDescriptor(uri, "r")
+                if (pfd != null) {
+                    retriever.setDataSource(pfd.fileDescriptor)
+                } else {
+                    retriever.setDataSource(context, uri)
+                }
+            } else {
+                retriever.setDataSource(uri.toString(), HashMap())
+            }
+            val durMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+            durMs / 1000.0
+        } catch (_: Exception) {
+            0.0
+        } finally {
+            try { retriever.release() } catch (_: Exception) {}
+            try { pfd?.close() } catch (_: Exception) {}
+        }
+    }
+
+    /**
+     * Асинхронный конвейер декодирования и сжатия аудио через MediaCodec в режиме CALLBACK + MediaMuxer:
+     * приводит сэмплы строго к 16000 Гц (16 кГц) Mono и нарезает по 5 минут (300 с) в формат M4A (AAC).
+     */
+    private fun extractWithAsyncMediaCodecCallback(
+        uri: Uri,
+        chunkDir: File,
+        onProgress: (Int, String) -> Unit
+    ): List<AudioChunkMeta> {
         val extractor = MediaExtractor()
         var pfd: ParcelFileDescriptor? = null
         var tempCopiedFile: File? = null
+        var decoder: MediaCodec? = null
+        var decoderThread: HandlerThread? = null
+        var currentWriter: AsyncM4aChunkMuxer? = null
 
         try {
             var dataSourceSet = false
@@ -847,34 +1638,6 @@ class ExoPlayerManager(
                 throw IllegalStateException("Не удалось открыть медиафайл для извлечения аудио")
             }
 
-            // Шаг 1 Гибридного подхода: проверяем, есть ли в фильме простая AAC-дорожка (audio/mp4a-latm)
-            var aacTrackIndex = -1
-            var aacFormat: MediaFormat? = null
-            for (i in 0 until extractor.trackCount) {
-                val fmt = extractor.getTrackFormat(i)
-                val mime = fmt.getString(MediaFormat.KEY_MIME) ?: continue
-                if (mime == MediaFormat.MIMETYPE_AUDIO_AAC) {
-                    aacTrackIndex = i
-                    aacFormat = fmt
-                    break
-                }
-            }
-
-            // ВЕТКА 1 (Простой звук AAC): Аппаратное копирование фреймов напрямую в .m4a за ~2 секунды без декодирования в WAV!
-            if (aacTrackIndex >= 0 && aacFormat != null) {
-                try {
-                    val fastAacResult = remuxSimpleAacIn2Seconds(extractor, aacTrackIndex, aacFormat, chunkDir, onProgress)
-                    if (fastAacResult.length() > 0) {
-                        return fastAacResult.toString()
-                    }
-                } catch (e: InterruptedException) {
-                    throw e
-                } catch (_: Exception) {
-                    // Если прямой ремукс не подошёл для нестандартного контейнера, переходим к Ветке 2
-                }
-            }
-
-            // ВЕТКА 2 (Сложный звук DTS / AC3 / E-AC3 / Opus / Vorbis): Декодируем и кодируем сразу в сжатый AAC (M4A 64 kbps), а не в WAV!
             val codecList = MediaCodecList(MediaCodecList.ALL_CODECS)
             var selectedTrackIndex = -1
             var selectedFormat: MediaFormat? = null
@@ -905,7 +1668,7 @@ class ExoPlayerManager(
             }
 
             if (selectedTrackIndex < 0 || selectedFormat == null) {
-                throw IllegalStateException("В фильме не найдена поддерживаемая аудиодорожка")
+                throw IllegalStateException("В видео не найдена поддерживаемая аудиодорожка")
             }
 
             extractor.selectTrack(selectedTrackIndex)
@@ -914,33 +1677,25 @@ class ExoPlayerManager(
             val durationUs = if (selectedFormat.containsKey(MediaFormat.KEY_DURATION)) {
                 selectedFormat.getLong(MediaFormat.KEY_DURATION).coerceAtLeast(0L)
             } else {
-                cachedDurationMs * 1000L
+                (resolveMediaDurationSec(uri) * 1_000_000.0).toLong().coerceAtLeast(cachedDurationMs * 1000L)
             }
 
-            val targetSampleRate = 16000
-            val targetBitRate = 64000 // Сжатый AAC (M4A) 64 kbps (~2.3 МБ на 5 минут вместо 19 МБ WAV!)
-            val chunkDurationSec = 300 // 5 минут на кусок
-            val overlapSec = 6         // 6 секунд перекрытия
+            val targetSampleRate = WHISPER_SAMPLE_RATE_HZ // Строго 16000 Гц
+            val targetBitRate = WHISPER_AAC_BITRATE       // 64000 бит/с AAC
+            val chunkDurationSec = CHUNK_DURATION_SEC     // 300 секунд (5 минут)
+            val overlapSec = CHUNK_OVERLAP_SEC           // 6 секунд перекрытия
             val maxChunkSamples = (chunkDurationSec * targetSampleRate).toLong()
             val overlapBytesCount = overlapSec * targetSampleRate * 2
             val overlapRing = ByteArray(overlapBytesCount)
             var overlapFilled = 0
             var overlapWritePos = 0
 
-            val decoder = if (selectedDecoderName != null) {
-                MediaCodec.createByCodecName(selectedDecoderName)
-            } else {
-                MediaCodec.createDecoderByType(selectedMime)
-            }
-            decoder.configure(selectedFormat, null, null, 0)
-            decoder.start()
-
-            val chunkArray = JSONArray()
+            val chunkList = mutableListOf<AudioChunkMeta>()
             var chunkIndex = 0
             var currentChunkStartSample = 0L
             var totalWrittenMonoSamples = 0L
 
-            var currentWriter = SyncM4aChunkWriter(
+            currentWriter = AsyncM4aChunkMuxer(
                 File(chunkDir, "chunk_0.m4a"),
                 targetSampleRate,
                 targetBitRate
@@ -951,51 +1706,53 @@ class ExoPlayerManager(
 
             fun flushBatchToM4a() {
                 if (pcmBatchUsed > 0) {
-                    currentWriter.writePcmShorts(pcmBatchBuf, pcmBatchUsed)
+                    currentWriter?.enqueuePcm16Mono(pcmBatchBuf, pcmBatchUsed)
                     pcmBatchUsed = 0
                 }
             }
 
-            fun finalizeM4aChunk(isLast: Boolean) {
+            fun finalizeCurrentChunk(isLast: Boolean) {
                 flushBatchToM4a()
-                currentWriter.close()
-                val writtenSamples = currentWriter.totalSamplesWritten
-                val outFile = currentWriter.outputFile
-                if (writtenSamples > targetSampleRate / 2 && outFile.exists() && outFile.length() > 128) {
+                val writer = currentWriter ?: return
+                writer.finishAndClose()
+                val writtenSamples = writer.totalSamplesWritten
+                val outFile = writer.outputFile
+                if (writtenSamples > targetSampleRate / 2 && outFile.exists() && outFile.length() > 128L) {
                     val startSec = currentChunkStartSample.toDouble() / targetSampleRate.toDouble()
                     val durationSec = writtenSamples.toDouble() / targetSampleRate.toDouble()
                     val endSec = startSec + durationSec
                     val cutoffSec = if (chunkIndex == 0) 0.0 else (startSec + overlapSec / 2.0)
                     val nextCutoffSec = if (isLast) (endSec + 100.0) else (endSec - overlapSec / 2.0)
 
-                    chunkArray.put(JSONObject().apply {
-                        put("index", chunkIndex)
-                        put("path", outFile.absolutePath)
-                        put("fileName", outFile.name)
-                        put("mimeType", "audio/mp4")
-                        put("startSec", startSec)
-                        put("endSec", endSec)
-                        put("cutoffSec", cutoffSec)
-                        put("nextCutoffSec", nextCutoffSec)
-                    })
+                    chunkList.add(
+                        AudioChunkMeta(
+                            index = chunkIndex,
+                            file = outFile,
+                            startSec = startSec,
+                            endSec = endSec,
+                            cutoffSec = cutoffSec,
+                            nextCutoffSec = nextCutoffSec
+                        )
+                    )
                 } else {
                     outFile.delete()
                 }
             }
 
-            fun rotateNextM4aChunk() {
-                finalizeM4aChunk(isLast = false)
+            fun rotateNextChunk() {
+                finalizeCurrentChunk(isLast = false)
                 chunkIndex++
-                currentWriter = SyncM4aChunkWriter(
+                val nextWriter = AsyncM4aChunkMuxer(
                     File(chunkDir, "chunk_${chunkIndex}.m4a"),
                     targetSampleRate,
                     targetBitRate
                 )
+                currentWriter = nextWriter
                 val overlapSamples = (overlapFilled / 2).toLong()
                 currentChunkStartSample = (totalWrittenMonoSamples - overlapSamples).coerceAtLeast(0L)
                 if (overlapFilled > 0) {
                     if (overlapFilled < overlapBytesCount) {
-                        currentWriter.writePcmShorts(overlapRing, overlapFilled)
+                        nextWriter.enqueuePcm16Mono(overlapRing, overlapFilled)
                     } else {
                         val tailLen = overlapBytesCount - overlapWritePos
                         val orderedOverlap = ByteArray(overlapBytesCount)
@@ -1003,12 +1760,12 @@ class ExoPlayerManager(
                         if (overlapWritePos > 0) {
                             System.arraycopy(overlapRing, 0, orderedOverlap, tailLen, overlapWritePos)
                         }
-                        currentWriter.writePcmShorts(orderedOverlap, overlapBytesCount)
+                        nextWriter.enqueuePcm16Mono(orderedOverlap, overlapBytesCount)
                     }
                 }
             }
 
-            fun pushMonoSampleToM4a(sample: Short) {
+            fun pushMono16kSample(sample: Short) {
                 val lo = (sample.toInt() and 0xFF).toByte()
                 val hi = ((sample.toInt() ushr 8) and 0xFF).toByte()
                 pcmBatchBuf[pcmBatchUsed++] = lo
@@ -1022,8 +1779,9 @@ class ExoPlayerManager(
                 if (overlapFilled < overlapBytesCount) overlapFilled += 2
                 totalWrittenMonoSamples++
 
-                if (currentWriter.totalSamplesWritten + (pcmBatchUsed / 2) >= maxChunkSamples) {
-                    rotateNextM4aChunk()
+                val activeSamples = (currentWriter?.totalSamplesWritten ?: 0L) + (pcmBatchUsed / 2).toLong()
+                if (activeSamples >= maxChunkSamples) {
+                    rotateNextChunk()
                 }
             }
 
@@ -1041,60 +1799,67 @@ class ExoPlayerManager(
             var resamplePos = 0.0
             var resampleStep = srcSampleRate.toDouble() / targetSampleRate.toDouble()
 
-            val bufferInfo = MediaCodec.BufferInfo()
             var inputDone = false
-            var outputDone = false
             var lastPct = -1
+            val decodeDoneLatch = CountDownLatch(1)
+            val asyncErrorRef = AtomicReference<Throwable?>(null)
 
-            try {
-                while (!outputDone) {
-                    if (cancelAudioExtraction) throw InterruptedException("Отменено пользователем.")
+            decoderThread = HandlerThread("SubLaterAsyncDecoder").apply { start() }
+            val decoderHandler = Handler(decoderThread.looper)
 
-                    if (!inputDone) {
-                        val inIndex = decoder.dequeueInputBuffer(10000L)
-                        if (inIndex >= 0) {
-                            val inBuf = decoder.getInputBuffer(inIndex)
-                            if (inBuf != null) {
-                                val sampleSize = extractor.readSampleData(inBuf, 0)
-                                if (sampleSize < 0) {
-                                    decoder.queueInputBuffer(inIndex, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                                    inputDone = true
-                                } else {
-                                    val ptsUs = extractor.sampleTime.coerceAtLeast(0L)
-                                    decoder.queueInputBuffer(inIndex, 0, sampleSize, ptsUs, 0)
-                                    extractor.advance()
+            val mediaDecoder = if (selectedDecoderName != null) {
+                MediaCodec.createByCodecName(selectedDecoderName)
+            } else {
+                MediaCodec.createDecoderByType(selectedMime)
+            }
+            decoder = mediaDecoder
 
-                                    if (durationUs > 0L) {
-                                        val pct = ((ptsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
-                                        if (pct >= lastPct + 5) {
-                                            lastPct = pct
-                                            onProgress(pct, "⚡ Сжатие сложного звука в AAC (M4A): $pct% (часть ${chunkIndex + 1})...")
-                                        }
-                                    }
+            mediaDecoder.setCallback(object : MediaCodec.Callback() {
+                override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
+                    if (cancelAudioExtraction) {
+                        asyncErrorRef.compareAndSet(null, InterruptedException("Отменено пользователем."))
+                        decodeDoneLatch.countDown()
+                        return
+                    }
+                    if (inputDone || index < 0) return
+                    try {
+                        val inBuf = codec.getInputBuffer(index) ?: return
+                        inBuf.clear()
+                        val sampleSize = extractor.readSampleData(inBuf, 0)
+                        if (sampleSize < 0) {
+                            codec.queueInputBuffer(index, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            inputDone = true
+                        } else {
+                            val ptsUs = extractor.sampleTime.coerceAtLeast(0L)
+                            codec.queueInputBuffer(index, 0, sampleSize, ptsUs, 0)
+                            extractor.advance()
+
+                            if (durationUs > 0L) {
+                                val pct = ((ptsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
+                                if (pct >= lastPct + 4) {
+                                    lastPct = pct
+                                    onProgress(pct, "⚡ Асинхронная нарезка M4A (16 кГц): $pct% (чанк ${chunkIndex + 1})...")
                                 }
                             }
                         }
+                    } catch (t: Throwable) {
+                        asyncErrorRef.compareAndSet(null, t)
+                        decodeDoneLatch.countDown()
                     }
+                }
 
-                    var outIndex = decoder.dequeueOutputBuffer(bufferInfo, 10000L)
-                    while (outIndex >= 0 || outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                        if (outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                            val newFmt = decoder.outputFormat
-                            if (newFmt.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
-                                srcSampleRate = newFmt.getInteger(MediaFormat.KEY_SAMPLE_RATE).coerceAtLeast(8000)
-                            }
-                            if (newFmt.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
-                                srcChannels = newFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
-                            }
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && newFmt.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
-                                pcmEncoding = newFmt.getInteger(MediaFormat.KEY_PCM_ENCODING)
-                            }
-                            resampleStep = srcSampleRate.toDouble() / targetSampleRate.toDouble()
-                        } else if (outIndex >= 0) {
-                            val outBuf = decoder.getOutputBuffer(outIndex)
-                            if (outBuf != null && bufferInfo.size > 0) {
-                                outBuf.position(bufferInfo.offset)
-                                outBuf.limit(bufferInfo.offset + bufferInfo.size)
+                override fun onOutputBufferAvailable(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {
+                    if (cancelAudioExtraction) {
+                        asyncErrorRef.compareAndSet(null, InterruptedException("Отменено пользователем."))
+                        decodeDoneLatch.countDown()
+                        return
+                    }
+                    try {
+                        if (index >= 0) {
+                            val outBuf = codec.getOutputBuffer(index)
+                            if (outBuf != null && info.size > 0 && (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
+                                outBuf.position(info.offset)
+                                outBuf.limit(info.offset + info.size)
                                 outBuf.order(ByteOrder.LITTLE_ENDIAN)
 
                                 if (pcmEncoding == AudioFormat.ENCODING_PCM_FLOAT) {
@@ -1105,7 +1870,7 @@ class ExoPlayerManager(
                                         var sum = 0f
                                         for (ch in 0 until srcChannels) sum += floatBuf.get(baseIdx + ch)
                                         val monoShort = ((sum / srcChannels).coerceIn(-1f, 1f) * 32767f).toInt().toShort()
-                                        pushMonoSampleToM4a(monoShort)
+                                        pushMono16kSample(monoShort)
                                         resamplePos += resampleStep
                                     }
                                     resamplePos = (resamplePos - totalFrames.toDouble()).coerceAtLeast(0.0)
@@ -1117,153 +1882,65 @@ class ExoPlayerManager(
                                         var sum = 0
                                         for (ch in 0 until srcChannels) sum += shortBuf.get(baseIdx + ch).toInt()
                                         val monoShort = (sum / srcChannels).coerceIn(-32768, 32767).toShort()
-                                        pushMonoSampleToM4a(monoShort)
+                                        pushMono16kSample(monoShort)
                                         resamplePos += resampleStep
                                     }
                                     resamplePos = (resamplePos - totalFrames.toDouble()).coerceAtLeast(0.0)
                                 }
                             }
-                            decoder.releaseOutputBuffer(outIndex, false)
-                            if ((bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                                outputDone = true
-                                break
+                            codec.releaseOutputBuffer(index, false)
+                            if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                                decodeDoneLatch.countDown()
                             }
                         }
-                        outIndex = decoder.dequeueOutputBuffer(bufferInfo, 0L)
+                    } catch (t: Throwable) {
+                        asyncErrorRef.compareAndSet(null, t)
+                        decodeDoneLatch.countDown()
                     }
                 }
-                finalizeM4aChunk(isLast = true)
-            } finally {
-                try { currentWriter.close() } catch (_: Exception) {}
-                try { decoder.stop() } catch (_: Exception) {}
-                try { decoder.release() } catch (_: Exception) {}
+
+                override fun onOutputFormatChanged(codec: MediaCodec, newFmt: MediaFormat) {
+                    if (newFmt.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
+                        srcSampleRate = newFmt.getInteger(MediaFormat.KEY_SAMPLE_RATE).coerceAtLeast(8000)
+                    }
+                    if (newFmt.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
+                        srcChannels = newFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && newFmt.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+                        pcmEncoding = newFmt.getInteger(MediaFormat.KEY_PCM_ENCODING)
+                    }
+                    resampleStep = srcSampleRate.toDouble() / targetSampleRate.toDouble()
+                }
+
+                override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
+                    asyncErrorRef.compareAndSet(null, e)
+                    decodeDoneLatch.countDown()
+                }
+            }, decoderHandler)
+
+            mediaDecoder.configure(selectedFormat, null, null, 0)
+            mediaDecoder.start()
+
+            while (!decodeDoneLatch.await(250, TimeUnit.MILLISECONDS)) {
+                if (cancelAudioExtraction) {
+                    throw InterruptedException("Отменено пользователем.")
+                }
             }
 
-            return chunkArray.toString()
+            asyncErrorRef.get()?.let { throw it }
+            finalizeCurrentChunk(isLast = true)
+            currentWriter = null
+
+            return chunkList
         } finally {
+            try { currentWriter?.finishAndClose() } catch (_: Exception) {}
+            try { decoder?.stop() } catch (_: Exception) {}
+            try { decoder?.release() } catch (_: Exception) {}
+            try { decoderThread?.quitSafely() } catch (_: Exception) {}
             try { extractor.release() } catch (_: Exception) {}
             try { pfd?.close() } catch (_: Exception) {}
             try { tempCopiedFile?.delete() } catch (_: Exception) {}
         }
-    }
-
-    /**
-     * ВЕТКА 1 Гибридного подхода: если звук в фильме уже AAC (audio/mp4a-latm),
-     * аппаратно копируем фреймы через MediaExtractor + MediaMuxer сразу в .m4a за ~2 секунды!
-     */
-    private fun remuxSimpleAacIn2Seconds(
-        extractor: MediaExtractor,
-        trackIndex: Int,
-        aacFormat: MediaFormat,
-        chunkDir: File,
-        onProgress: (Int, String) -> Unit
-    ): JSONArray {
-        extractor.selectTrack(trackIndex)
-        extractor.seekTo(0L, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
-
-        val durationUs = if (aacFormat.containsKey(MediaFormat.KEY_DURATION)) {
-            aacFormat.getLong(MediaFormat.KEY_DURATION).coerceAtLeast(0L)
-        } else {
-            cachedDurationMs * 1000L
-        }
-
-        val chunkDurationSec = 480.0 // 8 минут на чанк (~5-7 МБ в M4A)
-        val overlapSec = 6.0         // 6 секунд перекрытия
-        val chunkDurationUs = (chunkDurationSec * 1_000_000.0).toLong()
-        val overlapUs = (overlapSec * 1_000_000.0).toLong()
-        val advanceUs = chunkDurationUs - overlapUs
-        val maxChunkBytes = 16 * 1024 * 1024
-
-        val directBuf = ByteBuffer.allocateDirect(262144).order(ByteOrder.LITTLE_ENDIAN)
-        val bufferInfo = MediaCodec.BufferInfo()
-        val resultArray = JSONArray()
-
-        var chunkIndex = 0
-        var targetStartUs = 0L
-
-        while (true) {
-            if (cancelAudioExtraction) throw InterruptedException("Отменено пользователем.")
-            if (durationUs > 0L && targetStartUs >= durationUs - 200_000L) break
-
-            extractor.seekTo(targetStartUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
-            val outFile = File(chunkDir, "chunk_${chunkIndex}.m4a")
-            if (outFile.exists()) outFile.delete()
-
-            val muxer = MediaMuxer(outFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-            val muxTrack = muxer.addTrack(aacFormat)
-            muxer.start()
-
-            var actualFirstPtsUs = -1L
-            var lastPtsUs = targetStartUs
-            var bytesWritten = 0
-            var reachedEof = false
-
-            try {
-                while (true) {
-                    if (cancelAudioExtraction) throw InterruptedException("Отменено пользователем.")
-                    directBuf.clear()
-                    val sampleSize = extractor.readSampleData(directBuf, 0)
-                    if (sampleSize < 0) {
-                        reachedEof = true
-                        break
-                    }
-
-                    val ptsUs = extractor.sampleTime.coerceAtLeast(0L)
-                    if (actualFirstPtsUs < 0L) actualFirstPtsUs = ptsUs
-                    lastPtsUs = ptsUs
-
-                    bufferInfo.offset = 0
-                    bufferInfo.size = sampleSize
-                    bufferInfo.presentationTimeUs = (ptsUs - actualFirstPtsUs).coerceAtLeast(0L)
-                    bufferInfo.flags = extractor.sampleFlags
-
-                    muxer.writeSampleData(muxTrack, directBuf, bufferInfo)
-                    bytesWritten += sampleSize
-                    extractor.advance()
-
-                    val elapsedInChunkUs = ptsUs - actualFirstPtsUs
-                    if (elapsedInChunkUs >= chunkDurationUs || bytesWritten >= maxChunkBytes) {
-                        break
-                    }
-                }
-            } finally {
-                try { muxer.stop() } catch (_: Exception) {}
-                try { muxer.release() } catch (_: Exception) {}
-            }
-
-            if (bytesWritten > 256 && outFile.exists() && actualFirstPtsUs >= 0L) {
-                val startSec = actualFirstPtsUs.toDouble() / 1_000_000.0
-                val endSec = maxOf(startSec + 0.5, lastPtsUs.toDouble() / 1_000_000.0)
-                val isLast = reachedEof || (durationUs > 0L && lastPtsUs >= durationUs - 500_000L)
-                val cutoffSec = if (chunkIndex == 0) 0.0 else (startSec + overlapSec / 2.0)
-                val nextCutoffSec = if (isLast) (endSec + 100.0) else (endSec - overlapSec / 2.0)
-
-                resultArray.put(JSONObject().apply {
-                    put("index", chunkIndex)
-                    put("path", outFile.absolutePath)
-                    put("fileName", outFile.name)
-                    put("mimeType", "audio/mp4")
-                    put("startSec", startSec)
-                    put("endSec", endSec)
-                    put("cutoffSec", cutoffSec)
-                    put("nextCutoffSec", nextCutoffSec)
-                })
-
-                if (durationUs > 0L) {
-                    val pct = ((lastPtsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
-                    onProgress(pct, "⚡ Аппаратное извлечение AAC (M4A): $pct% (часть ${chunkIndex + 1})...")
-                }
-
-                if (isLast) break
-                targetStartUs = (actualFirstPtsUs + advanceUs).coerceAtLeast(targetStartUs + 1_000_000L)
-                chunkIndex++
-            } else {
-                outFile.delete()
-                break
-            }
-        }
-
-        return resultArray
     }
 
     /* ==================== ЗАЩИТА API-КЛЮЧЕЙ ЧЕРЕЗ ENCRYPTEDSHAREDPREFERENCES (ANDROID KEYSTORE) ==================== */
@@ -1328,6 +2005,7 @@ class ExoPlayerManager(
 
     @JavascriptInterface
     fun saveApiKey(key: String): Boolean {
+        sessionGroqApiKey = key.trim()
         return saveSecureKey("groq_api_key", key)
     }
 
@@ -1421,13 +2099,15 @@ class ExoPlayerManager(
     }
 
     fun release() {
-        cancelAudioExtraction = true
-        stopForegroundService()
+        cancelNativeSubtitles()
+        ioScope.cancel()
         mainHandler.removeCallbacks(positionPoller)
+        detachWebView()
         try {
             loudnessEnhancer?.release()
         } catch (_: Exception) {
         }
+        loudnessEnhancer = null
         exoPlayer.release()
     }
 }
