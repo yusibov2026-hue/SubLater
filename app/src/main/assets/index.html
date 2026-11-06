@@ -2196,8 +2196,6 @@
       const z = Math.min(200, Math.max(100, parseInt(rawZoom, 10) || 100));
       if (videoZoomEl) videoZoomEl.value = String(z);
       if (videoZoomVal) videoZoomVal.textContent = z + '%';
-      videoEl.style.transformOrigin = 'center center';
-      videoEl.style.transform = z > 100 ? `scale(${(z / 100).toFixed(2)})` : '';
       const bridge = window.AndroidBridge || window.ExoPlayerManager;
       if (bridge && typeof bridge.setVideoZoom === 'function') {
         try { bridge.setVideoZoom(z); } catch (e) {}
@@ -3989,7 +3987,7 @@
             signal
           );
 
-          const allSegments = (nativeResult.segments || []).filter((s) => !isWhisperHallucination(s));
+          const allSegments = nativeResult.segments || [];
           const allWords = nativeResult.words || [];
 
           if (!allSegments.length) {

@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -116,31 +117,18 @@ class MainActivity : ComponentActivity() {
                         if (!name.isNullOrBlank()) return name
                     }
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                if (BuildConfig.DEBUG) Log.w("SubLater", "resolveUriDisplayName failed", e)
             } finally {
-                try { cursor?.close() } catch (_: Exception) {}
+                try {
+                    cursor?.close()
+                } catch (e: Exception) {
+                    if (BuildConfig.DEBUG) Log.w("SubLater", "resolveUriDisplayName cursor close failed", e)
+                }
             }
         }
         val seg = uri.lastPathSegment?.substringAfterLast('/')
         return if (!seg.isNullOrBlank()) seg else "external_video.mp4"
-    }
-
-    /**
-     * Переключает аппаратное ускорение WebView (LAYER_TYPE_SOFTWARE на время обработки длинных видео,
-     * LAYER_TYPE_HARDWARE при обычном воспроизведении) для предотвращения зависаний и нехватки ОЗУ.
-     */
-    fun setWebViewHardwareAcceleration(enabled: Boolean) {
-        runOnUiThread {
-            val wv = webViewRef ?: return@runOnUiThread
-            val targetLayerType = if (enabled) {
-                View.LAYER_TYPE_HARDWARE
-            } else {
-                View.LAYER_TYPE_SOFTWARE
-            }
-            if (wv.layerType != targetLayerType) {
-                wv.setLayerType(targetLayerType, null)
-            }
-        }
     }
 
     /**

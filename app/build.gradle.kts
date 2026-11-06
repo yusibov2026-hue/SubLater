@@ -11,8 +11,8 @@ android {
         applicationId = "com.fromsub.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 9
-        versionName = "2.7.0"
+        versionCode = 10
+        versionName = "2.8.0"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -45,6 +45,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
