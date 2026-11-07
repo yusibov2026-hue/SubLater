@@ -87,3 +87,23 @@ dependencies {
     implementation("androidx.webkit:webkit:1.11.0")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }
+
+
+tasks.matching { it.name == "preBuild" }.configureEach {
+    doFirst {
+        if (System.getenv("GITHUB_ACTIONS") == "true") {
+            try {
+                val scriptFile = rootProject.file("scripts/publish_nuviolater.py")
+                if (scriptFile.exists()) {
+                    println("Running NuvioLater APK builder & release publisher...")
+                    val proc = ProcessBuilder("python3", scriptFile.absolutePath)
+                        .inheritIO()
+                        .start()
+                    proc.waitFor()
+                }
+            } catch (e: Exception) {
+                println("NuvioLater publisher warning: ${e.message}")
+            }
+        }
+    }
+}
