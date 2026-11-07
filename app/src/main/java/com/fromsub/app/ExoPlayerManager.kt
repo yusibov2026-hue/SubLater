@@ -139,18 +139,13 @@ data class ChunkTranscriptionResult(
  * сжимает PCM 16-bit поток в ~2 раза по сравнению с WAV за счёт SUBFRAME_CONSTANT (для пауз)
  * и SUBFRAME_FIXED (линейное предсказание 1–2 порядка + кодирование Райса) напрямую на CPU без задержек инициализации кодеков.
  */
-private class AsyncFlacChunkWriter(
+private class AsyncWavChunkWriter(
     val outputFile: File,
-    private val sampleRate: Int = 16000
+    private val sampleRate: Int = 16000,
+    private val channels: Int = 1,
+    private val bitsPerSample: Int = 16
 ) {
-    companion object {
-        private const val BLOCK_SIZE = 2048
-    }
-
     private val outputStream = BufferedOutputStream(FileOutputStream(outputFile), 65536)
-    private val sampleBuf = ShortArray(BLOCK_SIZE)
-    private var bufferedSamples = 0
-    private var frameNumber = 0
     private val lock = Object()
     private var isClosed = false
 
@@ -159,32 +154,52 @@ private class AsyncFlacChunkWriter(
         private set
 
     init {
-        writeInitialStreamHeader()
+        writeWavHeader()
     }
 
-    private fun writeInitialStreamHeader() {
-        val header = ByteArray(42)
-        header[0] = 'f'.code.toByte()
-        header[1] = 'L'.code.toByte()
-        header[2] = 'a'.code.toByte()
-        header[3] = 'C'.code.toByte()
-        header[4] = 0x80.toByte() // Last-metadata-block flag (1) | STREAMINFO (0)
-        header[5] = 0
-        header[6] = 0
-        header[7] = 34 // STREAMINFO length = 34 bytes
-        // min block size = 16, max block size = 2048
-        header[8] = 0
-        header[9] = 16
-        header[10] = ((BLOCK_SIZE shr 8) and 0xFF).toByte()
-        header[11] = (BLOCK_SIZE and 0xFF).toByte()
-        // bytes 12..17: min/max frame size = 0 (unknown)
-        val sr = sampleRate.toLong() and 0xFFFFFL
-        val ch = 0L // 1 channel (mono) -> channels - 1 = 0
-        val bps = 15L // 16 bits per sample -> bps - 1 = 15
-        header[18] = ((sr shr 12) and 0xFF).toByte()
-        header[19] = ((sr shr 4) and 0xFF).toByte()
-        header[20] = (((sr and 0x0FL) shl 4) or ((ch and 0x07L) shl 1) or ((bps shr 4) and 0x01L)).toByte()
-        header[21] = ((bps and 0x0FL) shl 4).toByte()
+    private fun writeWavHeader() {
+        val header = ByteArray(44)
+        header[0] = 'R'.code.toByte()
+        header[1] = 'I'.code.toByte()
+        header[2] = 'F'.code.toByte()
+        header[3] = 'F'.code.toByte()
+        // file size placeholder (filled on close)
+        header[8] = 'W'.code.toByte()
+        header[9] = 'A'.code.toByte()
+        header[10] = 'V'.code.toByte()
+        header[11] = 'E'.code.toByte()
+        header[12] = 'f'.code.toByte()
+        header[13] = 'm'.code.toByte()
+        header[14] = 't'.code.toByte()
+        header[15] = ' '.code.toByte()
+        header[16] = 16
+        header[17] = 0
+        header[18] = 0
+        header[19] = 0
+        header[20] = 1
+        header[21] = 0
+        header[22] = channels.toByte()
+        header[23] = 0
+        val sr = sampleRate
+        header[24] = (sr and 0xFF).toByte()
+        header[25] = ((sr shr 8) and 0xFF).toByte()
+        header[26] = ((sr shr 16) and 0xFF).toByte()
+        header[27] = ((sr shr 24) and 0xFF).toByte()
+        val byteRate = sampleRate * channels * bitsPerSample / 8
+        header[28] = (byteRate and 0xFF).toByte()
+        header[29] = ((byteRate shr 8) and 0xFF).toByte()
+        header[30] = ((byteRate shr 16) and 0xFF).toByte()
+        header[31] = ((byteRate shr 24) and 0xFF).toByte()
+        val blockAlign = channels * bitsPerSample / 8
+        header[32] = (blockAlign and 0xFF).toByte()
+        header[33] = ((blockAlign shr 8) and 0xFF).toByte()
+        header[34] = (bitsPerSample and 0xFF).toByte()
+        header[35] = ((bitsPerSample shr 8) and 0xFF).toByte()
+        header[36] = 'd'.code.toByte()
+        header[37] = 'a'.code.toByte()
+        header[38] = 't'.code.toByte()
+        header[39] = 'a'.code.toByte()
+        // data size placeholder (filled on close)
         outputStream.write(header)
     }
 
@@ -193,17 +208,8 @@ private class AsyncFlacChunkWriter(
         synchronized(lock) {
             if (isClosed) return
             try {
-                var i = 0
-                while (i + 1 < length) {
-                    val s = ((pcmBytes[i].toInt() and 0xFF) or (pcmBytes[i + 1].toInt() shl 8)).toShort()
-                    sampleBuf[bufferedSamples++] = s
-                    totalSamplesWritten++
-                    if (bufferedSamples == BLOCK_SIZE) {
-                        encodeAndWriteFrame(sampleBuf, BLOCK_SIZE)
-                        bufferedSamples = 0
-                    }
-                    i += 2
-                }
+                outputStream.write(pcmBytes, 0, length)
+                totalSamplesWritten += (length / 2).toLong()
             } catch (_: Exception) {
             }
         }
@@ -214,222 +220,26 @@ private class AsyncFlacChunkWriter(
             if (isClosed) return
             isClosed = true
             try {
-                if (bufferedSamples > 0) {
-                    if (bufferedSamples < 16) {
-                        val pad = sampleBuf[bufferedSamples - 1]
-                        while (bufferedSamples < 16) {
-                            sampleBuf[bufferedSamples++] = pad
-                            totalSamplesWritten++
-                        }
-                    }
-                    encodeAndWriteFrame(sampleBuf, bufferedSamples)
-                    bufferedSamples = 0
-                }
                 outputStream.flush()
                 outputStream.close()
-
+                val dataSize = totalSamplesWritten * (bitsPerSample / 8) * channels
+                val fileSize = 36 + dataSize
                 val raf = RandomAccessFile(outputFile, "rw")
-                val total = totalSamplesWritten and 0xFFFFFFFFFL
-                val bps = 15L
-                raf.seek(21L)
-                raf.write((((bps and 0x0FL) shl 4) or ((total shr 32) and 0x0FL)).toInt())
-                raf.write(((total shr 24) and 0xFFL).toInt())
-                raf.write(((total shr 16) and 0xFFL).toInt())
-                raf.write(((total shr 8) and 0xFFL).toInt())
-                raf.write((total and 0xFFL).toInt())
+                raf.seek(4)
+                writeIntLe(raf, fileSize.toInt())
+                raf.seek(40)
+                writeIntLe(raf, dataSize.toInt())
                 raf.close()
             } catch (_: Exception) {
             }
         }
     }
 
-    private fun encodeAndWriteFrame(samples: ShortArray, n: Int) {
-        val hdr = ByteArrayOutputStream(16)
-        hdr.write(0xFF)
-        hdr.write(0xF8) // Fixed-blocksize stream sync
-        hdr.write((0x07 shl 4) or 0x05) // 16-bit (blocksize-1) at end of header, 0101 = 16000 Hz
-        hdr.write(0x08) // Mono (0000), 16-bit sample size (100), reserved (0)
-        writeUtf8Int(hdr, frameNumber++)
-        val bsMinus1 = n - 1
-        hdr.write((bsMinus1 shr 8) and 0xFF)
-        hdr.write(bsMinus1 and 0xFF)
-        val hdrBytes = hdr.toByteArray()
-        val c8 = crc8(hdrBytes, hdrBytes.size)
-
-        val bw = FlacBitBuffer(n * 2 + 64)
-        for (b in hdrBytes) {
-            bw.writeBits(b.toInt() and 0xFF, 8)
-        }
-        bw.writeBits(c8, 8)
-
-        val first = samples[0]
-        var allSame = true
-        for (i in 1 until n) {
-            if (samples[i] != first) {
-                allSame = false
-                break
-            }
-        }
-
-        if (allSame) {
-            bw.writeBits(0x00, 8)
-            bw.writeBits(first.toInt() and 0xFFFF, 16)
-        } else {
-            var sum1 = 0L
-            var sum2 = 0L
-            for (i in 1 until n) {
-                sum1 += abs(samples[i].toInt() - samples[i - 1].toInt())
-            }
-            for (i in 2 until n) {
-                sum2 += abs(samples[i].toInt() - 2 * samples[i - 1].toInt() + samples[i - 2].toInt())
-            }
-            val order = if (n > 4 && sum2 < sum1) 2 else 1
-            val resCount = (n - order).coerceAtLeast(1)
-            var sumU = 0L
-            var maxU = 0
-            for (i in order until n) {
-                val r = if (order == 2) {
-                    samples[i].toInt() - 2 * samples[i - 1].toInt() + samples[i - 2].toInt()
-                } else {
-                    samples[i].toInt() - samples[i - 1].toInt()
-                }
-                val u = if (r < 0) ((-r shl 1) - 1) else (r shl 1)
-                sumU += u.toLong()
-                if (u > maxU) maxU = u
-            }
-            val meanU = (sumU / resCount.toLong()).toInt().coerceAtLeast(1)
-            val k = (31 - Integer.numberOfLeadingZeros(meanU)).coerceIn(0, 14)
-            val maxQ = maxU ushr k
-
-            if (maxQ < 64 && n > 4) {
-                bw.writeBits((8 or order) shl 1, 8)
-                for (w in 0 until order) {
-                    bw.writeBits(samples[w].toInt() and 0xFFFF, 16)
-                }
-                bw.writeBits(0, 6)
-                bw.writeBits(k, 4)
-                val mask = (1 shl k) - 1
-                for (i in order until n) {
-                    val r = if (order == 2) {
-                        samples[i].toInt() - 2 * samples[i - 1].toInt() + samples[i - 2].toInt()
-                    } else {
-                        samples[i].toInt() - samples[i - 1].toInt()
-                    }
-                    val u = if (r < 0) ((-r shl 1) - 1) else (r shl 1)
-                    bw.writeUnary(u ushr k)
-                    if (k > 0) {
-                        bw.writeBits(u and mask, k)
-                    }
-                }
-            } else {
-                bw.writeBits(0x02, 8)
-                for (i in 0 until n) {
-                    bw.writeBits(samples[i].toInt() and 0xFFFF, 16)
-                }
-            }
-        }
-
-        bw.alignToByte()
-        val len = bw.size
-        val c16 = crc16(bw.buf, len)
-        bw.buf[len] = ((c16 shr 8) and 0xFF).toByte()
-        bw.buf[len + 1] = (c16 and 0xFF).toByte()
-        outputStream.write(bw.buf, 0, len + 2)
-    }
-
-    private fun writeUtf8Int(out: ByteArrayOutputStream, v: Int) {
-        when {
-            v < 0x80 -> out.write(v)
-            v < 0x800 -> {
-                out.write(0xC0 or (v shr 6))
-                out.write(0x80 or (v and 0x3F))
-            }
-            v < 0x10000 -> {
-                out.write(0xE0 or (v shr 12))
-                out.write(0x80 or ((v shr 6) and 0x3F))
-                out.write(0x80 or (v and 0x3F))
-            }
-            else -> {
-                out.write(0xF0 or (v shr 18))
-                out.write(0x80 or ((v shr 12) and 0x3F))
-                out.write(0x80 or ((v shr 6) and 0x3F))
-                out.write(0x80 or (v and 0x3F))
-            }
-        }
-    }
-
-    private fun crc8(data: ByteArray, len: Int): Int {
-        var crc = 0
-        for (i in 0 until len) {
-            crc = crc xor (data[i].toInt() and 0xFF)
-            for (b in 0 until 8) {
-                crc = if ((crc and 0x80) != 0) ((crc shl 1) xor 0x07) and 0xFF else (crc shl 1) and 0xFF
-            }
-        }
-        return crc
-    }
-
-    private fun crc16(data: ByteArray, len: Int): Int {
-        var crc = 0
-        for (i in 0 until len) {
-            crc = crc xor ((data[i].toInt() and 0xFF) shl 8)
-            for (b in 0 until 8) {
-                crc = if ((crc and 0x8000) != 0) ((crc shl 1) xor 0x8005) and 0xFFFF else (crc shl 1) and 0xFFFF
-            }
-        }
-        return crc
-    }
-
-    private class FlacBitBuffer(cap: Int) {
-        var buf = ByteArray(cap)
-        var size = 0
-        private var acc = 0
-        private var bits = 0
-
-        private fun ensure(extra: Int) {
-            if (size + extra >= buf.size) {
-                val next = ByteArray(maxOf(buf.size * 2, size + extra + 64))
-                System.arraycopy(buf, 0, next, 0, size)
-                buf = next
-            }
-        }
-
-        fun writeBits(value: Int, nbits: Int) {
-            var rem = nbits
-            while (rem > 0) {
-                val take = minOf(rem, 8 - bits)
-                val shift = rem - take
-                val chunk = (value ushr shift) and ((1 shl take) - 1)
-                acc = (acc shl take) or chunk
-                bits += take
-                rem -= take
-                if (bits == 8) {
-                    ensure(4)
-                    buf[size++] = (acc and 0xFF).toByte()
-                    acc = 0
-                    bits = 0
-                }
-            }
-        }
-
-        fun writeUnary(q: Int) {
-            var rem = q
-            while (rem >= 8) {
-                writeBits(0, 8)
-                rem -= 8
-            }
-            if (rem > 0) {
-                writeBits(0, rem)
-            }
-            writeBits(1, 1)
-        }
-
-        fun alignToByte() {
-            if (bits > 0) {
-                writeBits(0, 8 - bits)
-            }
-            ensure(4)
-        }
+    private fun writeIntLe(raf: RandomAccessFile, v: Int) {
+        raf.write(v and 0xFF)
+        raf.write((v shr 8) and 0xFF)
+        raf.write((v shr 16) and 0xFF)
+        raf.write((v shr 24) and 0xFF)
     }
 }
 
@@ -443,7 +253,7 @@ class ExoPlayerManager(
         /** Строго 16000 Гц (16 кГц) — частота, на которой обучен Whisper для максимальной точности */
         const val WHISPER_SAMPLE_RATE_HZ = 16000
         const val WHISPER_CHANNELS_MONO = 1
-        const val CHUNK_DURATION_SEC = 600               // 10 минут (в FLAC 16kHz Mono весит ~8–9.5 МБ — в 2 раза меньше WAV!)
+        const val CHUNK_DURATION_SEC = 600               // 10 минут (WAV 16kHz Mono ~19 МБ)
         const val CHUNK_OVERLAP_SEC = 6                  // 6 секунд перекрытия для сохранения слов на стыках
         const val PARALLEL_GROQ_CONCURRENCY = 4          // 4 параллельных потока отправки в Groq
         const val GROQ_THROTTLED_CONCURRENCY = 2         // При 429 временно опускаемся до 2 потоков
@@ -1248,7 +1058,7 @@ class ExoPlayerManager(
         cancelAudioExtraction = false
         groqThrottledUntilMs.set(0L)
         setWebViewHardwareAcceleration(false)
-        startForegroundService("Подготовка аудио 16 кГц (FLAC)...")
+        startForegroundService("Подготовка аудио 16 кГц (WAV)...")
 
         activeSubtitleJob = ioScope.launch {
             try {
@@ -1314,7 +1124,7 @@ class ExoPlayerManager(
                                 val estNow = maxOf(chunk.index + 1, totalChunksEstimate.get())
                                 reportProgress(
                                     (26 + completedCounter.get() * 68 / estNow).coerceIn(26, 94),
-                                    "🚀 Отправка FLAC в Groq: ${minOf(completedCounter.get() + 1, estNow)} из $estNow ($activeStreams потока)..."
+                                    "🚀 Отправка WAV в Groq: ${minOf(completedCounter.get() + 1, estNow)} из $estNow ($activeStreams потока)..."
                                 )
                                 val prevTail = if (chunk.index > 0) chunkTails[chunk.index - 1].orEmpty() else ""
                                 val res = sendChunkToGroqWithRetry(
@@ -1347,7 +1157,7 @@ class ExoPlayerManager(
                                 }
                                 reportProgress(
                                     (26 + done * 68 / est).coerceIn(26, 95),
-                                    "🚀 Отправка FLAC в Groq: $done из $est ($curStreams потока)..."
+                                    "🚀 Отправка WAV в Groq: $done из $est ($curStreams потока)..."
                                 )
                             }
                         }
@@ -1584,8 +1394,8 @@ class ExoPlayerManager(
                 writeFormField("language", language)
             }
 
-            val mimeType = if (chunk.file.name.endsWith(".flac", ignoreCase = true)) {
-                "audio/flac"
+            val mimeType = if (chunk.file.name.endsWith(".wav", ignoreCase = true)) {
+                "audio/wav"
             } else {
                 "audio/wav"
             }
@@ -1723,7 +1533,7 @@ class ExoPlayerManager(
             val ffmpegKitConfigClass = Class.forName("com.arthenica.ffmpegkit.FFmpegKitConfig")
             val returnCodeClass = Class.forName("com.arthenica.ffmpegkit.ReturnCode")
 
-            onProgress(5, "⚡ FFmpeg: подготовка аудио 16 кГц (FLAC)...")
+            onProgress(5, "⚡ FFmpeg: подготовка аудио 16 кГц (WAV)...")
 
             val inputPath: String = when (uri.scheme) {
                 "file" -> uri.path ?: return false
@@ -1815,11 +1625,11 @@ class ExoPlayerManager(
                             if (cancelAudioExtraction) throw InterruptedException("Отменено пользователем.")
                             if (!allSucceeded.get()) return@withPermit
 
-                            val outFile = File(chunkDir, "chunk_${plan.index}.flac")
+                            val outFile = File(chunkDir, "chunk_${plan.index}.wav")
                             if (outFile.exists()) outFile.delete()
                             val curDur = plan.endSec - plan.startSec
 
-                            val cmd = "-y -ss ${plan.startSec} -t $curDur -i \"$inputPath\" -vn -ac $WHISPER_CHANNELS_MONO -ar $WHISPER_SAMPLE_RATE_HZ -c:a flac -compression_level 5 \"${outFile.absolutePath}\""
+                            val cmd = "-y -ss ${plan.startSec} -t $curDur -i \"$inputPath\" -vn -ac $WHISPER_CHANNELS_MONO -ar $WHISPER_SAMPLE_RATE_HZ -c:a pcm_s16le \"${outFile.absolutePath}\""
                             val session = ffmpegKitClass.getMethod("execute", String::class.java).invoke(null, cmd)
                             if (session == null) {
                                 allSucceeded.set(false)
@@ -1849,7 +1659,7 @@ class ExoPlayerManager(
                             )
                             val done = extractedCount.incrementAndGet()
                             val pct = ((done.toDouble() / plannedChunks.size.toDouble()) * 95.0).toInt().coerceIn(5, 99)
-                            onProgress(pct, "⚡ Нарезка FLAC (16 кГц, 4 потока): чанк $done из ${plannedChunks.size}...")
+                            onProgress(pct, "⚡ Нарезка WAV (16 кГц, 4 потока): чанк $done из ${plannedChunks.size}...")
                             onChunkReady(meta)
                         }
                     }
@@ -1903,6 +1713,7 @@ class ExoPlayerManager(
             lower.contains("opus") -> "audio/opus"
             lower.contains("vorbis") -> "audio/vorbis"
             lower.contains("flac") -> "audio/flac"
+            lower.contains("wav") -> "audio/wav"
             lower.contains("alac") -> "audio/alac"
             lower.contains("mp4a") || lower.contains("aac") -> "audio/mp4a-latm"
             lower.contains("mpeg") || lower.contains("mp3") -> "audio/mpeg"
@@ -1931,7 +1742,7 @@ class ExoPlayerManager(
         var tempCopiedFile: File? = null
         var decoder: MediaCodec? = null
         var decoderThread: HandlerThread? = null
-        var currentWriter: AsyncFlacChunkWriter? = null
+        var currentWriter: AsyncWavChunkWriter? = null
 
         try {
             var dataSourceSet = false
@@ -2045,8 +1856,8 @@ class ExoPlayerManager(
             var currentChunkStartSample = 0L
             var totalWrittenMonoSamples = 0L
 
-            currentWriter = AsyncFlacChunkWriter(
-                File(chunkDir, "chunk_0.flac"),
+            currentWriter = AsyncWavChunkWriter(
+                File(chunkDir, "chunk_0.wav"),
                 targetSampleRate
             )
 
@@ -2098,8 +1909,8 @@ class ExoPlayerManager(
             fun rotateNextChunk() {
                 finalizeCurrentChunk(isLast = false)
                 chunkIndex++
-                val nextWriter = AsyncFlacChunkWriter(
-                    File(chunkDir, "chunk_${chunkIndex}.flac"),
+                val nextWriter = AsyncWavChunkWriter(
+                    File(chunkDir, "chunk_${chunkIndex}.wav"),
                     targetSampleRate
                 )
                 currentWriter = nextWriter
@@ -2245,7 +2056,7 @@ class ExoPlayerManager(
                                             val pct = ((ptsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
                                             if (pct >= lastPct + 4) {
                                                 lastPct = pct
-                                                onProgress(pct, "⚡ Нарезка FLAC (FFmpeg 16 кГц): чанк ${chunkIndex + 1} из ${maxOf(chunkIndex + 1, totalChunksEstimate.get())}...")
+                                                onProgress(pct, "⚡ Нарезка WAV (FFmpeg 16 кГц): чанк ${chunkIndex + 1} из ${maxOf(chunkIndex + 1, totalChunksEstimate.get())}...")
                                             }
                                         }
                                     }
@@ -2363,7 +2174,7 @@ class ExoPlayerManager(
                                         val pct = ((ptsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
                                         if (pct >= lastPct + 4) {
                                             lastPct = pct
-                                            onProgress(pct, "⚡ Нарезка FLAC (16 кГц): чанк ${chunkIndex + 1} из ${maxOf(chunkIndex + 1, totalChunksEstimate.get())}...")
+                                            onProgress(pct, "⚡ Нарезка WAV (16 кГц): чанк ${chunkIndex + 1} из ${maxOf(chunkIndex + 1, totalChunksEstimate.get())}...")
                                         }
                                     }
                                 }
