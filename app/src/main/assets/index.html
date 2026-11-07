@@ -1421,9 +1421,14 @@
     </div>
 
     <div class="global-row" style="margin-top: 10px; border-top: 1px solid #333333; padding-top: 14px;">
-      <span>API Ключ Groq</span>
+      <span>API Ключ Groq №1</span>
     </div>
-    <input type="password" id="apiKey" autocomplete="off" spellcheck="false" placeholder="Введите ключ Groq" style="margin:0 0 6px 0;" />
+    <input type="password" id="apiKey" autocomplete="off" spellcheck="false" placeholder="Введите первый ключ Groq" style="margin:0 0 6px 0;" />
+
+    <div class="global-row" style="margin-top: 6px;">
+      <span>API Ключ Groq №2</span>
+    </div>
+    <input type="password" id="apiKey2" autocomplete="off" spellcheck="false" placeholder="Второй ключ Groq (необязательно)" style="margin:0 0 6px 0;" />
 
     <div class="global-row" style="margin-top: 6px; border-top: 1px solid #333333; padding-top: 12px;">
       <span>API Ключ Gemini</span>
@@ -1568,12 +1573,14 @@
 
     /* ---------------- 3. Защита ключей через EncryptedSharedPreferences (Android Keystore) без localStorage ---------------- */
     const keyInput = $('apiKey');
+    const keyInput2 = $('apiKey2');
     const geminiKeyInput = $('geminiApiKey');
     const geminiModelSelect = $('geminiModel');
     const aiActiveModelBadge = $('aiActiveModelBadge');
 
     const androidBridge = window.AndroidBridge || window.ExoPlayerManager || null;
     let sessionGroqKey = '';
+    let sessionGroqKey2 = '';
     let sessionGeminiKey = '';
 
     function saveGroqApiKeyToKeystore(key) {
@@ -1600,6 +1607,24 @@
         } catch (e) {}
       }
       return sessionGroqKey;
+    }
+
+    function saveGroqApiKey2ToKeystore(key) {
+      const clean = String(key || '').trim();
+      sessionGroqKey2 = clean;
+      if (androidBridge && typeof androidBridge.saveSecureKey === 'function') {
+        try { androidBridge.saveSecureKey('groq_api_key_2', clean); } catch (e) {}
+      }
+    }
+
+    function getGroqApiKey2FromKeystore() {
+      if (androidBridge && typeof androidBridge.getSecureKey === 'function') {
+        try {
+          const k = String(androidBridge.getSecureKey('groq_api_key_2') || '').trim();
+          if (k) return k;
+        } catch (e) {}
+      }
+      return sessionGroqKey2;
     }
 
     function saveGeminiKeyToKeystore(key) {
@@ -1630,6 +1655,7 @@
 
     // При старте приложения подтягиваем ключи напрямую из EncryptedSharedPreferences (Android Keystore)
     keyInput.value = getGroqApiKeyFromKeystore();
+    keyInput2.value = getGroqApiKey2FromKeystore();
     geminiKeyInput.value = getGeminiKeyFromKeystore();
 
     keyInput.addEventListener('input', () => {
@@ -1637,6 +1663,13 @@
     });
     keyInput.addEventListener('change', () => {
       saveGroqApiKeyToKeystore(keyInput.value);
+    });
+
+    keyInput2.addEventListener('input', () => {
+      saveGroqApiKey2ToKeystore(keyInput2.value);
+    });
+    keyInput2.addEventListener('change', () => {
+      saveGroqApiKey2ToKeystore(keyInput2.value);
     });
 
     geminiKeyInput.addEventListener('input', () => {
@@ -1657,15 +1690,32 @@
     syncModelBadge();
 
     let activeKeyIdx = 0;
+    let keyCounter = 0;
     function getApiKeys() {
-      const currentVal = keyInput.value.trim() || getGroqApiKeyFromKeystore();
-      return currentVal.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
+      const raw = [
+        keyInput.value.trim() || getGroqApiKeyFromKeystore(),
+        keyInput2.value.trim() || getGroqApiKey2FromKeystore()
+      ].join(',');
+      const keys = [];
+      raw.split(/[\s,;]+/).forEach(k => {
+        const clean = k.trim();
+        if (clean && !keys.includes(clean)) keys.push(clean);
+      });
+      return keys;
     }
     function getCurrentKey() {
       const keys = getApiKeys();
       if (!keys.length) return '';
       if (activeKeyIdx >= keys.length) activeKeyIdx = 0;
       return keys[activeKeyIdx];
+    }
+    function getNextKey() {
+      const keys = getApiKeys();
+      if (!keys.length) return '';
+      const idx = keyCounter % keys.length;
+      keyCounter = (keyCounter + 1) % 1000000;
+      activeKeyIdx = idx;
+      return keys[idx];
     }
     function rotateKey() {
       const keys = getApiKeys();
@@ -2747,21 +2797,20 @@
       for (let i = 0; i <= retries; i++) {
         if (signal && signal.aborted) throw new Error('Отменено пользователем.');
         try {
-          const currentKey = getCurrentKey();
+          const currentKey = getNextKey();
           const opts = makeOptionsFn(currentKey);
           if (signal) opts.signal = signal;
           const res = await fetch(url, opts);
 
-          if (res.status === 429 && rotatedCount < totalKeys - 1 && rotateKey()) {
+          if (res.status === 429 && rotatedCount < totalKeys - 1) {
             rotatedCount++;
             i--;
-            statusEl.innerText = `🔄 Лимит на ключе. Переключение на ключ #${activeKeyIdx + 1}...`;
+            statusEl.innerText = `🔄 Лимит на ключе. Пробуем другой ключ...`;
             continue;
           }
 
           if ((res.status === 429 || res.status === 502 || res.status === 503) && i < retries) {
             rotatedCount = 0;
-            rotateKey();
             const ra = parseInt(res.headers.get('retry-after') || '0', 10);
             let waitSec = ra > 0 ? ra : Math.ceil(1200 * Math.pow(2, i) / 1000);
             if (waitSec < 1) waitSec = 1;
@@ -2803,7 +2852,7 @@
       if (!res.ok) {
         if (res.status === 401) throw new Error('Неверный API-ключ Groq.');
         if (res.status === 413) throw new Error('Файл слишком большой для отправки.');
-        if (res.status === 429) throw new Error('Лимит бесплатного тарифа исчерпан. Подождите минуту или добавьте второй ключ.');
+        if (res.status === 429) throw new Error('Лимит бесплатного тарифа исчерпан. Подождите минуту или проверьте второй ключ Groq.');
         throw new Error(`Ошибка сервера Groq (Код ${res.status}). Попробуйте позже.`);
       }
 
