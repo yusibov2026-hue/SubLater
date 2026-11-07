@@ -2985,7 +2985,7 @@
       return results;
     }
 
-    /* ---------------- Параллельный контекстный перевод батчами (до 3 батчей одновременно) ---------------- */
+    /* ---------------- Параллельный контекстный перевод батчами (до 6 батчей одновременно) ---------------- */
     async function translateSegments(cueArr, targetLang, statusElRef, signal) {
       const batchSize = 50;
       const primaryModel = llmModelEl.value || 'openai/gpt-oss-120b';
@@ -3000,7 +3000,7 @@
       }
 
       let completedBatches = 0;
-      await runWithConcurrency(batches, 4, async (bObj) => {
+      await runWithConcurrency(batches, 6, async (bObj) => {
         if (signal && signal.aborted) throw new Error('Отменено пользователем.');
         const { startLine, batch, prevContext } = bObj;
         const payload = batch.map((c, idx) => ({ id: idx, text: c.text }));
@@ -3298,8 +3298,8 @@
       }
     });
 
-    /* ---------------- Ускоренное стабильное извлечение аудио (WAV 12кГц, Int16Array) + нарезка по 5 мин (6.8 МБ/чанк) + 4 параллельных потока в Groq ---------------- */
-    const PARALLEL_CHUNK_CONCURRENCY = 4;
+    /* ---------------- Ускоренное стабильное извлечение аудио (WAV 12кГц, Int16Array) + нарезка по 3 мин + 6 параллельных потоков в Groq ---------------- */
+    const PARALLEL_CHUNK_CONCURRENCY = 6;
 
     function encodeWAV(samples, sampleRate) {
       const numSamples = samples.length;
@@ -3412,10 +3412,10 @@
           } else {
             const channelData = audioBuffer.getChannelData(0);
             const sampleRate = audioBuffer.sampleRate;
-            // Чанки по 5 минут (300 сек) с перекрытием 6 сек: каждый кусок весит всего ~6.8 МБ (в 2.7 раза меньше 10-минутного 16кГц),
-            // благодаря чему 20-минутное видео обрабатывается сразу в 4 параллельных потока на серверах Groq!
-            const chunkDuration = 300;
-            const overlap = 6;
+            // Чанки по 3 минуты (180 сек) с перекрытием 3 сек: каждый кусок весит ~4 МБ,
+            // поэтому первый результат приходит раньше, а 6 параллельных потоков быстрее обрабатывают длинные видео.
+            const chunkDuration = 180;
+            const overlap = 3;
             const advance = chunkDuration - overlap;
             const totalDuration = channelData.length / sampleRate;
 
@@ -3454,7 +3454,7 @@
             statusEl.innerText = `🚀 Параллельная отправка в Groq (${Math.min(PARALLEL_CHUNK_CONCURRENCY, totalChunks)} потока, частей: ${totalChunks})...`;
             setProgress(16);
 
-            // Параллельная отправка по 4 чанка одновременно через пул Promise.all
+            // Параллельная отправка по 6 чанков одновременно через пул Promise.all
             const orderedResults = await runWithConcurrency(
               chunkTasks,
               PARALLEL_CHUNK_CONCURRENCY,
