@@ -8,31 +8,13 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SubLater">
   <title>SubLater</title>
-
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='26' fill='%2324272d' stroke='%230099ff' stroke-width='6'/><text x='50' y='64' font-family='sans-serif' font-weight='900' font-size='38' fill='%230099ff' text-anchor='middle'>SUB</text></svg>">
-  <link rel="manifest" href='data:application/manifest+json,{"name":"SubLater","short_name":"SubLater","start_url":".","display":"standalone","background_color":"#24272d","theme_color":"#0099ff","icons":[{"src":"data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" rx=\"26\" fill=\"%2324272d\"/><text x=\"50\" y=\"64\" font-family=\"sans-serif\" font-weight=\"900\" font-size=\"38\" fill=\"%230099ff\" text-anchor=\"middle\">SUB</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
+<rect width='100' height='100' rx='26' fill='%2324272d' stroke='%230099ff' stroke-width='6'/><text x='50' y='64' font-family='sans-serif' font-weight='900' font-size='38' fill='%230099ff' text-anchor='middle'>SUB</text></svg>">
+<rect width=\"100\" height=\"100\" rx=\"26\" fill=\"%2324272d\"/><text x=\"50\" y=\"64\" font-family=\"sans-serif\" font-weight=\"900\" font-size=\"38\" fill=\"%230099ff\" text-anchor=\"middle\">SUB</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Unbounded:wght@800&family=Roboto:wght@500;700&family=Montserrat:wght@500;700&display=swap" rel="stylesheet">
   <style>
-    /* Плавность и воздушность интерфейса */
-    :root {
-      --fluidity: 1;
-      --spring-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
-      --anim-duration: 0.3s;
-    }
-    body.max-airiness * {
-      transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-    }
-    body.max-airiness button:active {
-      transform: scale(0.91) !important;
-    }
-    body.max-airiness .file-box:active,
-    body.max-airiness .dl-fmt-item:active {
-      transform: scale(0.95) !important;
-    }
-
     :root {
       --sub-color: #ffffff;
       --sub-size: 18px;
@@ -73,7 +55,7 @@
     #appTopSection {
       background: var(--bg-main);
       position: relative;
-      z-index: 40;
+      z-index: 5;
       padding-bottom: 4px;
     }
 
@@ -137,116 +119,71 @@
     }
     #settingsToggle svg { width: 22px; height: 22px; fill: currentColor; }
 
-    /* Модальное окно глобальных настроек — абсолютно непрозрачный сплошной фон #1e1e1e без backdrop-filter и rgba */
+    /* Модальное окно настроек */
     #settingsBackdrop {
-      position: fixed;
-      inset: 0;
-      background: #121212 !important;
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
-      z-index: 99998;
-      display: none;
-      opacity: 1 !important;
+      position: fixed; inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 9998;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.35s ease;
     }
-    #settingsBackdrop.show {
-      display: block !important;
-    }
-
-    body.global-settings-open #playerContainer {
-      visibility: hidden !important;
-      pointer-events: none !important;
-    }
+    #settingsBackdrop.show { opacity: 1; pointer-events: auto; }
 
     #globalSettings {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 92%;
-      max-width: 410px;
-      isolation: isolate;
-      background-image: linear-gradient(#1e1e1e, #1e1e1e) !important;
-      max-height: 86vh;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      background: #1e1e1e !important;
-      background-color: #1e1e1e !important;
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
-      border: 1px solid #383838;
-      border-radius: 18px;
-      padding: 18px;
-      z-index: 99999;
-      display: none;
-      box-shadow: 0 12px 36px #000000;
-      opacity: 1 !important;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -46%) scale(0.92);
+      width: 92%; max-width: 400px;
+      max-height: 85vh; overflow-y: auto;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-soft);
+      border-radius: 20px;
+      padding: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.85);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1), transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-    #globalSettings.show {
-      display: block !important;
+    #globalSettings.show { 
+      opacity: 1; pointer-events: auto; 
+      transform: translate(-50%, -50%) scale(1); 
     }
-    #globalSettings > * + * {
-      margin-top: 12px;
-    }
-
+    
     #globalSettings::-webkit-scrollbar { width: 4px; }
-    #globalSettings::-webkit-scrollbar-thumb { background: #444444; border-radius: 4px; }
+    #globalSettings::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
 
     .settings-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--accent);
-      border-bottom: 1px solid #333333;
-      padding-bottom: 10px;
-      margin-bottom: 6px;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 16px; font-weight: 700; color: var(--accent);
+      border-bottom: 1px solid var(--border-soft); padding-bottom: 10px; margin-bottom: 4px;
     }
     .close-btn {
-      background: #2c2c2c;
-      border: 1px solid #3d3d3d;
-      color: #e0e0e0;
-      width: 30px;
-      height: 30px;
-      border-radius: 9px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      font-size: 15px;
-      flex-shrink: 0;
+      background: #2a2a2a; border: none; color: #ccc;
+      width: 30px; height: 30px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 16px;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s, color 0.2s;
     }
-    .close-btn:hover { background: #ff5252; color: #ffffff; border-color: #ff5252; }
-    .close-btn:active { transform: scale(0.9); }
+    .close-btn:hover { background: #ff6b6b; color: #fff; }
+    .close-btn:active { transform: scale(0.85); }
 
     .global-row {
       display: flex;
-      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
-      gap: 8px 12px;
-      padding: 4px 2px;
-      font-size: 13.5px;
-      color: #eaeaea;
+      gap: 10px;
+      font-size: 13px;
+      color: #ccc;
       font-weight: 500;
-      line-height: 1.35;
-    }
-    .global-row > span:first-child {
-      flex: 1 1 0%;
-      min-width: 130px;
-      padding-right: 8px;
-      word-break: break-word;
     }
     .global-row select {
-      flex: 0 0 auto;
-      width: auto;
-      margin: 0;
-      padding: 7px 10px;
-      font-size: 12.5px;
-      border-radius: 8px;
-      background: #2a2a2a;
-      border: 1px solid #444444;
-      color: #ffffff;
+      width: auto; margin: 0; padding: 7px 10px;
+      font-size: 12px; border-radius: 8px;
     }
 
     input[type="color"] {
@@ -394,96 +331,65 @@
       transform: scale(0.93);
       background: color-mix(in srgb, var(--accent) 22%, var(--bg-surface));
     }
-    #retryBtn svg.btn-icon-refresh {
-      width: 19px;
-      height: 19px;
-      fill: currentColor;
-      flex-shrink: 0;
-      display: inline-block;
-    }
-    #dlBtn svg.btn-icon-caret {
-      width: 22px;
-      height: 22px;
-      fill: currentColor;
-      flex-shrink: 0;
-      display: inline-block;
-      transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .dl-wrap.open #dlBtn svg.btn-icon-caret {
-      transform: rotate(180deg);
-    }
-
     .dl-wrap {
       flex: 1;
       min-width: 135px;
       position: relative;
       display: flex;
-      z-index: 100;
     }
     .dl-wrap #dlBtn {
       width: 100%;
     }
     #dlFormatMenu {
       position: absolute;
-      top: calc(100% + 8px);
+      top: calc(100% + 6px);
       right: 0;
-      left: auto;
-      min-width: 215px;
-      width: max-content;
-      max-width: min(260px, calc(100vw - 32px));
-      background: #1e1e1e;
+      left: 0;
+      background: #1e2128;
       border: 1.5px solid var(--accent);
-      border-radius: 14px;
+      border-radius: 16px;
       padding: 6px;
-      z-index: 999;
-      display: none;
+      z-index: 80;
+      display: flex;
       flex-direction: column;
       gap: 4px;
-      box-shadow: 0 12px 32px #000000;
-      overflow: hidden;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.65);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-6px) scale(0.96);
+      transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     #dlFormatMenu.show {
-      display: flex;
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
     }
     .dl-fmt-item {
-      width: 100%;
-      background: #1e1e1e;
+      background: transparent;
       border: none;
       color: #f3f4f6;
       font-family: inherit;
-      font-size: 13.5px;
-      font-weight: 500;
-      padding: 10px 14px;
-      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 12px;
+      border-radius: 11px;
       text-align: left;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 14px;
-      white-space: nowrap;
-      transition: background 0.15s ease, color 0.15s ease;
+      transition: background 0.18s ease, color 0.18s ease;
     }
     .dl-fmt-item:hover,
     .dl-fmt-item:active {
-      background: #2a2e36;
-      color: #ffffff;
-    }
-    .dl-fmt-item span:first-child {
-      flex: 1 1 auto;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      color: #f3f4f6;
+      background: color-mix(in srgb, var(--accent) 18%, #2a2e36);
+      color: var(--accent);
     }
     .dl-fmt-item span.fmt-ext {
-      flex: 0 0 auto;
-      flex-shrink: 0;
       font-weight: 700;
       color: var(--accent);
-      margin-left: auto;
     }
-
+    
     #openBtn {
       flex: 1 1 100%;
       width: 100%;
@@ -717,7 +623,7 @@
     }
     #vttPanel:active { transform: scale(0.98); border-color: var(--accent); }
 
-    /* Плеер с идеально скруглёнными углами без выпирающих чёрных углов снизу */
+    /* Плеер с реальным кадром превью (без дефолтной большой кнопки Play) */
     #playerContainer {
       position: relative;
       display: none;
@@ -726,34 +632,15 @@
       padding: 0;
       background: #000000;
       border-radius: 16px;
-      overflow: hidden !important;
-      -webkit-mask-image: -webkit-radial-gradient(white, black);
-      clip-path: inset(0 round 16px);
-      border: 1.5px solid var(--border-soft);
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
       align-items: center;
       justify-content: center;
       aspect-ratio: 16/9;
-      max-height: 78vh;
-      z-index: 20;
+      z-index: 10;
       touch-action: manipulation;
       user-select: none;
-      transition: aspect-ratio 0.25s ease, max-height 0.25s ease;
-    }
-
-    /* Для вертикальных видео (portrait): контейнер идеально подстраивается под пропорции видео, убирая чёрные полосы сверху и снизу */
-    #playerContainer.is-vertical {
-      max-height: 72vh;
-      width: auto;
-      max-width: 100%;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    #playerContainer.is-vertical video#videoPlayer {
-      object-fit: cover !important;
-      width: 100%;
-      height: 100%;
     }
 
     body.player-fullscreen-open #playerContainer,
@@ -765,16 +652,12 @@
       height: 100vh !important;
       height: 100dvh !important;
       max-width: none !important;
-      max-height: none !important;
       margin: 0 !important;
       padding: 0 !important;
       aspect-ratio: auto !important;
       border: none !important;
       border-radius: 0 !important;
-      clip-path: none !important;
-      -webkit-mask-image: none !important;
       box-shadow: none !important;
-      overflow: hidden !important;
       display: flex !important;
       align-items: center;
       justify-content: center;
@@ -785,15 +668,14 @@
     video#videoPlayer {
       width: 100%;
       height: 100%;
-      max-height: 78vh;
+      max-height: 75vh;
       margin: 0 auto;
       padding: 0;
       display: block;
       background: #000000;
-      object-fit: cover;
+      object-fit: contain;
       object-position: center center;
       border: none;
-      border-radius: 16px;
       outline: none;
     }
     /* Полностью скрываем системную огромную кнопку Play Android WebView */
@@ -811,39 +693,23 @@
     body.player-fullscreen-open video#videoPlayer,
     #playerContainer:fullscreen video#videoPlayer,
     #playerContainer:-webkit-full-screen video#videoPlayer {
-      width: 100% !important;
-      height: 100% !important;
-      max-width: 100vw !important;
-      max-height: 100dvh !important;
-      margin: 0 auto !important;
-      padding: 0 !important;
-      border-radius: 0 !important;
-      object-fit: contain;
-      object-position: center center !important;
-      transform-origin: center center !important;
+      width: 100%;
+      height: 100%;
+      max-height: 100dvh;
+      object-position: center center;
       background: #000000;
     }
-    video#videoPlayer.fill-crop { object-fit: cover !important; }
-    video#videoPlayer.fill-stretch { object-fit: fill !important; }
+    video#videoPlayer.fill-crop { object-fit: cover; }
+    video#videoPlayer.fill-stretch { object-fit: fill; }
 
     #subtitleOverlay {
-      position: absolute;
-      left: 10px;
-      right: 10px;
-      top: auto;
-      bottom: calc(var(--sub-bottom, 12%) + 26px);
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      align-items: center;
-      pointer-events: none;
-      z-index: 15;
+      position: absolute; display: flex; justify-content: center;
+      pointer-events: none; z-index: 10; will-change: top, left, width, bottom;
+      left: 0; right: 0; transition: bottom 0.1s ease;
     }
 
     #subtitleText {
-      width: fit-content;
       max-width: var(--sub-width, 85%);
-      min-height: 0;
       text-align: center;
       font-family: var(--sub-font, 'Inter', sans-serif);
       font-size: var(--sub-size, 18px);
@@ -854,85 +720,30 @@
       border-radius: 0.45em;
       word-break: break-word;
       opacity: 0;
-      transition: opacity 0.1s ease;
-    }
-
-    /* Режим жёсткой фиксации субтитров внизу: нижняя граница привязана к низу видео над таймлайном, текст растёт строго вверх */
-    #playerContainer.fixed-subs-on #subtitleOverlay {
-      position: absolute !important;
-      left: 10px !important;
-      right: 10px !important;
-      top: auto !important;
-      bottom: calc(var(--sub-bottom, 12%) + 26px) !important;
-      width: auto !important;
-      height: auto !important;
-      padding-bottom: 0 !important;
-      display: flex !important;
-      flex-direction: column !important;
-      justify-content: flex-end !important;
-      align-items: center !important;
-      pointer-events: none !important;
-    }
-
-    #playerContainer.fixed-subs-on #subtitleText {
-      width: fit-content;
-      max-width: var(--sub-width, 85%);
-      min-height: 0;
-      display: inline-block;
-      text-align: center;
-    }
-
-    #subtitleText .cue-lines-wrap {
-      display: inline;
-      text-align: center;
-      line-height: 1.35;
+      transition: opacity 0.12s ease, background 0.2s ease;
     }
 
     #subtitleText.bg-on {
       background: rgba(0, 0, 0, calc(var(--bg-opacity, 62) / 100));
-      backdrop-filter: none;
+      backdrop-filter: blur(4px);
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
     }
     #subtitleText.bg-off {
-      background: transparent;
-      backdrop-filter: none;
+      background: transparent; backdrop-filter: none;
       text-shadow: 0 2px 4px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,1);
     }
 
-    /* В режиме "Пословно" ещё не произнесённые слова скрыты (display: none), чтобы тёмная плашка фона
-       аккуратно облегала только произнесённые слова по центру, без огромного пустого прямоугольника */
-    .word { color: inherit; transition: opacity 0.1s ease; }
-    #subtitleText:not(.mode-karaoke):not(.mode-full) .word:not(.spoken) {
-      display: none !important;
-    }
-    #subtitleText:not(.mode-karaoke):not(.mode-full) .word.spoken {
-      display: inline !important;
-      opacity: 1 !important;
-    }
-    #subtitleText.mode-karaoke .word {
-      display: inline !important;
-      opacity: 0.38;
-    }
-    #subtitleText.mode-full .word {
-      display: inline !important;
-      opacity: 1;
-    }
+    .word { opacity: 0; color: inherit; transition: opacity 0.12s ease; }
+    #subtitleText.mode-karaoke .word { opacity: 0.38; }
+    #subtitleText.mode-full .word { opacity: 1; }
     .word.spoken { opacity: 1 !important; }
 
     #playerControls {
-      position: absolute; bottom: 0; left: 0; right: 0; width: 100%;
-      border-bottom-left-radius: 16px;
-      border-bottom-right-radius: 16px;
-      overflow: hidden;
-      background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0) 100%);
+      position: absolute; bottom: 0; left: 0; width: 100%;
+      background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
       display: flex; align-items: center; gap: 10px;
-      padding: 20px 14px 10px; z-index: 20; opacity: 1;
+      padding: 22px 14px 10px; z-index: 20; opacity: 1;
       transition: opacity 0.3s ease; user-select: none;
-    }
-    body.player-fullscreen-open #playerControls,
-    #playerContainer:fullscreen #playerControls,
-    #playerContainer:-webkit-full-screen #playerControls {
-      border-radius: 0 !important;
     }
     #playerControls.hidden-controls { opacity: 0; pointer-events: none; }
 
@@ -972,213 +783,113 @@
 
     #timeText { color: #ccc; font-size: 12px; font-variant-numeric: tabular-nums; margin: 0; white-space: nowrap; font-weight: 500; margin-right: 4px; }
 
-    /* Меню настроек плеера в стиле YouTube: сплошной цвет #1e1e1e без прозрачности, чёткие строки и плавный аккордеон */
+    /* Меню настроек плеера в стиле YouTube: компактные аккордеоны и сплошной тёмный непрозрачный фон */
     #settingsMenu {
-      position: fixed;
-      bottom: 58px;
-      right: 16px;
-      background: #1e1e1e !important;
-      background-color: #1e1e1e !important;
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
-      border: 1px solid #383838;
+      position: absolute;
+      bottom: 48px;
+      right: 10px;
+      background: #1c1f26;
+      border: 1px solid #383d4a;
       border-radius: 14px;
-      padding: 8px;
-      width: 276px;
-      isolation: isolate;
-      background-image: linear-gradient(#1e1e1e, #1e1e1e) !important;
-      max-width: calc(100vw - 24px);
-      max-height: min(340px, 68vh);
+      padding: 6px;
+      width: 238px;
+      max-height: calc(100% - 58px);
       overflow-y: auto;
-      overflow-x: hidden;
-      -webkit-overflow-scrolling: touch;
-      z-index: 99995;
-      display: none;
-      box-shadow: 0 12px 32px #000000;
-      opacity: 1 !important;
-      transform: none !important;
-    }
-    body.player-fullscreen-open #settingsMenu,
-    #playerContainer:fullscreen #settingsMenu,
-    #playerContainer:-webkit-full-screen #settingsMenu {
-      max-height: calc(100dvh - 68px);
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(8px) scale(0.95);
+      transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     #settingsMenu.show {
-      display: block !important;
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
     }
     #settingsMenu::-webkit-scrollbar { width: 4px; }
-    #settingsMenu::-webkit-scrollbar-thumb { background: #484848; border-radius: 4px; }
+    #settingsMenu::-webkit-scrollbar-thumb { background: #3e434f; border-radius: 4px; }
 
     .yt-acc-item {
-      display: block;
-      width: 100%;
-      margin-bottom: 4px;
-      border-radius: 10px;
-      background: #1e1e1e;
-      border: 1px solid transparent;
+      border-radius: 9px;
+      background: transparent;
       overflow: hidden;
-    }
-    .yt-acc-item:last-child {
-      margin-bottom: 0;
+      transition: background 0.18s ease;
     }
     .yt-acc-item.open {
-      background: #262626;
-      border-color: #3a3a3a;
+      background: #252932;
     }
-
     .yt-acc-header {
       width: 100%;
-      min-height: 40px;
-      background: #1e1e1e;
+      background: transparent;
       border: none;
-      color: #f5f5f5;
-      padding: 10px 12px;
+      color: #eef0f4;
+      padding: 8px 10px;
       font-family: inherit;
-      font-size: 13px;
-      line-height: 1.35;
-      font-weight: 500;
+      font-size: 12px;
+      font-weight: 600;
       display: flex;
-      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
-      gap: 6px 10px;
       cursor: pointer;
       text-align: left;
       border-radius: 9px;
     }
-    .yt-acc-item.open .yt-acc-header {
-      background: #262626;
-      border-bottom-left-radius: 0;
-      border-bottom-right-radius: 0;
+    .yt-acc-header:hover {
+      background: rgba(255, 255, 255, 0.06);
     }
-    .yt-acc-header:hover,
-    .yt-acc-header:active {
-      background: #2a2a2a;
-    }
-
-    /* Текст заголовка с весом 1f (flex: 1 1 0%), чтобы не выталкивать значение и не наезжать на цифры */
-    .yt-acc-label {
-      flex: 1 1 0%;
-      min-width: 105px;
-      color: #f5f5f5;
-      font-size: 13px;
-      font-weight: 500;
-      line-height: 1.35;
-      word-break: break-word;
-      overflow-wrap: break-word;
-      padding-right: 6px;
-    }
-
-    /* Значение параметра строго выровнено по правому краю и не сжимается */
     .yt-acc-val {
-      flex: 0 0 auto;
-      flex-shrink: 0;
-      margin-left: auto;
-      text-align: right;
-      white-space: nowrap;
       color: var(--accent);
-      font-size: 13px;
+      font-size: 11.5px;
       font-weight: 600;
-      line-height: 1.35;
       display: inline-flex;
       align-items: center;
-      justify-content: flex-end;
-      gap: 5px;
+      gap: 4px;
     }
     .yt-acc-val::after {
       content: '▸';
-      color: #9ca3af;
+      color: #8b92a5;
       font-size: 11px;
-      display: inline-block;
       transition: transform 0.2s ease;
     }
     .yt-acc-item.open .yt-acc-val::after {
       transform: rotate(90deg);
       color: var(--accent);
     }
-
-    /* Плавное раскрытие аккордеона с аккуратными отступами для ползунка */
     .yt-acc-body {
-      max-height: 0;
-      opacity: 0;
-      overflow: hidden;
-      padding: 0 16px;
-      background: #222222;
-      border-top: 0 solid #363636;
-      transition: max-height 0.22s ease, opacity 0.18s ease, padding 0.22s ease;
+      display: none;
+      padding: 4px 10px 9px;
+      flex-direction: column;
+      gap: 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
     }
     .yt-acc-item.open .yt-acc-body {
-      max-height: 76px;
-      opacity: 1;
-      padding: 12px 16px 14px 16px;
-      border-top: 1px solid #363636;
-    }
-
-    .yt-inline-row {
-      width: 100%;
-      min-height: 40px;
       display: flex;
-      flex-wrap: wrap;
+    }
+    .yt-inline-row {
+      display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 6px 10px;
-      padding: 10px 12px;
-      font-size: 13px;
-      font-weight: 500;
-      line-height: 1.35;
-      color: #f5f5f5;
-      background: #1e1e1e;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #eef0f4;
       border-radius: 9px;
     }
-    .yt-inline-row .yt-acc-label {
-      flex: 1 1 0%;
-      min-width: 105px;
+    .setting-item label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 11px; color: #ccc; margin-bottom: 2px; font-weight: 500;
     }
-
-    /* Чёткий ползунок внутри раскрытой строки с отступами по краям */
     .yt-acc-body input[type="range"] {
-      -webkit-appearance: none;
-      appearance: none;
-      width: calc(100% - 8px);
-      height: 6px;
-      margin: 5px auto;
-      padding: 0;
-      display: block;
-      border: none;
-      border-radius: 999px;
-      background: #484848;
-      cursor: pointer;
+      width: 100%; height: 16px; margin: 0; padding: 0; border: none; background: transparent; cursor: pointer;
     }
-    .yt-acc-body input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: var(--accent);
-      border: 2px solid #ffffff;
-      box-shadow: 0 1px 4px #000000;
-      cursor: pointer;
-    }
-    .yt-acc-body input[type="range"]::-moz-range-thumb {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: var(--accent);
-      border: 2px solid #ffffff;
-      box-shadow: 0 1px 4px #000000;
-      cursor: pointer;
-    }
-
-    .yt-acc-body select {
-      width: 100%;
-      margin: 0;
-      padding: 8px 10px;
-      font-size: 12.5px;
-      border-radius: 8px;
-      background: #181818;
-      border: 1px solid #444444;
-      color: #ffffff;
+    .yt-acc-body select,
+    .yt-inline-row select {
+      width: 100%; margin: 0; padding: 6px 8px; font-size: 11.5px; border-radius: 7px;
+      background: #181b21; border: 1px solid #3a3f4d; color: #fff;
     }
 
     .switch { position: relative; display: inline-block; width: 34px; height: 19px; flex-shrink: 0; }
@@ -1248,99 +959,11 @@
       pointer-events: none !important;
     }
 
-    /* Чистый режим внешнего плеера при открытии через Intent.ACTION_VIEW («Открыть с помощью...») —
-       скрываем все верхние плитки (.file-box), селекты и пустые блоки, оставляя только видео и субтитры */
-    html.intent-player-mode,
-    body.intent-player-mode {
-      padding: 0 !important;
-      margin: 0 !important;
-      width: 100vw !important;
-      height: 100vh !important;
-      height: 100dvh !important;
-      overflow: hidden !important;
-      background: transparent !important;
-    }
-    body.intent-player-mode #appTopSection,
-    body.intent-player-mode .file-box,
-    body.intent-player-mode #vttPanelWrapper,
-    body.intent-player-mode #aiSummaryBox {
-      display: none !important;
-      height: 0 !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border: none !important;
-    }
-    body.intent-player-mode #playerContainer {
-      position: fixed !important;
-      inset: 0 !important;
-      width: 100vw !important;
-      height: 100vh !important;
-      height: 100dvh !important;
-      max-width: none !important;
-      max-height: none !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      aspect-ratio: auto !important;
-      border: none !important;
-      border-radius: 0 !important;
-      box-shadow: none !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      background: transparent !important;
-      z-index: 95 !important;
-    }
-    body.intent-player-mode #playerControls {
-      border-radius: 0 !important;
-    }
-
-    /* Защита от пустых блоков и плиток субтитров, когда текст отсутствует */
-    #subtitleText:empty,
-    #vttPanelWrapper:empty,
-    #vttPanel.hidden {
-      display: none !important;
-      opacity: 0 !important;
-      padding: 0 !important;
-      border: none !important;
-      background: transparent !important;
-    }
-
-    /* Компактный индикатор статуса внутри плеера для режима Intent.ACTION_VIEW */
-    #playerStatusToast {
-      position: absolute;
-      top: 14px;
-      left: 50%;
-      transform: translateX(-50%);
-      max-width: 86%;
-      padding: 6px 14px;
-      border-radius: 999px;
-      background: rgba(18, 20, 24, 0.82);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      color: #f3f4f6;
-      font-size: 12px;
-      font-weight: 500;
-      text-align: center;
-      pointer-events: none;
-      z-index: 25;
-      opacity: 0;
-      transition: opacity 0.2s ease;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    #playerStatusToast.show {
-      opacity: 1;
-    }
-    .ctrl-btn.cc-active {
-      color: var(--accent);
-    }
-
-    /* Быстрые кнопки буста звука 200% HQ в настройках плеера */
+    /* Быстрые пресеты качественного буста 200% HQ в настройках плеера */
     .boost-presets-row {
       display: flex;
-      gap: 6px;
+      gap: 5px;
       margin-top: 8px;
-      flex-wrap: nowrap;
     }
     .boost-preset-btn {
       flex: 1 1 0;
@@ -1349,13 +972,12 @@
       padding: 5px 4px !important;
       font-size: 11px !important;
       font-weight: 600 !important;
-      border-radius: 8px !important;
+      border-radius: 7px !important;
       background: rgba(255, 255, 255, 0.08) !important;
       color: #e5e7eb !important;
-      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      border: 1px solid rgba(255, 255, 255, 0.14) !important;
       box-shadow: none !important;
       text-align: center;
-      transition: all 0.15s ease;
     }
     .boost-preset-btn.active {
       background: var(--accent) !important;
@@ -1364,46 +986,43 @@
       font-weight: 700 !important;
     }
     .yt-acc-val.boost-active {
-      color: #38bdf8 !important;
+      color: var(--accent) !important;
       font-weight: 700 !important;
     }
 
-    /* Визуальная палитра тем в глобальных настройках */
+    /* Визуальная палитра 18 тем в настройках */
     .theme-swatches-grid {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
       gap: 7px;
-      margin: 4px 0 8px 0;
+      margin: 2px 0 6px 0;
       padding: 8px;
-      background: var(--bg-elevated);
+      background: var(--bg-surface);
       border: 1px solid var(--border-soft);
       border-radius: 12px;
     }
     .theme-swatch-btn {
       width: 100% !important;
-      height: 28px !important;
+      height: 26px !important;
       margin: 0 !important;
       padding: 0 !important;
-      border-radius: 8px !important;
+      border-radius: 7px !important;
       border: 2px solid rgba(255, 255, 255, 0.16) !important;
       box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25) !important;
       position: relative;
       cursor: pointer;
-      transition: transform 0.14s ease, border-color 0.14s ease;
     }
     .theme-swatch-btn.active {
       border-color: var(--accent) !important;
       transform: scale(1.06);
-      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35) !important;
     }
     .theme-swatch-dot {
       position: absolute;
       right: 3px;
       bottom: 3px;
-      width: 7px;
-      height: 7px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-      border: 1px solid rgba(0,0,0,0.4);
     }
 
   </style>
@@ -1411,14 +1030,136 @@
 <body>
   <div id="appTopSection">
   <header class="app-header">
-    <h2><svg viewBox="0 0 36 36" width="25" height="25" style="vertical-align:-5px;margin-right:8px;filter:drop-shadow(0 2px 6px rgba(49,184,240,0.32));" aria-hidden="true"><rect x="1" y="1" width="34" height="34" rx="8.5" fill="#132D48" stroke="#31B8F0" stroke-width="1.1" stroke-opacity="0.45"/><path d="M16.2 4.8 C16.2 4.8 6.5 15.6 6.5 22.2 C6.5 27.6 10.9 31.6 16.4 31.6 C19.4 31.6 22.0 30.3 23.8 28.2 L17.6 28.2 C16.5 28.2 15.6 27.3 15.6 26.2 C15.6 25.1 16.5 24.2 17.6 24.2 L25.6 24.2 C26.7 24.2 27.6 23.3 27.6 22.2 C27.6 21.1 26.7 20.2 25.6 20.2 L19.8 20.2 C18.7 20.2 17.8 19.3 17.8 18.2 C17.8 17.1 18.7 16.2 19.8 16.2 L29.2 16.2 C30.3 16.2 31.2 15.3 31.2 14.2 C31.2 13.1 30.3 12.2 29.2 12.2 L18.4 12.2 C17.3 12.2 16.4 11.3 16.4 10.2 C16.4 9.1 17.3 8.2 18.4 8.2 L20.0 8.2 C18.2 6.2 16.2 4.8 16.2 4.8 Z" fill="#31B8F0"/><rect x="10.2" y="18.2" width="6.2" height="2.4" rx="1.2" fill="#132D48"/><rect x="12.5" y="14.2" width="3.8" height="2.3" rx="1.15" fill="#132D48"/><rect x="13.5" y="22.2" width="3.4" height="2.3" rx="1.15" fill="#132D48"/><rect x="23.2" y="9.2" width="4.2" height="2.4" rx="1.2" fill="#31B8F0"/><rect x="25.0" y="17.2" width="5.2" height="2.4" rx="1.2" fill="#31B8F0"/><circle cx="28.4" cy="22.4" r="1.5" fill="#31B8F0"/></svg>SubLater</h2>
+    <h2>SubLater</h2>
     <button id="settingsToggle" aria-label="Настройки">
       <svg viewBox="0 0 24 24">
         <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
       </svg>
     </button>
   </header>
-<select id="model">
+
+  <div id="settingsBackdrop"></div>
+
+  <div id="globalSettings">
+    <div class="settings-header">
+      <span>Настройки</span>
+      <button class="close-btn" id="closeSettingsBtn">✕</button>
+    </div>
+    
+    <div class="global-row">
+      <span>Цвет акцента</span>
+      <input type="color" id="accentColor" value="#0099ff">
+    </div>
+
+    <div class="global-row">
+      <span>Тема оформления (18 тем)</span>
+      <select id="appThemeBg">
+        <option value="dark-gray">Тёмно-серая (По умолчанию)</option>
+        <option value="ocean-drop">Капля океана (SubLater)</option>
+        <option value="amoled-black">AMOLED Чёрная</option>
+        <option value="midnight-indigo">Полночный индиго</option>
+        <option value="tokyo-night">Токийская ночь</option>
+        <option value="cyberpunk-neon">Киберпанк Неон</option>
+        <option value="dracula">Дракула</option>
+        <option value="catppuccin-mocha">Капучино Мокка</option>
+        <option value="nord-arctic">Северный Норд</option>
+        <option value="emerald-forest">Изумрудный лес</option>
+        <option value="matrix-terminal">Матрица</option>
+        <option value="ruby-velvet">Рубиновый бархат</option>
+        <option value="sunset-amber">Янтарный закат</option>
+        <option value="royal-plum">Королевская слива</option>
+        <option value="graphite">Графитовый</option>
+        <option value="gray">Стальной серый</option>
+        <option value="warm-gray">Тёплый серый</option>
+        <option value="light-slate">Светло-серый</option>
+      </select>
+    </div>
+    <div class="theme-swatches-grid" id="themeSwatchesGrid"></div>
+    
+    <div class="global-row">
+      <span>Цвет текста субтитров</span>
+      <input type="color" id="subTextColor" value="#ffffff">
+    </div>
+    <div class="global-row">
+      <span>Шрифт субтитров</span>
+      <select id="subFontFamily">
+        <option value="'Inter', sans-serif">Inter</option>
+        <option value="'Roboto', sans-serif">Roboto</option>
+        <option value="'Montserrat', sans-serif">Montserrat</option>
+        <option value="Arial, sans-serif">Arial</option>
+        <option value="'Courier New', monospace">Courier</option>
+      </select>
+    </div>
+    <div class="global-row">
+      <span>Прозрачность фона субтитров</span>
+      <input type="range" id="bgOpacity" min="0" max="100" value="62" style="width: 100px;">
+    </div>
+    <div class="global-row">
+      <span>Автовоспроизведение</span>
+      <label class="switch">
+        <input type="checkbox" id="autoPlayToggle" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="global-row" style="margin-top: 10px; border-top: 1px solid var(--border-soft); padding-top: 14px;">
+      <span>API Ключи Groq (Субтитры)</span>
+    </div>
+    <input type="password" id="apiKey" placeholder="Ключ(и) Groq (gsk_1..., gsk_2...)" style="margin:0 0 6px 0;" />
+
+    <div class="global-row" style="margin-top: 6px; border-top: 1px solid var(--border-soft); padding-top: 12px;">
+      <span>API Ключ Gemini (ИИ-видео)</span>
+    </div>
+    <input type="password" id="geminiApiKey" placeholder="Ключ Gemini (AIzaSy...)" style="margin:0 0 6px 0;" />
+
+    <div class="global-row">
+      <span>Модель Gemini</span>
+      <select id="geminiModel">
+        <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+        <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+      </select>
+    </div>
+
+    <div class="global-row">
+      <span>Модель перевода</span>
+      <select id="llmModel">
+        <option value="openai/gpt-oss-120b">GPT-OSS 120B (Точная)</option>
+        <option value="openai/gpt-oss-20b">GPT-OSS 20B (Быстрая)</option>
+        <option value="qwen/qwen3.6-27b">Qwen 3.6 27B (Резервная)</option>
+      </select>
+    </div>
+    <div class="global-row">
+      <span>Фильтр галлюцинаций</span>
+      <label class="switch">
+        <input type="checkbox" id="hallucinationFilter" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="global-row">
+      <span>Авто-разбивка длинных фраз</span>
+      <label class="switch">
+        <input type="checkbox" id="smartSplitToggle" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="global-row">
+      <span>Быстрое сжатие аудио (&gt;10 МБ)</span>
+      <label class="switch">
+        <input type="checkbox" id="fastAudioCompress" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <input type="text" id="whisperPrompt" placeholder="Словарь / сложные имена (необязательно)" style="margin:2px 0; padding:10px 12px; font-size:12px;" />
+    <div class="global-row">
+      <span>Загрузить готовые (.vtt / .srt)</span>
+      <label for="subFile" class="file-pill" style="padding: 6px 14px; font-size: 12px;">Выбрать</label>
+      <input type="file" id="subFile" accept=".vtt,.srt" style="display:none" />
+    </div>
+  </div>
+
+  <select id="model">
     <option value="whisper-large-v3-turbo">whisper-large-v3-turbo (Быстрая)</option>
     <option value="whisper-large-v3">whisper-large-v3 (Точная)</option>
   </select>
@@ -1441,19 +1182,9 @@
   <div id="progressWrap"><div id="progressBar"></div></div>
   
   <div class="action-row" id="actionRow">
-    <button type="button" id="retryBtn">
-      <svg class="btn-icon-refresh" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-      </svg>
-      <span>Ещё раз</span>
-    </button>
-    <div class="dl-wrap" id="dlWrap">
-      <button type="button" id="dlBtn">
-        <span>Скачать</span>
-        <svg class="btn-icon-caret" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M7 10l5 5 5-5H7z"/>
-        </svg>
-      </button>
+    <button type="button" id="retryBtn">↻ Ещё раз</button>
+    <div class="dl-wrap">
+      <button type="button" id="dlBtn">Скачать ▾</button>
       <div id="dlFormatMenu">
         <button type="button" class="dl-fmt-item" data-fmt="vtt"><span>Стандарт</span><span class="fmt-ext">.VTT</span></button>
         <button type="button" class="dl-fmt-item" data-fmt="ass"><span>Караоке</span><span class="fmt-ext">.ASS</span></button>
@@ -1513,35 +1244,14 @@
   <div id="playerContainer">
     <video id="videoPlayer" playsinline preload="metadata" poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
 
-    <div id="playerStatusToast"></div>
-
     <div id="subtitleOverlay">
       <div id="subtitleText" class="bg-on"></div>
     </div>
 
-    <div id="playerControls">
-      <span id="timeText">0:00 / 0:00</span>
-      <input type="range" id="seekBar" min="0" max="100" value="0" step="0.1">
-
-      <button class="ctrl-btn" id="settingsBtn">
-        <svg viewBox="0 0 24 24">
-          <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
-        </svg>
-      </button>
-
-      <button class="ctrl-btn" id="fsBtn">
-        <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-      </button>
-    </div>
-  </div>
-
-
-
-
     <div id="settingsMenu">
-      <div class="yt-acc-item open">
+      <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
-          <span class="yt-acc-label">🔊 Буст звука (HQ 200%)</span>
+          <span>Громкость (Буст 200% HQ)</span>
           <span class="yt-acc-val" id="volVal">100%</span>
         </button>
         <div class="yt-acc-body">
@@ -1558,17 +1268,7 @@
 
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
-          <span class="yt-acc-label">Увеличение картины</span>
-          <span class="yt-acc-val" id="videoZoomVal">100%</span>
-        </button>
-        <div class="yt-acc-body">
-          <input type="range" id="videoZoom" min="100" max="200" step="5" value="100">
-        </div>
-      </div>
-
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span class="yt-acc-label">Скорость</span>
+          <span>Скорость видео</span>
           <span class="yt-acc-val" id="speedVal">1.0x</span>
         </button>
         <div class="yt-acc-body">
@@ -1578,7 +1278,57 @@
 
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
-          <span class="yt-acc-label">Формат кадра</span>
+          <span>Размер</span>
+          <span class="yt-acc-val" id="subSizeVal">18px</span>
+        </button>
+        <div class="yt-acc-body">
+          <input type="range" id="subSize" min="12" max="48" step="1" value="18">
+        </div>
+      </div>
+
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
+          <span>Ширина</span>
+          <span class="yt-acc-val" id="subWidthVal">85%</span>
+        </button>
+        <div class="yt-acc-body">
+          <input type="range" id="subWidth" min="30" max="100" step="1" value="85">
+        </div>
+      </div>
+
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
+          <span>Высота</span>
+          <span class="yt-acc-val" id="subBottomVal">12%</span>
+        </button>
+        <div class="yt-acc-body">
+          <input type="range" id="subBottom" min="5" max="35" step="1" value="12">
+        </div>
+      </div>
+
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
+          <span>Сдвиг (появление)</span>
+          <span class="yt-acc-val" id="subOffsetVal">0 мс</span>
+        </button>
+        <div class="yt-acc-body">
+          <input type="range" id="subOffset" min="-1000" max="1000" step="50" value="0">
+        </div>
+      </div>
+
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
+          <span>Задержка (исчезновение)</span>
+          <span class="yt-acc-val" id="subHoldVal">400 мс</span>
+        </button>
+        <div class="yt-acc-body">
+          <input type="range" id="subHold" min="0" max="1500" step="50" value="400">
+        </div>
+      </div>
+
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
+          <span>Экран</span>
           <span class="yt-acc-val" id="fitModeVal">Вписать</span>
         </button>
         <div class="yt-acc-body">
@@ -1592,57 +1342,7 @@
 
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
-          <span class="yt-acc-label">Размер</span>
-          <span class="yt-acc-val" id="subSizeVal">18px</span>
-        </button>
-        <div class="yt-acc-body">
-          <input type="range" id="subSize" min="12" max="48" step="1" value="18">
-        </div>
-      </div>
-
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span class="yt-acc-label">Ширина</span>
-          <span class="yt-acc-val" id="subWidthVal">85%</span>
-        </button>
-        <div class="yt-acc-body">
-          <input type="range" id="subWidth" min="30" max="100" step="1" value="85">
-        </div>
-      </div>
-
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span class="yt-acc-label">Высота</span>
-          <span class="yt-acc-val" id="subBottomVal">12%</span>
-        </button>
-        <div class="yt-acc-body">
-          <input type="range" id="subBottom" min="5" max="35" step="1" value="12">
-        </div>
-      </div>
-
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span class="yt-acc-label">Сдвиг (появление)</span>
-          <span class="yt-acc-val" id="subOffsetVal">0 мс</span>
-        </button>
-        <div class="yt-acc-body">
-          <input type="range" id="subOffset" min="-1000" max="1000" step="50" value="0">
-        </div>
-      </div>
-
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span class="yt-acc-label">Задержка (исчезновение)</span>
-          <span class="yt-acc-val" id="subHoldVal">400 мс</span>
-        </button>
-        <div class="yt-acc-body">
-          <input type="range" id="subHold" min="0" max="1500" step="50" value="400">
-        </div>
-      </div>
-
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span class="yt-acc-label">Режим слов</span>
+          <span>Режим слов</span>
           <span class="yt-acc-val" id="wordModeVal">Пословно</span>
         </button>
         <div class="yt-acc-body">
@@ -1654,161 +1354,31 @@
         </div>
       </div>
 
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
-          <span class="yt-acc-label">Прозрачность фона</span>
-          <span class="yt-acc-val" id="playerBgOpacityVal">62%</span>
-        </button>
-        <div class="yt-acc-body">
-          <input type="range" id="playerBgOpacity" min="0" max="100" value="62">
-        </div>
-      </div>
-
       <div class="yt-inline-row">
-        <span class="yt-acc-label">Фон</span>
+        <span>Фон</span>
         <label class="switch">
           <input type="checkbox" id="bgToggle" checked>
           <span class="slider"></span>
         </label>
       </div>
-
-      <div class="yt-inline-row">
-        <span class="yt-acc-label">Фиксация внизу</span>
-        <label class="switch">
-          <input type="checkbox" id="fixedSubsToggle" checked>
-          <span class="slider"></span>
-        </label>
-      </div>
-
-
     </div>
 
-  <div id="settingsBackdrop"></div>
+    <div id="playerControls">
+      <span id="timeText">0:00 / 0:00</span>
+      <input type="range" id="seekBar" min="0" max="100" value="0" step="0.1">
+      
+      <button class="ctrl-btn" id="settingsBtn">
+        <svg viewBox="0 0 24 24">
+          <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+        </svg>
+      </button>
 
-  <div id="globalSettings">
-    <div class="settings-header">
-      <span>Настройки</span>
-      <button class="close-btn" id="closeSettingsBtn">✕</button>
-    </div>
-    
-    <div class="global-row">
-      <span>Цвет акцента</span>
-      <input type="color" id="accentColor" value="#0099ff">
-    </div>
-
-    <div class="global-row">
-      <span>Тема оформления (18 тем)</span>
-      <select id="appThemeBg">
-        <option value="dark-gray">Тёмно-серая (Классика)</option>
-        <option value="ocean-drop">Капля океана (SubLater)</option>
-        <option value="amoled-black">AMOLED Чёрная</option>
-        <option value="midnight-indigo">Полночный индиго</option>
-        <option value="tokyo-night">Токийская ночь</option>
-        <option value="cyberpunk-neon">Киберпанк Неон</option>
-        <option value="dracula">Дракула (Фиолетовая)</option>
-        <option value="catppuccin-mocha">Капучино Мокка</option>
-        <option value="nord-arctic">Северный Норд</option>
-        <option value="emerald-forest">Изумрудный лес</option>
-        <option value="matrix-terminal">Матрица (Терминал)</option>
-        <option value="ruby-velvet">Рубиновый бархат</option>
-        <option value="sunset-amber">Янтарный закат</option>
-        <option value="royal-plum">Королевская слива</option>
-        <option value="graphite">Графитовый карбон</option>
-        <option value="gray">Стальной серый</option>
-        <option value="warm-gray">Тёплый кварц</option>
-        <option value="light-slate">Светлый сланец</option>
-      </select>
-    </div>
-    <div class="theme-swatches-grid" id="themeSwatchesGrid" aria-label="Быстрый выбор темы"></div>
-    
-    <div class="global-row">
-      <span>Цвет текста субтитров</span>
-      <input type="color" id="subTextColor" value="#ffffff">
-    </div>
-    <div class="global-row">
-      <span>Шрифт субтитров</span>
-      <select id="subFontFamily">
-        <option value="'Inter', sans-serif">Inter</option>
-        <option value="'Roboto', sans-serif">Roboto</option>
-        <option value="'Montserrat', sans-serif">Montserrat</option>
-        <option value="Arial, sans-serif">Arial</option>
-        <option value="'Courier New', monospace">Courier</option>
-      </select>
-    </div>
-    <div class="global-row">
-      <span>Прозрачность фона субтитров</span>
-      <input type="range" id="bgOpacity" min="0" max="100" value="62" style="width: 100px;">
-    </div>
-    <div class="global-row">
-      <span>Автовоспроизведение</span>
-      <label class="switch">
-        <input type="checkbox" id="autoPlayToggle" checked>
-        <span class="slider"></span>
-      </label>
-    </div>
-    <div class="global-row">
-      <span>Плавность (воздушность)</span>
-      <input type="range" id="uiFluidity" min="0" max="100" value="85" style="width: 105px;">
-    </div>
-
-    <div class="global-row" style="margin-top: 10px; border-top: 1px solid #333333; padding-top: 14px;">
-      <span>API Ключ Groq</span>
-    </div>
-    <input type="password" id="apiKey" autocomplete="off" spellcheck="false" placeholder="Введите ключ Groq" style="margin:0 0 6px 0;" />
-
-    <div class="global-row" style="margin-top: 6px; border-top: 1px solid #333333; padding-top: 12px;">
-      <span>API Ключ Gemini</span>
-    </div>
-    <input type="password" id="geminiApiKey" autocomplete="off" spellcheck="false" placeholder="Введите ключ Gemini" style="margin:0 0 6px 0;" />
-
-    <div class="global-row">
-      <span>Модель Gemini</span>
-      <select id="geminiModel">
-        <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
-        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-        <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-      </select>
-    </div>
-
-    <div class="global-row">
-      <span>Модель перевода</span>
-      <select id="llmModel">
-        <option value="openai/gpt-oss-120b">GPT-OSS 120B (Точная)</option>
-        <option value="openai/gpt-oss-20b">GPT-OSS 20B (Быстрая)</option>
-        <option value="qwen/qwen3.6-27b">Qwen 3.6 27B (Резервная)</option>
-      </select>
-    </div>
-    <div class="global-row">
-      <span>Фильтр галлюцинаций</span>
-      <label class="switch">
-        <input type="checkbox" id="hallucinationFilter" checked>
-        <span class="slider"></span>
-      </label>
-    </div>
-    <div class="global-row">
-      <span>Авто-разбивка длинных фраз</span>
-      <label class="switch">
-        <input type="checkbox" id="smartSplitToggle" checked>
-        <span class="slider"></span>
-      </label>
-    </div>
-    <div class="global-row">
-      <span>Быстрое сжатие аудио (&gt;10 МБ)</span>
-      <label class="switch">
-        <input type="checkbox" id="fastAudioCompress" checked>
-        <span class="slider"></span>
-      </label>
-    </div>
-    <input type="text" id="whisperPrompt" placeholder="Словарь / сложные имена (необязательно)" style="margin:2px 0; padding:10px 12px; font-size:12px;" />
-    <div class="global-row">
-      <span>Загрузить готовые (.vtt / .srt)</span>
-      <label for="subFile" class="file-pill" style="padding: 6px 14px; font-size: 12px;">Выбрать</label>
-      <input type="file" id="subFile" accept=".vtt,.srt" style="display:none" />
+      <button class="ctrl-btn" id="fsBtn">
+        <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+      </button>
     </div>
   </div>
 
-  
   <script>
   (function () {
     'use strict';
@@ -1831,7 +1401,6 @@
         wakeLock = null;
       }
     }
-
 
     /* ---------------- Настройки и Модальное окно ---------------- */
     const settingsToggle = $('settingsToggle');
@@ -1887,22 +1456,22 @@
       'ruby-velvet':      { label: 'Рубиновый бархат',  main: '#241218', surface: '#361b24', elevated: '#2d161e', border: '#542b39', accent: '#f43f5e' },
       'sunset-amber':     { label: 'Янтарный закат',    main: '#241811', surface: '#36241a', elevated: '#2d1e15', border: '#543929', accent: '#f59e0b' },
       'royal-plum':       { label: 'Королевская слива', main: '#1d1429', surface: '#2b1e3d', elevated: '#241933', border: '#463263', accent: '#c084fc' },
-      'graphite':         { label: 'Графитовый карбон', main: '#1c1f24', surface: '#262a31', elevated: '#21252b', border: '#353a44', accent: '#0099ff' },
+      'graphite':         { label: 'Графитовый',        main: '#1c1f24', surface: '#262a31', elevated: '#21252b', border: '#353a44', accent: '#0099ff' },
       'gray':             { label: 'Стальной серый',    main: '#2e323a', surface: '#393e48', elevated: '#333842', border: '#4b515f', accent: '#38bdf8' },
-      'warm-gray':        { label: 'Тёплый кварц',      main: '#2b2a2e', surface: '#36353a', elevated: '#313035', border: '#48464e', accent: '#f59e0b' },
-      'light-slate':      { label: 'Светлый сланец',    main: '#373c46', surface: '#434956', elevated: '#3d424e', border: '#565d6e', accent: '#38bdf8' }
+      'warm-gray':        { label: 'Тёплый серый',      main: '#2b2a2e', surface: '#36353a', elevated: '#313035', border: '#48464e', accent: '#f59e0b' },
+      'light-slate':      { label: 'Светло-серый',      main: '#373c46', surface: '#434956', elevated: '#3d424e', border: '#565d6e', accent: '#38bdf8' }
     };
     const appThemeBgEl = $('appThemeBg');
     const themeSwatchesGridEl = $('themeSwatchesGrid');
 
-    function syncThemeSwatchesActive(activeKey) {
+    function syncThemeSwatches(activeKey) {
       if (!themeSwatchesGridEl) return;
-      themeSwatchesGridEl.querySelectorAll('.theme-swatch-btn').forEach((btnEl) => {
-        btnEl.classList.toggle('active', btnEl.dataset.theme === activeKey);
+      themeSwatchesGridEl.querySelectorAll('.theme-swatch-btn').forEach((b) => {
+        b.classList.toggle('active', b.dataset.theme === activeKey);
       });
     }
 
-    function applyGrayTheme(themeKey, applyThemeAccent = false) {
+    function applyGrayTheme(themeKey, updateAccent = false) {
       const validKey = GRAY_THEMES[themeKey] ? themeKey : 'dark-gray';
       const t = GRAY_THEMES[validKey];
       const root = document.documentElement.style;
@@ -1910,7 +1479,7 @@
       root.setProperty('--bg-surface', t.surface);
       root.setProperty('--bg-elevated', t.elevated);
       root.setProperty('--border-soft', t.border);
-      if (applyThemeAccent && t.accent && accentColorEl) {
+      if (updateAccent && t.accent && accentColorEl) {
         accentColorEl.value = t.accent;
         root.setProperty('--accent', t.accent);
         safeSetStorage('sublater_accent', t.accent);
@@ -1924,7 +1493,7 @@
       if (appThemeBgEl && appThemeBgEl.value !== validKey) {
         appThemeBgEl.value = validKey;
       }
-      syncThemeSwatchesActive(validKey);
+      syncThemeSwatches(validKey);
       safeSetStorage('sublater_gray_theme', validKey);
     }
 
@@ -1953,97 +1522,37 @@
       appThemeBgEl.addEventListener('change', () => applyGrayTheme(appThemeBgEl.value, true));
     }
 
-    /* ---------------- 3. Защита ключей через EncryptedSharedPreferences (Android Keystore) без localStorage ---------------- */
+    /* ---------------- Ключи API Groq и Gemini (без захардкоженных ключей) ---------------- */
     const keyInput = $('apiKey');
     const geminiKeyInput = $('geminiApiKey');
     const geminiModelSelect = $('geminiModel');
     const aiActiveModelBadge = $('aiActiveModelBadge');
 
-    const androidBridge = window.AndroidBridge || window.ExoPlayerManager || null;
-    let sessionGroqKey = '';
-    let sessionGeminiKey = '';
+    try { localStorage.removeItem('groq_key'); } catch (e) {}
 
-    function saveGroqApiKeyToKeystore(key) {
-      const clean = String(key || '').trim();
-      sessionGroqKey = clean;
-      if (androidBridge && typeof androidBridge.saveApiKey === 'function') {
-        try { androidBridge.saveApiKey(clean); } catch (e) {}
-      } else if (androidBridge && typeof androidBridge.saveSecureKey === 'function') {
-        try { androidBridge.saveSecureKey('groq_api_key', clean); } catch (e) {}
-      }
-    }
-
-    function getGroqApiKeyFromKeystore() {
-      if (androidBridge && typeof androidBridge.getApiKey === 'function') {
-        try {
-          const k = String(androidBridge.getApiKey() || '').trim();
-          if (k) return k;
-        } catch (e) {}
-      }
-      if (androidBridge && typeof androidBridge.getSecureKey === 'function') {
-        try {
-          const k = String(androidBridge.getSecureKey('groq_api_key') || '').trim();
-          if (k) return k;
-        } catch (e) {}
-      }
-      return sessionGroqKey;
-    }
-
-    function saveGeminiKeyToKeystore(key) {
-      const clean = String(key || '').trim();
-      sessionGeminiKey = clean;
-      if (androidBridge && typeof androidBridge.saveGeminiApiKey === 'function') {
-        try { androidBridge.saveGeminiApiKey(clean); } catch (e) {}
-      } else if (androidBridge && typeof androidBridge.saveSecureKey === 'function') {
-        try { androidBridge.saveSecureKey('gemini_api_key', clean); } catch (e) {}
-      }
-    }
-
-    function getGeminiKeyFromKeystore() {
-      if (androidBridge && typeof androidBridge.getGeminiApiKey === 'function') {
-        try {
-          const k = String(androidBridge.getGeminiApiKey() || '').trim();
-          if (k) return k;
-        } catch (e) {}
-      }
-      if (androidBridge && typeof androidBridge.getSecureKey === 'function') {
-        try {
-          const k = String(androidBridge.getSecureKey('gemini_api_key') || '').trim();
-          if (k) return k;
-        } catch (e) {}
-      }
-      return sessionGeminiKey;
-    }
-
-    function syncGroqSessionToKotlin() {
-      const bridge = window.AndroidBridge || window.ExoPlayerManager || null;
-      if (bridge && typeof bridge.configureGroqSession === 'function') {
-        const currentKey = keyInput.value.trim() || getGroqApiKeyFromKeystore();
-        const langEl = $('sourceLang');
-        const currentLang = langEl ? (langEl.value || 'auto') : 'auto';
-        try { bridge.configureGroqSession(currentKey, currentLang); } catch (e) {}
-      }
-    }
-
-    // При старте приложения подтягиваем ключи напрямую из EncryptedSharedPreferences и сразу передаем в Kotlin
-    keyInput.value = getGroqApiKeyFromKeystore();
-    geminiKeyInput.value = getGeminiKeyFromKeystore();
-    syncGroqSessionToKotlin();
-
+    const keyBridge = window.ExoPlayerManager || window.AndroidBridge;
+    const savedGroqLocal = safeGetStorage('sublater_groq_key', '');
+    const savedGroqNative = (keyBridge && typeof keyBridge.getApiKey === 'function') ? String(keyBridge.getApiKey() || '').trim() : '';
+    keyInput.value = savedGroqLocal || savedGroqNative || '';
+    if (keyInput.value && !savedGroqLocal) safeSetStorage('sublater_groq_key', keyInput.value);
     keyInput.addEventListener('input', () => {
-      saveGroqApiKeyToKeystore(keyInput.value);
-      syncGroqSessionToKotlin();
-    });
-    keyInput.addEventListener('change', () => {
-      saveGroqApiKeyToKeystore(keyInput.value);
-      syncGroqSessionToKotlin();
+      const v = keyInput.value.trim();
+      safeSetStorage('sublater_groq_key', v);
+      if (keyBridge && typeof keyBridge.saveApiKey === 'function') {
+        try { keyBridge.saveApiKey(v); } catch (e) {}
+      }
     });
 
+    const savedGemLocal = safeGetStorage('gemini_key', '');
+    const savedGemNative = (keyBridge && typeof keyBridge.getGeminiApiKey === 'function') ? String(keyBridge.getGeminiApiKey() || '').trim() : '';
+    geminiKeyInput.value = savedGemLocal || savedGemNative || '';
+    if (geminiKeyInput.value && !savedGemLocal) safeSetStorage('gemini_key', geminiKeyInput.value);
     geminiKeyInput.addEventListener('input', () => {
-      saveGeminiKeyToKeystore(geminiKeyInput.value);
-    });
-    geminiKeyInput.addEventListener('change', () => {
-      saveGeminiKeyToKeystore(geminiKeyInput.value);
+      const v = geminiKeyInput.value.trim();
+      safeSetStorage('gemini_key', v);
+      if (keyBridge && typeof keyBridge.saveGeminiApiKey === 'function') {
+        try { keyBridge.saveGeminiApiKey(v); } catch (e) {}
+      }
     });
 
     const savedGeminiModel = safeGetStorage('gemini_model', 'gemini-3.8-flash');
@@ -2058,8 +1567,7 @@
 
     let activeKeyIdx = 0;
     function getApiKeys() {
-      const currentVal = keyInput.value.trim() || getGroqApiKeyFromKeystore();
-      return currentVal.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
+      return keyInput.value.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
     }
     function getCurrentKey() {
       const keys = getApiKeys();
@@ -2253,123 +1761,19 @@
       applySettings();
     })();
 
-    let settingsTimeoutId = null;
-    function scheduleDeferredSettingsApply() {
-      if (settingsTimeoutId !== null) clearTimeout(settingsTimeoutId);
-      settingsTimeoutId = setTimeout(() => {
-        settingsTimeoutId = null;
-        applySettings();
-      }, 16);
-    }
-
-    const sourceLangEl = $('sourceLang');
-    if (sourceLangEl) {
-      const savedSrcLang = safeGetStorage('sublater_source_lang', 'auto');
-      sourceLangEl.value = savedSrcLang || 'auto';
-      syncGroqSessionToKotlin();
-      sourceLangEl.addEventListener('change', () => {
-        safeSetStorage('sublater_source_lang', sourceLangEl.value);
-        syncGroqSessionToKotlin();
-        setTimeout(updateButtonLabel, 0);
-      });
-    }
-
     [
       sizeEl, widthEl, bottomEl, bgToggle, wordModeSelect,
       fitModeSelect,
       subTextColorEl, subFontFamilyEl, bgOpacityEl,
-      subOffsetEl, subHoldEl,
+      subOffsetEl, subHoldEl, // <-- добавили в массив слушателей
       autoPlayToggle, llmModelEl, hallucinationFilterEl,
       fastAudioCompressEl, whisperPromptEl
     ].forEach((el) => {
-      el.addEventListener('input', scheduleDeferredSettingsApply);
-      el.addEventListener('change', scheduleDeferredSettingsApply);
+      el.addEventListener('input', applySettings);
+      el.addEventListener('change', applySettings);
     });
 
-    /* ---------------- Плавность (воздушность), Прозрачность фона в плеере и Фиксация субтитров ---------------- */
-    const uiFluidityEl = $('uiFluidity');
-    const playerBgOpacityEl = $('playerBgOpacity');
-    const playerBgOpacityVal = $('playerBgOpacityVal');
-    const fixedSubsToggle = $('fixedSubsToggle');
-
-    function applyFluidity() {
-      const val = parseInt(uiFluidityEl ? uiFluidityEl.value : 85, 10);
-      safeSetStorage('sublater_fluidity', String(val));
-      document.body.classList.toggle('max-airiness', val >= 60);
-      const factor = val / 100;
-      document.documentElement.style.setProperty('--fluidity', String(factor));
-      document.documentElement.style.setProperty('--anim-duration', (0.18 + factor * 0.22) + 's');
-    }
-    let fluidityTimeoutId = null;
-    if (uiFluidityEl) {
-      uiFluidityEl.value = safeGetStorage('sublater_fluidity', '85');
-      uiFluidityEl.addEventListener('input', () => {
-        if (fluidityTimeoutId) clearTimeout(fluidityTimeoutId);
-        fluidityTimeoutId = setTimeout(applyFluidity, 16);
-      });
-      applyFluidity();
-    }
-
-    function syncBgOpacityControls(rawVal) {
-      const clamped = Math.min(100, Math.max(0, parseInt(rawVal, 10) || 0));
-      if (bgOpacityEl) bgOpacityEl.value = String(clamped);
-      if (playerBgOpacityEl) playerBgOpacityEl.value = String(clamped);
-      if (playerBgOpacityVal) playerBgOpacityVal.textContent = clamped + '%';
-      scheduleDeferredSettingsApply();
-    }
-    if (playerBgOpacityEl) {
-      playerBgOpacityEl.value = bgOpacityEl ? bgOpacityEl.value : '62';
-      if (playerBgOpacityVal) playerBgOpacityVal.textContent = playerBgOpacityEl.value + '%';
-      playerBgOpacityEl.addEventListener('input', (e) => syncBgOpacityControls(e.target.value));
-    }
-    if (bgOpacityEl) {
-      bgOpacityEl.addEventListener('input', (e) => {
-        if (playerBgOpacityEl) playerBgOpacityEl.value = e.target.value;
-        if (playerBgOpacityVal) playerBgOpacityVal.textContent = e.target.value + '%';
-      });
-    }
-
-    function applyFixedSubsMode() {
-      const isFixed = fixedSubsToggle ? fixedSubsToggle.checked : true;
-      playerBox.classList.toggle('fixed-subs-on', isFixed);
-      safeSetStorage('sublater_fixed_subs', isFixed ? '1' : '0');
-      updateOverlayGeometry();
-      if (currentCueIdx >= 0 && cues[currentCueIdx]) {
-        rebuildCueDOM(cues[currentCueIdx]);
-        updateSubtitleFrame();
-      }
-    }
-    if (fixedSubsToggle) {
-      const savedFixed = safeGetStorage('sublater_fixed_subs', '1');
-      fixedSubsToggle.checked = (savedFixed !== '0');
-      fixedSubsToggle.addEventListener('change', applyFixedSubsMode);
-      playerBox.classList.toggle('fixed-subs-on', fixedSubsToggle.checked);
-    }
-
-    const videoZoomEl = $('videoZoom');
-    const videoZoomVal = $('videoZoomVal');
-    function applyVideoZoom(rawZoom) {
-      const z = Math.min(200, Math.max(100, parseInt(rawZoom, 10) || 100));
-      if (videoZoomEl) videoZoomEl.value = String(z);
-      if (videoZoomVal) videoZoomVal.textContent = z + '%';
-      const bridge = window.AndroidBridge || window.ExoPlayerManager;
-      if (bridge && typeof bridge.setVideoZoom === 'function') {
-        try { bridge.setVideoZoom(z); } catch (e) {}
-      }
-      safeSetStorage('sublater_video_zoom', String(z));
-    }
-    let zoomTimeoutId = null;
-    if (videoZoomEl) {
-      const savedZoom = safeGetStorage('sublater_video_zoom', '100');
-      applyVideoZoom(savedZoom);
-      videoZoomEl.addEventListener('input', (e) => {
-        const val = e.target.value;
-        if (zoomTimeoutId) clearTimeout(zoomTimeoutId);
-        zoomTimeoutId = setTimeout(() => applyVideoZoom(val), 16);
-      });
-    }
-
-        accentColorEl.addEventListener('input', (e) => {
+    accentColorEl.addEventListener('input', (e) => {
       const color = e.target.value;
       document.documentElement.style.setProperty('--accent', color);
       safeSetStorage('sublater_accent', color);
@@ -2395,65 +1799,62 @@
       speedVal.textContent = spd.toFixed(spd % 1 === 0 ? 1 : 2) + 'x';
     });
 
-    /* ---------------- Качественный буст звука до 200% HQ (Native DynamicsProcessing + WebAudio Limiter) ---------------- */
+    /* ---------------- Качественный буст звука 200% HQ (Native DynamicsProcessing + WebAudio Limiter) ---------------- */
+    let audioCtx, gainNode, compressorNode, sourceNode, hpFilterNode, presenceFilterNode;
     const boostPresetsRow = $('boostPresetsRow');
-    let webAudioCtx = null;
-    let webAudioSource = null;
-    let webAudioGain = null;
 
-    function ensureWebAudioBoostGraph() {
-      if (usingNativeExoFallback) return null;
-      if (webAudioGain) return webAudioGain;
-      try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return null;
-        webAudioCtx = new AudioCtx();
-        webAudioSource = webAudioCtx.createMediaElementSource(videoEl);
+    function initAudio() {
+      if (usingNativeExoFallback) return;
+      if (!audioCtx) {
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioContext();
+          sourceNode = audioCtx.createMediaElementSource(videoEl);
 
-        // Срез инфранизкого гула (<85 Гц), чтобы динамики не хрипели на 200%
-        const hpFilter = webAudioCtx.createBiquadFilter();
-        hpFilter.type = 'highpass';
-        hpFilter.frequency.value = 85;
-        hpFilter.Q.value = 0.707;
+          // Срез низкочастотного гула (<85 Гц), чтобы динамики не хрипели на 200%
+          hpFilterNode = audioCtx.createBiquadFilter();
+          hpFilterNode.type = 'highpass';
+          hpFilterNode.frequency.value = 85;
+          hpFilterNode.Q.value = 0.707;
 
-        // Подъём разборчивости голоса и речи (2.4 кГц)
-        const presenceFilter = webAudioCtx.createBiquadFilter();
-        presenceFilter.type = 'peaking';
-        presenceFilter.frequency.value = 2400;
-        presenceFilter.Q.value = 1.0;
-        presenceFilter.gain.value = 2.8;
+          // Подъём разборчивости голоса и диалогов (2.4 кГц)
+          presenceFilterNode = audioCtx.createBiquadFilter();
+          presenceFilterNode.type = 'peaking';
+          presenceFilterNode.frequency.value = 2400;
+          presenceFilterNode.Q.value = 1.0;
+          presenceFilterNode.gain.value = 2.8;
 
-        // Студийный мягкий компрессор-лимитер против клиппинга на пиках
-        const compressor = webAudioCtx.createDynamicsCompressor();
-        compressor.threshold.value = -10;
-        compressor.knee.value = 12;
-        compressor.ratio.value = 8;
-        compressor.attack.value = 0.002;
-        compressor.release.value = 0.08;
+          gainNode = audioCtx.createGain();
+          compressorNode = audioCtx.createDynamicsCompressor();
 
-        webAudioGain = webAudioCtx.createGain();
-        webAudioGain.gain.value = 1.0;
+          compressorNode.threshold.value = -8.0;
+          compressorNode.knee.value = 10.0;
+          compressorNode.ratio.value = 14.0;
+          compressorNode.attack.value = 0.002;
+          compressorNode.release.value = 0.07;
 
-        webAudioSource.connect(hpFilter);
-        hpFilter.connect(presenceFilter);
-        presenceFilter.connect(webAudioGain);
-        webAudioGain.connect(compressor);
-        compressor.connect(webAudioCtx.destination);
-        return webAudioGain;
-      } catch (e) {
-        return null;
+          sourceNode.connect(hpFilterNode);
+          hpFilterNode.connect(presenceFilterNode);
+          presenceFilterNode.connect(gainNode);
+          gainNode.connect(compressorNode);
+          compressorNode.connect(audioCtx.destination);
+          gainNode.gain.value = (parseInt(volSlider.value, 10) || 100) / 100;
+        } catch (e) {
+          console.warn('Web Audio API не поддерживается', e);
+        }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
       }
     }
 
-    function applyVolumeBoostHQ(rawPercent) {
-      const val = Math.min(200, Math.max(0, parseInt(rawPercent, 10) || 100));
+    function applyVolumeBoost200(rawVal) {
+      const val = Math.min(200, Math.max(0, parseInt(rawVal, 10) || 100));
       if (volSlider && Number(volSlider.value) !== val) {
         volSlider.value = String(val);
       }
-      if (volVal) {
-        volVal.textContent = val > 100 ? `${val}% HQ` : `${val}%`;
-        volVal.classList.toggle('boost-active', val > 100);
-      }
+      volVal.textContent = val > 100 ? (val + '% HQ') : (val + '%');
+      volVal.classList.toggle('boost-active', val > 100);
       if (boostPresetsRow) {
         boostPresetsRow.querySelectorAll('.boost-preset-btn').forEach((b) => {
           b.classList.toggle('active', Number(b.dataset.vol) === val);
@@ -2461,41 +1862,31 @@
       }
       const bridge = window.ExoPlayerManager || window.AndroidBridge;
       if (bridge && typeof bridge.setVolume === 'function') {
-        try { bridge.setVolume(val); } catch (e) {}
+        try { bridge.setVolume(val); } catch (err) {}
       }
-      if (val <= 100) {
-        videoEl.volume = Math.max(0, Math.min(val / 100, 1.0));
-        if (webAudioGain) {
-          try { webAudioGain.gain.value = 1.0; } catch (e) {}
-        }
-      } else {
-        videoEl.volume = 1.0;
-        if (!usingNativeExoFallback) {
-          const gainNode = ensureWebAudioBoostGraph();
-          if (gainNode) {
-            try {
-              if (webAudioCtx && webAudioCtx.state === 'suspended') webAudioCtx.resume();
-              gainNode.gain.value = val / 100.0;
-            } catch (e) {}
-          }
+      if (!usingNativeExoFallback) {
+        initAudio();
+        if (gainNode) {
+          gainNode.gain.value = val / 100;
+        } else {
+          videoEl.volume = Math.min(val / 100, 1.0);
         }
       }
-      safeSetStorage('sublater_volume_boost', String(val));
+      safeSetStorage('sublater_vol_boost', String(val));
     }
 
-    const savedVolBoost = parseInt(safeGetStorage('sublater_volume_boost', '100'), 10);
-    applyVolumeBoostHQ(isNaN(savedVolBoost) ? 100 : savedVolBoost);
+    const savedVol = parseInt(safeGetStorage('sublater_vol_boost', '100'), 10);
+    if (!isNaN(savedVol)) applyVolumeBoost200(savedVol);
 
     volSlider.addEventListener('input', (e) => {
-      applyVolumeBoostHQ(e.target.value);
+      applyVolumeBoost200(e.target.value);
     });
 
     if (boostPresetsRow) {
       boostPresetsRow.addEventListener('click', (e) => {
         e.stopPropagation();
-        const presetBtn = e.target.closest('.boost-preset-btn');
-        if (!presetBtn) return;
-        applyVolumeBoostHQ(presetBtn.dataset.vol || '100');
+        const b = e.target.closest('.boost-preset-btn');
+        if (b && b.dataset.vol) applyVolumeBoost200(b.dataset.vol);
       });
     }
 
@@ -2533,6 +1924,7 @@
         stopRenderLoop();
         releaseWakeLock();
       } else {
+        initAudio();
         requestWakeLock();
         showControls();
         startRenderLoop();
@@ -2567,6 +1959,7 @@
     }
 
     function togglePlay() {
+      initAudio();
       if (videoEl.paused) {
         videoEl.play().catch(() => {});
         showPlayFlash(true);
@@ -2578,37 +1971,7 @@
 
     videoEl.addEventListener('play', updatePlayState);
     videoEl.addEventListener('pause', updatePlayState);
-    function updatePlayerAspectRatio() {
-      const isFs = document.body.classList.contains('player-fullscreen-open') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
-      if (isFs) {
-        playerBox.classList.remove('is-vertical');
-        playerBox.style.aspectRatio = '';
-        videoEl.style.objectFit = '';
-        updateOverlayGeometry();
-        if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
-        return;
-      }
-      if (videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
-        const vw = videoEl.videoWidth;
-        const vh = videoEl.videoHeight;
-        const isVertical = vh > vw;
-        playerBox.classList.toggle('is-vertical', isVertical);
-        playerBox.style.aspectRatio = `${vw} / ${vh}`;
-        if (isVertical) {
-          videoEl.style.objectFit = 'cover';
-        }
-        updateOverlayGeometry();
-        if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
-      }
-    }
-
-    videoEl.addEventListener('loadedmetadata', () => {
-      syncTimeUI();
-      updatePlayerAspectRatio();
-    });
-    videoEl.addEventListener('loadeddata', () => {
-      updatePlayerAspectRatio();
-    });
+    videoEl.addEventListener('loadedmetadata', syncTimeUI);
     videoEl.addEventListener('seeked', () => {
       syncTimeUI();
       updateSubtitleFrame();
@@ -2630,9 +1993,6 @@
     function enterFullscreenPlayer() {
       document.documentElement.classList.add('player-fullscreen-open');
       document.body.classList.add('player-fullscreen-open');
-      playerBox.classList.remove('is-vertical');
-      playerBox.style.aspectRatio = '';
-      videoEl.style.objectFit = '';
       const bridge = window.ExoPlayerManager || window.AndroidBridge;
       if (bridge && typeof bridge.setImmersiveFullscreen === 'function') {
         try { bridge.setImmersiveFullscreen(true); } catch (e) {}
@@ -2648,10 +2008,8 @@
       if (document.fullscreenElement || document.webkitFullscreenElement) {
         document.exitFullscreen?.().catch(() => {});
       }
-      if (!document.body.classList.contains('intent-player-mode')) {
-        document.documentElement.classList.remove('player-fullscreen-open');
-        document.body.classList.remove('player-fullscreen-open');
-      }
+      document.documentElement.classList.remove('player-fullscreen-open');
+      document.body.classList.remove('player-fullscreen-open');
       const bridge = window.ExoPlayerManager || window.AndroidBridge;
       if (bridge && typeof bridge.setImmersiveFullscreen === 'function') {
         try { bridge.setImmersiveFullscreen(false); } catch (e) {}
@@ -2660,7 +2018,6 @@
         try { bridge.toggleLandscape(false); } catch (e) {}
       }
       setTimeout(() => {
-        updatePlayerAspectRatio();
         updateOverlayGeometry();
         if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
       }, 60);
@@ -2692,56 +2049,14 @@
         settingsMenu.querySelectorAll('.yt-acc-item.open').forEach((other) => {
           other.classList.remove('open');
         });
-        if (!wasOpen) {
-          item.classList.add('open');
-          setTimeout(() => {
-            try { item.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (err) {}
-          }, 120);
-        }
+        if (!wasOpen) item.classList.add('open');
       });
     });
 
-    function positionPlayerSettingsMenu() {
-      if (!settingsMenu.classList.contains('show')) return;
-      const isFs = document.body.classList.contains('player-fullscreen-open') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
-      if (isFs) {
-        settingsMenu.style.right = '14px';
-        settingsMenu.style.bottom = '54px';
-        settingsMenu.style.maxHeight = 'calc(100dvh - 68px)';
-        return;
-      }
-      const rect = settingsBtn.getBoundingClientRect();
-      const vw = window.innerWidth || document.documentElement.clientWidth || 360;
-      const vh = window.innerHeight || document.documentElement.clientHeight || 780;
-      let rightPx = Math.max(12, Math.round(vw - rect.right));
-      if (vw - rightPx - 276 < 12) rightPx = 12;
-      const bottomPx = Math.max(12, Math.round(vh - rect.top + 8));
-      const availH = Math.max(180, Math.round(rect.top - 16));
-      settingsMenu.style.right = rightPx + 'px';
-      settingsMenu.style.bottom = bottomPx + 'px';
-      settingsMenu.style.maxHeight = Math.min(340, availH) + 'px';
-    }
-
-    let menuPosTimeoutId = null;
-    function schedulePositionPlayerSettingsMenu() {
-      if (menuPosTimeoutId) clearTimeout(menuPosTimeoutId);
-      menuPosTimeoutId = setTimeout(() => {
-        menuPosTimeoutId = null;
-        positionPlayerSettingsMenu();
-      }, 16);
-    }
-
-    window.addEventListener('resize', schedulePositionPlayerSettingsMenu);
-    window.addEventListener('scroll', schedulePositionPlayerSettingsMenu, { passive: true });
-
     settingsBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const willShow = !settingsMenu.classList.contains('show');
-      setTimeout(() => {
-        settingsMenu.classList.toggle('show', willShow);
-        if (willShow) positionPlayerSettingsMenu();
-        showControls();
-      }, 0);
+      settingsMenu.classList.toggle('show');
+      showControls();
     });
 
     document.addEventListener('click', (e) => {
@@ -2761,9 +2076,6 @@
           if (window.__activateNativeExoFallback) window.__activateNativeExoFallback();
         }
         return;
-      }
-      if (videoEl.error) {
-        statusEl.innerText = 'Нативный плеер готов к воспроизведению.';
       }
     });
 
@@ -2847,19 +2159,9 @@
       }, 280);
     });
 
-    /* ---------------- Поддержка внешних видео («Открыть с помощью...»), кэш и подписи кнопок ---------------- */
-    let externalMediaUri = '';
-    let externalMediaName = '';
-
+    /* ---------------- Кэш, подписи кнопок и экспорт ---------------- */
     function getFileSignature(file) {
-      if (file) return `${file.name}_${file.size}_${file.lastModified}`;
-      if (externalMediaUri) return `ext_${externalMediaName}_${externalMediaUri}`;
-      const bridge = window.AndroidBridge || window.ExoPlayerManager;
-      if (bridge && typeof bridge.hasNativeVideo === 'function' && bridge.hasNativeVideo()) {
-        const u = typeof bridge.getStoredMediaUri === 'function' ? bridge.getStoredMediaUri() : 'native';
-        return `ext_${u}`;
-      }
-      return '';
+      return file ? `${file.name}_${file.size}_${file.lastModified}` : '';
     }
 
     function cloneCues(cueList) {
@@ -2878,7 +2180,7 @@
       const model = $('model').value;
       const tLang = $('translateLang').value;
 
-      if (sig && cachedWhisper.fileSig === sig && cachedWhisper.model === model && cachedWhisper.rawSegments.length) {
+      if (f && cachedWhisper.fileSig === sig && cachedWhisper.model === model && cachedWhisper.rawSegments.length) {
         if (!tLang) {
           btn.innerText = cachedWhisper.activeLang === ''
             ? '✨ ИИ-видео (вопросы по видео)'
@@ -2895,108 +2197,13 @@
       }
     }
 
-    const playerStatusToast = $('playerStatusToast');
-    const playerSubBtn = $('playerSubBtn');
-    let toastHideTimer = null;
-
-    function showPlayerStatusToast(msg, autoHideMs = 0) {
-      if (!playerStatusToast) return;
-      if (toastHideTimer) {
-        clearTimeout(toastHideTimer);
-        toastHideTimer = null;
-      }
-      if (!msg) {
-        playerStatusToast.classList.remove('show');
-        return;
-      }
-      playerStatusToast.textContent = msg;
-      playerStatusToast.classList.add('show');
-      if (autoHideMs > 0) {
-        toastHideTimer = setTimeout(() => {
-          playerStatusToast.classList.remove('show');
-        }, autoHideMs);
-      }
-    }
-
-    if (playerSubBtn) {
-      playerSubBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        generateSubtitles();
-      });
-    }
-
-    function setupExternalIntentPlayer(uriStr, displayName) {
-      externalMediaUri = uriStr || '';
-      externalMediaName = displayName || 'external_video.mp4';
-      $('fileName').innerText = externalMediaName;
-      currentFileName = externalMediaName.replace(/\.[^/.]+$/, '') || 'subtitles';
-      aiSummaryBox.classList.remove('show');
-      vttPanel.classList.add('hidden');
-      actionRow.style.display = 'none';
-
-      // Открываем внешний файл («Открыть с помощью...») по умолчанию в главном окне приложения, а не в полноэкранном плеере
-      document.documentElement.classList.remove('intent-player-mode', 'player-fullscreen-open');
-      document.body.classList.remove('intent-player-mode', 'player-fullscreen-open');
-      const extBridge = window.ExoPlayerManager || window.AndroidBridge;
-      if (extBridge && typeof extBridge.setImmersiveFullscreen === 'function') {
-        try { extBridge.setImmersiveFullscreen(false); } catch (e) {}
-      }
-      if (extBridge && typeof extBridge.toggleLandscape === 'function') {
-        try { extBridge.toggleLandscape(false); } catch (e) {}
-      }
-      statusEl.innerText = `Видео загружено: ${externalMediaName}. Нажмите «Создать субтитры» или запустите просмотр.`;
-      applySettings();
-
-      playerBox.style.display = 'flex';
-      if (fixedSubsToggle) {
-        playerBox.classList.toggle('fixed-subs-on', fixedSubsToggle.checked);
-      }
-      playerActive = true;
-      currentCueIdx = -2;
-      wordSpans = [];
-      boxVisible = false;
-      subtitleEl.innerHTML = '';
-      subtitleEl.style.opacity = '0';
-
-      // Для внешних фильмов («Открыть с помощью...») сразу включаем нативный ExoPlayer
-      usingNativeExoFallback = true;
-      try {
-        videoEl.pause();
-        videoEl.removeAttribute('src');
-        videoEl.load();
-      } catch (e) {}
-      if (window.__activateNativeExoFallback) {
-        window.__activateNativeExoFallback();
-      }
-      syncGroqSessionToKotlin();
-      setTimeout(() => {
-        updateOverlayGeometry();
-        if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
-      }, 50);
-      setTimeout(applyRealVideoPreviewPoster, 200);
-      updatePlayState();
-      updateOverlayGeometry();
-      updateSubtitleFrame();
-      updateButtonLabel();
-    }
-
-    window.__onExternalMediaOpened = function (uriStr, displayName) {
-      setupExternalIntentPlayer(uriStr, displayName);
-    };
-
     function updateFileName() {
       const f = $('mediaFile').files[0];
+      $('fileName').innerText = f ? f.name : 'Не выбран';
       if (f) {
-        externalMediaUri = '';
-        externalMediaName = '';
-        document.documentElement.classList.remove('intent-player-mode', 'player-fullscreen-open');
-        document.body.classList.remove('intent-player-mode', 'player-fullscreen-open');
-        $('fileName').innerText = f.name;
         currentFileName = f.name.replace(/\.[^/.]+$/, '');
         applySettings();
         setupPlayer(f);
-      } else if (!externalMediaUri) {
-        $('fileName').innerText = 'Не выбран';
       }
       aiSummaryBox.classList.remove('show');
       updateButtonLabel();
@@ -3068,7 +2275,6 @@
     }
 
     const retryBtn = $('retryBtn');
-    const dlWrap = $('dlWrap');
     const dlFormatMenu = $('dlFormatMenu');
 
     function updateExportPreview() {
@@ -3103,8 +2309,7 @@
     /* Кнопка «Скачать» с выпадающим меню выбора формата (.VTT, .ASS, .SRT, .TXT) */
     dlBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const openNow = dlFormatMenu.classList.toggle('show');
-      if (dlWrap) dlWrap.classList.toggle('open', openNow);
+      dlFormatMenu.classList.toggle('show');
     });
 
     dlFormatMenu.querySelectorAll('.dl-fmt-item').forEach((item) => {
@@ -3112,7 +2317,6 @@
         e.stopPropagation();
         const fmt = item.dataset.fmt || 'vtt';
         dlFormatMenu.classList.remove('show');
-        if (dlWrap) dlWrap.classList.remove('open');
         downloadSubtitle(fmt);
       });
     });
@@ -3120,7 +2324,6 @@
     document.addEventListener('click', (e) => {
       if (dlFormatMenu.classList.contains('show') && !dlFormatMenu.contains(e.target) && !dlBtn.contains(e.target)) {
         dlFormatMenu.classList.remove('show');
-        if (dlWrap) dlWrap.classList.remove('open');
       }
     });
 
@@ -3162,8 +2365,7 @@
     let aiBusy = false;
 
     function getGeminiKeys() {
-      const currentVal = geminiKeyInput.value.trim() || getGeminiKeyFromKeystore();
-      return currentVal.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
+      return geminiKeyInput.value.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
     }
 
     function captureCurrentVideoFrameBase64() {
@@ -3492,53 +2694,33 @@
       throw new Error('Сеть недоступна');
     }
 
-    function extractMediaTitleFromFileName(rawName) {
-      const withoutExt = String(rawName || '')
-        .replace(/\.[^/.]+$/, '')
-        .replace(/[._]+/g, ' ');
-      const cleaned = withoutExt
-        .replace(/\b(2160p|1080p|720p|480p|4k|uhd|web[-\s]?dl|webrip|bdrip|bluray|hdrip|dvdrip|x264|x265|h264|h265|hevc|avc|aac|ac3|eac3|dts|10bit|hdr|proper|repack)\b/gi, ' ')
-        .replace(/\[[^\]]*\]|\([^)]*\)/g, ' ')
-        .replace(/\s{2,}/g, ' ')
-        .trim();
-      return cleaned || withoutExt.trim() || 'Видео';
-    }
+    async function sendToGroq(blob, filename, model, promptHint, signal) {
+      const res = await fetchGroqWithRotation('https://api.groq.com/openai/v1/audio/transcriptions', (key) => {
+        const fd = new FormData();
+        fd.append('file', blob, filename);
+        fd.append('model', model);
+        fd.append('temperature', '0');
+        fd.append('response_format', 'verbose_json');
+        fd.append('timestamp_granularities[]', 'word');
+        fd.append('timestamp_granularities[]', 'segment');
+        if (promptHint) fd.append('prompt', promptHint.slice(-220));
+        return {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + key },
+          body: fd
+        };
+      }, signal);
+      
+      if (!res.ok) {
+        if (res.status === 401) throw new Error('Неверный API-ключ Groq.');
+        if (res.status === 413) throw new Error('Файл слишком большой для отправки.');
+        if (res.status === 429) throw new Error('Лимит бесплатного тарифа исчерпан. Подождите минуту или добавьте второй ключ.');
+        throw new Error(`Ошибка сервера Groq (Код ${res.status}). Попробуйте позже.`);
+      }
 
-    function buildWhisperContextPrompt(rawMediaName, customTerms) {
-      const parts = [];
-      const mediaTitle = extractMediaTitleFromFileName(rawMediaName);
-      if (mediaTitle) {
-        parts.push(`Фильм/сериал: ${mediaTitle}.`);
-      }
-      const cleanTerms = String(customTerms || '').trim();
-      if (cleanTerms) {
-        parts.push(`Ключевые термины и имена персонажей: ${cleanTerms}.`);
-      }
-      return parts.join(' ').trim();
-    }
-
-    function detectKnownAudioLanguage(rawMediaName, customTerms) {
-      const selected = sourceLangEl ? String(sourceLangEl.value || '').trim().toLowerCase() : 'auto';
-      if (selected && selected !== 'auto') {
-        return selected;
-      }
-      const lower = String(rawMediaName || '').toLowerCase();
-      if (/\b(rus|ru|russian|рус|дубляж|озвучка)\b/i.test(lower) || /[а-яё]/i.test(lower)) {
-        return 'ru';
-      }
-      if (/\b(eng|en|english)\b/i.test(lower)) {
-        return 'en';
-      }
-      if (/\b(tur|tr|turkish)\b/i.test(lower)) {
-        return 'tr';
-      }
-      if (/\b(aze|az|azerbaijani)\b/i.test(lower)) {
-        return 'az';
-      }
-      if (/[а-яё]/i.test(String(customTerms || ''))) {
-        return 'ru';
-      }
-      return '';
+      const data = await res.json();
+      const validSegments = (data.segments || []).filter(s => !isWhisperHallucination(s));
+      return { segments: validSegments, words: data.words || [] };
     }
 
     function distributeWords(cue) {
@@ -3699,51 +2881,36 @@
       }), signal, 3);
     }
 
-    /* ---------------- Пул параллельного выполнения промисов с ограничением concurrency ---------------- */
-    async function runWithConcurrency(items, concurrency, workerFn) {
-      const results = new Array(items.length);
-      let nextIdx = 0;
-      const workerCount = Math.max(1, Math.min(concurrency, items.length));
-      const workers = Array.from({ length: workerCount }, async () => {
-        while (nextIdx < items.length) {
-          const cur = nextIdx++;
-          results[cur] = await workerFn(items[cur], cur);
-        }
-      });
-      await Promise.all(workers);
-      return results;
-    }
-
-    /* ---------------- Параллельный контекстный перевод батчами (до 3 батчей одновременно) ---------------- */
     async function translateSegments(cueArr, targetLang, statusElRef, signal) {
-      const batchSize = 50;
+      const batchSize = 40;
       const primaryModel = llmModelEl.value || 'openai/gpt-oss-120b';
       const fallbackModel = 'openai/gpt-oss-20b';
       let failedLines = 0;
 
-      const batches = [];
       for (let i = 0; i < cueArr.length; i += batchSize) {
-        const batch = cueArr.slice(i, i + batchSize);
-        const prevContext = i >= 2 ? cueArr.slice(i - 2, i).map(c => c.text) : [];
-        batches.push({ startLine: i, batch, prevContext });
-      }
-
-      let completedBatches = 0;
-      await runWithConcurrency(batches, 4, async (bObj) => {
         if (signal && signal.aborted) throw new Error('Отменено пользователем.');
-        const { startLine, batch, prevContext } = bObj;
+        const batch = cueArr.slice(i, i + batchSize);
+        const pct = 55 + Math.round((i / cueArr.length) * 42);
+        setProgress(pct);
+        statusElRef.innerText = `Перевод: строки ${i + 1}–${Math.min(i + batchSize, cueArr.length)} из ${cueArr.length}...`;
+
+        const prevContext = i >= 2 ? cueArr.slice(i - 2, i).map(c => c.text) : [];
         const payload = batch.map((c, idx) => ({ id: idx, text: c.text }));
 
         try {
           let res = await requestTranslationBatch(payload, prevContext, targetLang, primaryModel, signal);
 
           if (!res.ok && primaryModel !== fallbackModel) {
+            statusElRef.innerText = `Резервный перевод через ${fallbackModel}: строки ${i + 1}–${Math.min(i + batchSize, cueArr.length)}...`;
             res = await requestTranslationBatch(payload, prevContext, targetLang, fallbackModel, signal);
           }
 
-          if (!res.ok) {
-            failedLines += batch.length;
-            return;
+          if (!res.ok) { 
+            const errData = await res.json().catch(() => ({}));
+            const errMsg = errData.error?.message || `HTTP ${res.status}`;
+            statusElRef.innerText = `⚠️ Ошибка перевода Groq: ${errMsg}`;
+            failedLines += batch.length; 
+            continue; 
           }
 
           const data = await res.json();
@@ -3769,13 +2936,9 @@
         } catch (e) {
           if (e && e.message === 'Отменено пользователем.') throw e;
           failedLines += batch.length;
-        } finally {
-          completedBatches++;
-          const pct = 58 + Math.round((completedBatches / Math.max(1, batches.length)) * 40);
-          setProgress(pct);
-          statusElRef.innerText = `⚡ Параллельный перевод: батч ${completedBatches} из ${batches.length} (строки ${startLine + 1}–${Math.min(startLine + batchSize, cueArr.length)})...`;
+          statusElRef.innerText = `⚠️ Ошибка разбора ответа: ${e.message}`;
         }
-      });
+      }
 
       for (const c of cueArr) {
         if (c._translated) distributeWords(c);
@@ -3789,32 +2952,13 @@
       const ch = playerBox.clientHeight;
       if (!cw || !ch) return;
 
-      const isFixedMode = playerBox.classList.contains('fixed-subs-on');
-      const bottomPct = parseFloat(
-        getComputedStyle(document.documentElement).getPropertyValue('--sub-bottom')
-      ) || 12;
-
-      if (isFixedMode) {
-        // В режиме жёсткой фиксации отступ всегда считается от низа контейнера плеера и не зависит от высоты текста
-        overlayEl.style.left = '0px';
-        overlayEl.style.right = '0px';
-        overlayEl.style.width = '100%';
-        overlayEl.style.top = 'auto';
-        overlayEl.style.height = 'auto';
-        overlayEl.style.bottom = bottomPct + '%';
-        overlayEl.style.paddingBottom = '0px';
-        overlayEl.style.alignItems = 'center';
-        overlayEl.style.justifyContent = 'flex-end';
-        return;
-      }
-
       const vw = videoEl.videoWidth || cw;
       const vh = videoEl.videoHeight || ch;
       const fitMode = fitModeSelect.value || 'contain';
 
       let dw = cw;
       let dh = ch;
-      if (fitMode === 'contain' && !playerBox.classList.contains('is-vertical')) {
+      if (fitMode === 'contain') {
         const scale = Math.min(cw / vw, ch / vh);
         dw = Math.round(vw * scale);
         dh = Math.round(vh * scale);
@@ -3830,6 +2974,9 @@
       overlayEl.style.height = dh + 'px';
       overlayEl.style.bottom = 'auto';
       overlayEl.style.alignItems = 'flex-end';
+      const bottomPct = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--sub-bottom')
+      ) || 12;
       overlayEl.style.paddingBottom = (dh * bottomPct / 100) + 'px';
     }
 
@@ -3892,15 +3039,14 @@
           try { bridge.setPlayerVisibility(false); } catch (e) {}
         }
         videoEl.poster = TRANSPARENT_POSTER;
-        if (mediaObjectURL) URL.revokeObjectURL(mediaObjectURL);
-        mediaObjectURL = URL.createObjectURL(file);
-        // В нативном Android-приложении ВСЕГДА используем нативный Media3 ExoPlayer + FFmpeg для поддержки любых кодеков (HEVC, AC3, E-AC3, DTS, MKV, AVI, MP4, TS)
         if (bridge && window.__activateNativeExoFallback) {
           usingNativeExoFallback = true;
           videoEl.dataset.fileSig = newSig;
           window.__activateNativeExoFallback();
-          applyVolumeBoostHQ(volSlider ? volSlider.value : 100);
+          applyVolumeBoost200(volSlider.value || 100);
         } else {
+          if (mediaObjectURL) URL.revokeObjectURL(mediaObjectURL);
+          mediaObjectURL = URL.createObjectURL(file);
           videoEl.src = mediaObjectURL + '#t=0.1';
           videoEl.dataset.fileSig = newSig;
         }
@@ -3909,9 +3055,6 @@
       }
 
       playerBox.style.display = 'flex';
-      if (fixedSubsToggle) {
-        playerBox.classList.toggle('fixed-subs-on', fixedSubsToggle.checked);
-      }
       videoEl.playbackRate = parseFloat(speedSlider.value) || 1;
       playerActive = true;
 
@@ -3926,32 +3069,10 @@
       updateSubtitleFrame();
     }
 
-    let timeUiTimeoutId = null;
-    function startDeferredTimeUiLoop() {
-      if (timeUiTimeoutId) return;
-      const tickTimeUi = () => {
-        timeUiTimeoutId = null;
-        syncTimeUI();
-        if (!videoEl.paused) {
-          timeUiTimeoutId = setTimeout(tickTimeUi, 250);
-        }
-      };
-      timeUiTimeoutId = setTimeout(tickTimeUi, 60);
-    }
-
-    function stopDeferredTimeUiLoop() {
-      if (timeUiTimeoutId) {
-        clearTimeout(timeUiTimeoutId);
-        timeUiTimeoutId = null;
-      }
-    }
-
-    // requestAnimationFrame используется ТОЛЬКО для обновления текста субтитров,
-    // а ползунок прогресса и таймер обновляются отдельно через отложенный setTimeout
     function startRenderLoop() {
-      startDeferredTimeUiLoop();
       if (rafId) return;
       const loop = () => {
+        syncTimeUI();
         updateSubtitleFrame();
         if (!videoEl.paused) {
           rafId = requestAnimationFrame(loop);
@@ -3963,7 +3084,6 @@
     }
 
     function stopRenderLoop() {
-      stopDeferredTimeUiLoop();
       if (rafId) {
         cancelAnimationFrame(rafId);
         rafId = null;
@@ -3977,21 +3097,15 @@
       subtitleEl.style.opacity = '0';
       if (!cue) return;
 
-      // Все слова текущей реплики добавляются в DOM одновременно (с opacity: 0),
-      // чтобы браузер сразу рассчитал перенос строк и появление слов через opacity не сдвигало текст
-      const linesWrap = document.createElement('span');
-      linesWrap.className = 'cue-lines-wrap';
-
       cue.words.forEach((w, i) => {
+        if (i > 0) subtitleEl.appendChild(document.createTextNode(' '));
         const span = document.createElement('span');
         span.className = 'word';
-        span.textContent = (i < cue.words.length - 1) ? (w.word + ' ') : w.word;
+        span.textContent = w.word;
         span.dataset.state = 'h';
-        linesWrap.appendChild(span);
+        subtitleEl.appendChild(span);
         wordSpans.push(span);
       });
-
-      subtitleEl.appendChild(linesWrap);
     }
 
     function updateSubtitleFrame() {
@@ -4083,117 +3197,20 @@
       }
     });
 
-    /* ---------------- Нативная генерация субтитров через Kotlin (ExoPlayerManager + Coroutines + Groq) ---------------- */
-    function runNativeSubtitlesInKotlin(apiKeyRaw, model, audioLang, customPrompt, filterHallucinations, signal) {
-      return new Promise((resolve, reject) => {
-        const bridge = window.AndroidBridge || window.ExoPlayerManager || null;
-        if (!bridge || typeof bridge.generateSubtitlesNative !== 'function') {
-          reject(new Error('Нативный модуль генерации субтитров (AndroidBridge.generateSubtitlesNative) недоступен.'));
-          return;
-        }
-
-        let settled = false;
-        const onAbort = () => {
-          if (settled) return;
-          settled = true;
-          try {
-            if (typeof bridge.cancelNativeAudioExtraction === 'function') {
-              bridge.cancelNativeAudioExtraction();
-            }
-          } catch (e) {}
-          reject(new Error('Отменено пользователем.'));
-        };
-
-        if (signal) {
-          if (signal.aborted) {
-            onAbort();
-            return;
-          }
-          signal.addEventListener('abort', onAbort, { once: true });
-        }
-
-        window.__onNativeSubtitlesProgress = (pct, msg) => {
-          if (settled) return;
-          const p = Math.max(5, Math.min(95, Number(pct) || 10));
-          setProgress(p);
-          if (msg) {
-            statusEl.innerText = msg;
-            showPlayerStatusToast(msg, 0);
-          }
-        };
-
-        window.__onNativeSubtitlesDone = (jsonStr) => {
-          if (settled) return;
-          settled = true;
-          if (signal) signal.removeEventListener('abort', onAbort);
-          try {
-            const parsed = JSON.parse(jsonStr || '{}');
-            resolve({
-              segments: Array.isArray(parsed.segments) ? parsed.segments : [],
-              words: Array.isArray(parsed.words) ? parsed.words : []
-            });
-          } catch (e) {
-            reject(new Error('Ошибка чтения JSON таймкодов от Kotlin.'));
-          }
-        };
-
-        window.__onNativeSubtitlesError = (errMsg) => {
-          if (settled) return;
-          settled = true;
-          if (signal) signal.removeEventListener('abort', onAbort);
-          reject(new Error(errMsg || 'Ошибка нативной обработки субтитров в Kotlin.'));
-        };
-
-        try {
-          bridge.generateSubtitlesNative(
-            apiKeyRaw,
-            model,
-            audioLang || 'auto',
-            customPrompt || '',
-            Boolean(filterHallucinations)
-          );
-        } catch (err) {
-          settled = true;
-          if (signal) signal.removeEventListener('abort', onAbort);
-          reject(err);
-        }
-      });
-    }
-
     async function generateSubtitles() {
       if (activeAbortCtrl) {
         activeAbortCtrl.abort();
         return;
       }
 
-      const file = $('mediaFile').files[0] || null;
-      const bridge = window.AndroidBridge || window.ExoPlayerManager || null;
-      const hasNativeVideo = Boolean(
-        externalMediaUri ||
-        (bridge && typeof bridge.hasNativeVideo === 'function' && bridge.hasNativeVideo())
-      );
-
-      const keys = getApiKeys();
-      if (!keys.length) {
-        const msg = 'Укажите API ключ Groq в настройках (⚙️)!';
-        statusEl.innerText = msg;
-        showPlayerStatusToast(msg, 3500);
-        openSettings();
-        return;
-      }
-
-      if (!file && !hasNativeVideo) {
-        statusEl.innerText = 'Выберите видеофайл или откройте видео через «Открыть с помощью...»!';
-        return;
-      }
-
+      const file = $('mediaFile').files[0];
       const model = $('model').value;
       const targetLang = $('translateLang').value;
       const fileSig = getFileSignature(file);
       const langCode = LANG_CODES[targetLang] || '';
 
       if (
-        fileSig &&
+        file &&
         cachedWhisper.fileSig === fileSig &&
         cachedWhisper.model === model &&
         cachedWhisper.rawSegments.length &&
@@ -4203,56 +3220,157 @@
         return;
       }
 
+      const keys = getApiKeys();
       const customPrompt = whisperPromptEl.value.trim();
+
+      if (!keys.length || !file) { statusEl.innerText = 'Укажите хотя бы один API ключ Groq и выберите файл!'; return; }
 
       activeAbortCtrl = new AbortController();
       const signal = activeAbortCtrl.signal;
 
       btn.classList.add('cancel-mode');
       btn.innerText = 'Отменить процесс';
-      if (playerSubBtn) playerSubBtn.classList.add('cc-active');
       actionRow.style.display = 'none';
       vttPanel.classList.add('hidden');
       openBtn.innerText = 'Текст';
       setProgress(5);
       await requestWakeLock();
 
-      const rawMediaFileName = file
-        ? file.name
-        : (externalMediaName || (bridge && typeof bridge.getStoredMediaName === 'function' ? bridge.getStoredMediaName() : 'movie.mp4'));
-      const baseTitle = rawMediaFileName.replace(/\.[^/.]+$/, '');
-      currentFileName = (baseTitle || 'subtitles') + (langCode ? `_${langCode}` : '');
-
-      const fullWhisperPrompt = buildWhisperContextPrompt(rawMediaFileName, customPrompt);
-      const explicitAudioLang = detectKnownAudioLanguage(rawMediaFileName, customPrompt) || (sourceLangEl ? sourceLangEl.value : 'auto');
-      const rawKeyString = keyInput.value.trim() || getGroqApiKeyFromKeystore();
-
-      syncGroqSessionToKotlin();
-
-      if (bridge && typeof bridge.setWebViewHardwareAcceleration === 'function') {
-        try { bridge.setWebViewHardwareAcceleration(false); } catch (e) {}
-      }
+      currentFileName = file.name.replace(/\.[^/.]+$/, '') + (langCode ? `_${langCode}` : '');
 
       try {
         if (cachedWhisper.fileSig !== fileSig || cachedWhisper.model !== model || !cachedWhisper.rawSegments.length) {
-          statusEl.innerText = '⚡ Запуск нативной обработки и отправки в Groq (Kotlin)...';
-          showPlayerStatusToast('⚡ Нативная генерация субтитров...', 0);
+          const allSegments = [];
+          const allWords = [];
+          const bridge = window.ExoPlayerManager || window.AndroidBridge;
 
-          const nativeResult = await runNativeSubtitlesInKotlin(
-            rawKeyString,
-            model,
-            explicitAudioLang,
-            fullWhisperPrompt,
-            hallucinationFilterEl.checked,
-            signal
-          );
+          // В нативном Android-приложении декодируем любые кодеки (AC3, E-AC3, DTS, HEVC, MKV, AVI, MP4 любого размера) через Media3 + FFmpeg в Kotlin
+          if (bridge && typeof bridge.generateSubtitlesNative === 'function') {
+            statusEl.innerText = 'Извлечение аудио (все кодеки Media3 + FFmpeg) и распознавание...';
+            setProgress(10);
+            const nativeRes = await new Promise((resolve, reject) => {
+              let done = false;
+              const onAbort = () => {
+                if (done) return;
+                done = true;
+                try { if (typeof bridge.cancelNativeAudioExtraction === 'function') bridge.cancelNativeAudioExtraction(); } catch (err) {}
+                reject(new Error('Отменено пользователем.'));
+              };
+              if (signal) {
+                if (signal.aborted) { onAbort(); return; }
+                signal.addEventListener('abort', onAbort, { once: true });
+              }
+              window.__onNativeSubtitlesProgress = (pct, msg) => {
+                if (done) return;
+                setProgress(Math.max(8, Math.min(95, Number(pct) || 15)));
+                if (msg) statusEl.innerText = msg;
+              };
+              window.__onNativeSubtitlesDone = (jsonStr) => {
+                if (done) return;
+                done = true;
+                if (signal) signal.removeEventListener('abort', onAbort);
+                try { resolve(JSON.parse(jsonStr || '{}')); }
+                catch (err) { reject(new Error('Ошибка чтения ответа декодера.')); }
+              };
+              window.__onNativeSubtitlesError = (errMsg) => {
+                if (done) return;
+                done = true;
+                if (signal) signal.removeEventListener('abort', onAbort);
+                reject(new Error(errMsg || 'Ошибка декодирования аудиодорожки.'));
+              };
+              try {
+                bridge.generateSubtitlesNative(
+                  keys.join(','),
+                  model,
+                  'auto',
+                  customPrompt,
+                  Boolean(hallucinationFilterEl.checked)
+                );
+              } catch (err) {
+                done = true;
+                if (signal) signal.removeEventListener('abort', onAbort);
+                reject(err);
+              }
+            });
+            (nativeRes.segments || []).forEach((s) => allSegments.push({ start: s.start, end: s.end, text: s.text }));
+            (nativeRes.words || []).forEach((w) => allWords.push({ word: w.word, start: w.start, end: w.end }));
+          } else {
+            const shouldCompress = file.size > 24 * 1024 * 1024 || (fastAudioCompressEl.checked && file.size > 10 * 1024 * 1024);
+            let audioBuffer = null;
+            if (shouldCompress) {
+              statusEl.innerText = 'Извлекаем и сжимаем аудиодорожку для быстрой отправки...';
+              setProgress(12);
+              try {
+                const ab = await file.arrayBuffer();
+                const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                audioBuffer = await decodeCtx.decodeAudioData(ab);
+                if (decodeCtx.close) decodeCtx.close();
+              } catch (e) {
+                audioBuffer = null;
+              }
+            }
 
-          const allSegments = nativeResult.segments || [];
-          const allWords = nativeResult.words || [];
+            if (!audioBuffer) {
+              statusEl.innerText = 'Отправка напрямую в Groq...';
+              setProgress(25);
+              const r = await sendToGroq(file, file.name, model, customPrompt, signal);
+              r.segments.forEach((s) => allSegments.push({ start: s.start, end: s.end, text: s.text }));
+              r.words.forEach((w) => allWords.push({ word: w.word, start: w.start, end: w.end }));
+            } else {
+            const channelData = audioBuffer.getChannelData(0);
+            const sampleRate = audioBuffer.sampleRate;
+            const chunkDuration = 600;
+            const overlap = 10;
+            const advance = chunkDuration - overlap;
+            const totalDuration = channelData.length / sampleRate;
+            const totalChunks = Math.ceil(totalDuration / advance);
 
-          if (!allSegments.length) {
-            throw new Error('Не удалось распознать речь.');
+            let pos = 0;
+            let cutoff = 0;
+            let c = 0;
+            let rollingPrompt = customPrompt;
+
+            while (pos < totalDuration - 0.1) {
+              if (signal.aborted) throw new Error('Отменено пользователем.');
+              const chunkEnd = Math.min(pos + chunkDuration, totalDuration);
+              const isLast = chunkEnd >= totalDuration - 0.1;
+              const nextCutoff = isLast ? totalDuration + 10 : (pos + chunkDuration - overlap / 2);
+
+              setProgress(15 + Math.round((c / Math.max(1, totalChunks)) * 40));
+              statusEl.innerText = `Распознавание: часть ${c + 1} из ${totalChunks} (${Math.round(pos)}–${Math.round(chunkEnd)} с)...`;
+
+              const startSample = Math.floor(pos * sampleRate);
+              const endSample = Math.min(Math.floor(chunkEnd * sampleRate), channelData.length);
+              const chunkSamples = channelData.subarray(startSample, endSample);
+              if (chunkSamples.length < sampleRate) break;
+
+              const wavBlob = encodeWAV(chunkSamples, sampleRate);
+              const r = await sendToGroq(wavBlob, `chunk_${c}.wav`, model, rollingPrompt, signal);
+
+              r.segments.forEach((seg) => {
+                const absMid = (seg.start + seg.end) / 2 + pos;
+                if (absMid < cutoff || absMid >= nextCutoff) return;
+                allSegments.push({ start: seg.start + pos, end: seg.end + pos, text: seg.text });
+              });
+              r.words.forEach((w) => {
+                const absMid = (w.start + w.end) / 2 + pos;
+                if (absMid < cutoff || absMid >= nextCutoff) return;
+                allWords.push({ word: w.word, start: w.start + pos, end: w.end + pos });
+              });
+
+              if (allSegments.length) {
+                const tailText = allSegments.slice(-2).map(s => s.text).join(' ');
+                rollingPrompt = (customPrompt ? customPrompt + '. ' : '') + tailText;
+              }
+
+              cutoff = nextCutoff;
+              pos += advance;
+              c++;
+            }
+            }
           }
+
+          if (!allSegments.length) throw new Error('Не удалось распознать речь.');
 
           cachedWhisper = {
             fileSig,
@@ -4265,7 +3383,7 @@
           };
         } else {
           statusEl.innerText = 'Используем распознанный текст из кэша...';
-          setProgress(55);
+          setProgress(50);
         }
 
         let translationWarn = '';
@@ -4291,35 +3409,20 @@
         setProgress(100);
         refreshAllExports();
 
-        if (!document.body.classList.contains('intent-player-mode')) {
-          actionRow.style.display = 'flex';
-        }
-        const doneMsg = '✅ Субтитры готовы!' + translationWarn;
-        statusEl.innerText = doneMsg;
-        showPlayerStatusToast(doneMsg, 2600);
+        actionRow.style.display = 'flex';
+        statusEl.innerText = 'Готово! Субтитры загружены.' + translationWarn;
 
-        if (file) {
-          setupPlayer(file);
-        } else {
-          currentCueIdx = -2;
-          updateOverlayGeometry();
-          updateSubtitleFrame();
-        }
+        setupPlayer(file);
 
         if (autoPlayToggle.checked && videoEl.paused) {
           videoEl.play().catch(() => {});
         }
+
       } catch (e) {
-        const errText = 'Статус: ' + (e && e.message ? e.message : e);
-        statusEl.innerText = errText;
-        showPlayerStatusToast(errText, 4000);
+        statusEl.innerText = 'Статус: ' + (e && e.message ? e.message : e);
       } finally {
-        if (bridge && typeof bridge.setWebViewHardwareAcceleration === 'function') {
-          try { bridge.setWebViewHardwareAcceleration(true); } catch (e) {}
-        }
         activeAbortCtrl = null;
         btn.classList.remove('cancel-mode');
-        if (playerSubBtn) playerSubBtn.classList.remove('cc-active');
         updateButtonLabel();
         setTimeout(() => setProgress(null), 600);
         if (btn.blur) btn.blur();
@@ -4328,6 +3431,27 @@
     }
 
     btn.addEventListener('click', generateSubtitles);
+
+    function encodeWAV(samples, sampleRate) {
+      const buffer = new ArrayBuffer(44 + samples.length * 2);
+      const view = new DataView(buffer);
+      const writeString = (offset, str) => {
+        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+      };
+      writeString(0, 'RIFF'); view.setUint32(4, 36 + samples.length * 2, true);
+      writeString(8, 'WAVE'); writeString(12, 'fmt ');
+      view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true); view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true); writeString(36, 'data');
+      view.setUint32(40, samples.length * 2, true);
+      let offset = 44;
+      for (let i = 0; i < samples.length; i++, offset += 2) {
+        const s = Math.max(-1, Math.min(1, samples[i]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      }
+      return new Blob([buffer], { type: 'audio/wav' });
+    }
 
     /* ==================== МОСТ ANDROID EXOPLAYER (ДЛЯ MKV/HEVC И ЗАХВАТА ПРЕВЬЮ-КАДРА) ==================== */
     const nativeBridge = window.ExoPlayerManager || window.AndroidBridge || null;
@@ -4460,30 +3584,28 @@
         } catch (e) {}
       };
 
-      function pollNativeExoStateDeferred() {
-        if (playerActive && usingNativeExoFallback) {
-          try {
-            if (Date.now() - lastUserPlayActionAt >= 320) {
-              const playingNow = Boolean(nativeBridge.isPlaying());
-              if (playingNow === nativePaused) {
-                nativePaused = !playingNow;
-                videoEl.dispatchEvent(new Event(playingNow ? 'play' : 'pause'));
-              }
+      setInterval(() => {
+        if (!playerActive || !usingNativeExoFallback) return;
+        try {
+          if (Date.now() - lastUserPlayActionAt >= 320) {
+            const playingNow = Boolean(nativeBridge.isPlaying());
+            if (playingNow === nativePaused) {
+              nativePaused = !playingNow;
+              videoEl.dispatchEvent(new Event(playingNow ? 'play' : 'pause'));
             }
-            nativeCurrentTime = Number(nativeBridge.getCurrentTime()) || 0;
-            const dur = Number(nativeBridge.getDuration()) || 0;
-            if (dur > 0 && Math.abs(dur - nativeDuration) > 0.1) {
-              nativeDuration = dur;
-              updateOverlayGeometry();
-              videoEl.dispatchEvent(new Event('loadedmetadata'));
-            }
-            syncTimeUI();
-            syncNativePlayerBounds();
-          } catch (e) {}
-        }
-        setTimeout(pollNativeExoStateDeferred, 180);
-      }
-      setTimeout(pollNativeExoStateDeferred, 180);
+          }
+          nativeCurrentTime = Number(nativeBridge.getCurrentTime()) || 0;
+          const dur = Number(nativeBridge.getDuration()) || 0;
+          if (dur > 0 && Math.abs(dur - nativeDuration) > 0.1) {
+            nativeDuration = dur;
+            updateOverlayGeometry();
+            videoEl.dispatchEvent(new Event('loadedmetadata'));
+          }
+          syncTimeUI();
+          updateSubtitleFrame();
+          syncNativePlayerBounds();
+        } catch (e) {}
+      }, 40);
 
       volSlider.addEventListener('input', (e) => {
         if (!usingNativeExoFallback) return;
@@ -4497,39 +3619,6 @@
         if (!usingNativeExoFallback) return;
         try { nativeBridge.setResizeMode(e.target.value || 'contain'); } catch (err) {}
       });
-
-      // Автоматическая проверка звука: если HTML5 <video> не может декодировать звук (AC3, E-AC3, DTS в фильмах),
-      // мгновенно переключаем воспроизведение на нативный ExoPlayer + FFmpeg!
-      videoEl.addEventListener('playing', () => {
-        if (usingNativeExoFallback) return;
-        setTimeout(() => {
-          if (usingNativeExoFallback || videoEl.paused) return;
-          const noWebkitAudio = typeof videoEl.webkitAudioDecodedByteCount === 'number' && videoEl.webkitAudioDecodedByteCount === 0 && videoEl.currentTime > 0.4;
-          const noAudioTracks = videoEl.audioTracks && videoEl.audioTracks.length === 0;
-          if ((noWebkitAudio || noAudioTracks) && typeof nativeBridge.hasNativeVideo === 'function' && nativeBridge.hasNativeVideo()) {
-            const curT = videoEl.currentTime || 0;
-            try { videoEl.pause(); videoEl.muted = true; } catch (e) {}
-            usingNativeExoFallback = true;
-            if (window.__activateNativeExoFallback) window.__activateNativeExoFallback();
-            setTimeout(() => {
-              try {
-                nativeBridge.seekTo(curT);
-                nativeBridge.play();
-              } catch (e) {}
-            }, 150);
-          }
-        }, 650);
-      });
-
-      // Если приложение было запущено через «Открыть с помощью...», сразу подхватываем внешний фильм при старте
-      try {
-        if (typeof nativeBridge.getExternalMediaInfoJson === 'function') {
-          const info = JSON.parse(nativeBridge.getExternalMediaInfoJson() || '{}');
-          if (info && info.hasMedia && info.isExternalIntent && info.uri) {
-            setTimeout(() => setupExternalIntentPlayer(info.uri, info.name || 'external_video.mp4'), 80);
-          }
-        }
-      } catch (e) {}
     }
 
   })();

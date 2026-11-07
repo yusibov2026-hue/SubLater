@@ -43,8 +43,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.decoder.DecoderInputBuffer
-import androidx.media3.decoder.SimpleDecoderOutputBuffer
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -551,13 +549,13 @@ class ExoPlayerManager(
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         if (playbackState == Player.STATE_READY) {
                             isVideoReady.value = true
-                            applyAudioBoostInternal(currentVolumePercent, audioSessionId)
+                            applyAudioBoostInternal(currentVolumePercent, audioSessionId, this@apply)
                         }
                         syncStateOnMainThread()
                     }
 
                     override fun onAudioSessionIdChanged(audioSessionId: Int) {
-                        applyAudioBoostInternal(currentVolumePercent, audioSessionId)
+                        applyAudioBoostInternal(currentVolumePercent, audioSessionId, this@apply)
                     }
 
                     override fun onTracksChanged(tracks: Tracks) {
@@ -864,9 +862,10 @@ class ExoPlayerManager(
     @JavascriptInterface
     fun getVolume(): Int = currentVolumePercent
 
-    private fun applyAudioBoostInternal(clampedPercent: Int, sessionId: Int) {
+    private fun applyAudioBoostInternal(clampedPercent: Int, sessionId: Int, targetPlayer: ExoPlayer? = null) {
+        val p = targetPlayer ?: exoPlayer
         if (clampedPercent <= 100) {
-            exoPlayer.volume = clampedPercent / 100f
+            p.volume = clampedPercent / 100f
             try {
                 dynamicsProcessing?.enabled = false
             } catch (_: Exception) {
@@ -878,7 +877,7 @@ class ExoPlayerManager(
             return
         }
 
-        exoPlayer.volume = 1.0f
+        p.volume = 1.0f
         if (sessionId == C.AUDIO_SESSION_ID_UNSET || sessionId == 0) return
 
         val boostRatio = (clampedPercent - 100) / 100f // 0.01 .. 1.0 (при 200% = 1.0)
@@ -2197,11 +2196,23 @@ class ExoPlayerManager(
                     val ffmpegDecoder = ctor.newInstance(media3Format, 16, 16, 65536, false)
                     ffmpegDecoderObj = ffmpegDecoder
 
+                    val inBufClass = Class.forName("androidx.media3.decoder.DecoderInputBuffer")
+                    val outBufClass = Class.forName("androidx.media3.decoder.SimpleDecoderOutputBuffer")
                     val dequeueInputMethod = decoderClass.getMethod("dequeueInputBuffer")
-                    val queueInputMethod = decoderClass.getMethod("queueInputBuffer", Any::class.java)
+                    val queueInputMethod = decoderClass.getMethod("queueInputBuffer", inBufClass)
                     val dequeueOutputMethod = decoderClass.getMethod("dequeueOutputBuffer")
                     val getChannelCountMethod = decoderClass.getMethod("getChannelCount")
                     val getSampleRateMethod = decoderClass.getMethod("getSampleRate")
+
+                    val clearMethod = inBufClass.getMethod("clear")
+                    val ensureSpaceMethod = inBufClass.getMethod("ensureSpaceForWrite", Int::class.javaPrimitiveType)
+                    val addFlagMethod = inBufClass.getMethod("addFlag", Int::class.javaPrimitiveType)
+                    val dataField = inBufClass.getField("data")
+                    val timeUsField = inBufClass.getField("timeUs")
+
+                    val outDataField = outBufClass.getField("data")
+                    val isEosMethod = outBufClass.getMethod("isEndOfStream")
+                    val releaseOutMethod = outBufClass.getMethod("release")
 
                     var eosQueued = false
                     var eosReceived = false
@@ -2211,29 +2222,31 @@ class ExoPlayerManager(
                         if (cancelAudioExtraction) throw InterruptedException("Отменено пользователем.")
 
                         if (!eosQueued) {
-                            val inBuf = dequeueInputMethod.invoke(ffmpegDecoder) as? DecoderInputBuffer
+                            val inBuf = dequeueInputMethod.invoke(ffmpegDecoder)
                             if (inBuf != null) {
-                                inBuf.clear()
-                                inBuf.ensureSpaceForWrite(65536)
-                                val bb = inBuf.data!!
-                                val sampleSize = extractor.readSampleData(bb, 0)
-                                if (sampleSize < 0) {
-                                    inBuf.addFlag(C.BUFFER_FLAG_END_OF_STREAM)
-                                    queueInputMethod.invoke(ffmpegDecoder, inBuf)
-                                    eosQueued = true
-                                } else {
-                                    bb.position(0)
-                                    bb.limit(sampleSize)
-                                    val ptsUs = extractor.sampleTime.coerceAtLeast(0L)
-                                    inBuf.timeUs = ptsUs
-                                    queueInputMethod.invoke(ffmpegDecoder, inBuf)
-                                    extractor.advance()
+                                clearMethod.invoke(inBuf)
+                                ensureSpaceMethod.invoke(inBuf, 65536)
+                                val bb = dataField.get(inBuf) as? java.nio.ByteBuffer
+                                if (bb != null) {
+                                    val sampleSize = extractor.readSampleData(bb, 0)
+                                    if (sampleSize < 0) {
+                                        addFlagMethod.invoke(inBuf, C.BUFFER_FLAG_END_OF_STREAM)
+                                        queueInputMethod.invoke(ffmpegDecoder, inBuf)
+                                        eosQueued = true
+                                    } else {
+                                        bb.position(0)
+                                        bb.limit(sampleSize)
+                                        val ptsUs = extractor.sampleTime.coerceAtLeast(0L)
+                                        timeUsField.setLong(inBuf, ptsUs)
+                                        queueInputMethod.invoke(ffmpegDecoder, inBuf)
+                                        extractor.advance()
 
-                                    if (durationUs > 0L) {
-                                        val pct = ((ptsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
-                                        if (pct >= lastPct + 4) {
-                                            lastPct = pct
-                                            onProgress(pct, "⚡ Нарезка FLAC (FFmpeg 16 кГц): чанк ${chunkIndex + 1} из ${maxOf(chunkIndex + 1, totalChunksEstimate.get())}...")
+                                        if (durationUs > 0L) {
+                                            val pct = ((ptsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
+                                            if (pct >= lastPct + 4) {
+                                                lastPct = pct
+                                                onProgress(pct, "⚡ Нарезка FLAC (FFmpeg 16 кГц): чанк ${chunkIndex + 1} из ${maxOf(chunkIndex + 1, totalChunksEstimate.get())}...")
+                                            }
                                         }
                                     }
                                 }
@@ -2242,7 +2255,7 @@ class ExoPlayerManager(
 
                         var drainedAny = false
                         while (true) {
-                            val outBuf = dequeueOutputMethod.invoke(ffmpegDecoder) as? SimpleDecoderOutputBuffer ?: break
+                            val outBuf = dequeueOutputMethod.invoke(ffmpegDecoder) ?: break
                             drainedAny = true
                             try {
                                 val outCh = (getChannelCountMethod.invoke(ffmpegDecoder) as? Int)?.takeIf { it > 0 } ?: srcChannels
@@ -2252,7 +2265,7 @@ class ExoPlayerManager(
                                     srcSampleRate = outSr
                                     resampleStep = srcSampleRate.toDouble() / targetSampleRate.toDouble()
                                 }
-                                val data = outBuf.data
+                                val data = outDataField.get(outBuf) as? java.nio.ByteBuffer
                                 if (data != null && data.remaining() > 0) {
                                     data.order(ByteOrder.LITTLE_ENDIAN)
                                     val shortBuf = data.asShortBuffer()
@@ -2267,12 +2280,13 @@ class ExoPlayerManager(
                                     }
                                     resamplePos = (resamplePos - totalFrames.toDouble()).coerceAtLeast(0.0)
                                 }
-                                if (outBuf.isEndOfStream) {
+                                val isEos = (isEosMethod.invoke(outBuf) as? Boolean) ?: false
+                                if (isEos) {
                                     eosReceived = true
                                     break
                                 }
                             } finally {
-                                outBuf.release()
+                                releaseOutMethod.invoke(outBuf)
                             }
                         }
 
