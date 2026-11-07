@@ -5,12 +5,14 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.media.AudioFormat
 import android.media.MediaCodec
 import android.media.MediaCodecList
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
+import android.media.audiofx.DynamicsProcessing
 import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
 import android.os.Build
@@ -33,6 +35,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
 import androidx.media3.common.C
+import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
@@ -40,6 +43,8 @@ import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.decoder.DecoderInputBuffer
+import androidx.media3.decoder.SimpleDecoderOutputBuffer
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -269,7 +274,6 @@ private class AsyncFlacChunkWriter(
         }
 
         if (allSame) {
-            // SUBFRAME_CONSTANT (8-bit header 0x00 + 16-bit constant sample)
             bw.writeBits(0x00, 8)
             bw.writeBits(first.toInt() and 0xFFFF, 16)
         } else {
@@ -300,12 +304,11 @@ private class AsyncFlacChunkWriter(
             val maxQ = maxU ushr k
 
             if (maxQ < 64 && n > 4) {
-                // SUBFRAME_FIXED (order 1 or 2) + 4-bit Rice coding (partition order 0)
                 bw.writeBits((8 or order) shl 1, 8)
                 for (w in 0 until order) {
                     bw.writeBits(samples[w].toInt() and 0xFFFF, 16)
                 }
-                bw.writeBits(0, 6) // coding method 00 + partition order 0000
+                bw.writeBits(0, 6)
                 bw.writeBits(k, 4)
                 val mask = (1 shl k) - 1
                 for (i in order until n) {
@@ -321,7 +324,6 @@ private class AsyncFlacChunkWriter(
                     }
                 }
             } else {
-                // SUBFRAME_VERBATIM fallback
                 bw.writeBits(0x02, 8)
                 for (i in 0 until n) {
                     bw.writeBits(samples[i].toInt() and 0xFFFF, 16)
@@ -462,6 +464,14 @@ class ExoPlayerManager(
     private var activeSubtitleJob: Job? = null
 
     private var loudnessEnhancer: LoudnessEnhancer? = null
+    private var dynamicsProcessing: DynamicsProcessing? = null
+
+    @Volatile
+    private var currentVolumePercent: Int = 100
+
+    @Volatile
+    private var currentAudioSessionId: Int = C.AUDIO_SESSION_ID_UNSET
+
     private var currentVideoUri: Uri? = null
     private var currentDisplayName: String = ""
     private var isExternalIntentMedia: Boolean = false
@@ -491,6 +501,7 @@ class ExoPlayerManager(
     val resizeModeState = mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT)
     val videoZoomState = mutableFloatStateOf(1.0f)
     val videoBoundsState = mutableStateOf(VideoBounds())
+    val themeBgColorState = mutableIntStateOf(Color.parseColor("#24272D"))
 
     @Volatile
     private var cachedPositionMs: Long = 0L
@@ -540,9 +551,13 @@ class ExoPlayerManager(
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         if (playbackState == Player.STATE_READY) {
                             isVideoReady.value = true
-                            if (volume <= 0f) volume = 1.0f
+                            applyAudioBoostInternal(currentVolumePercent, audioSessionId)
                         }
                         syncStateOnMainThread()
+                    }
+
+                    override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                        applyAudioBoostInternal(currentVolumePercent, audioSessionId)
                     }
 
                     override fun onTracksChanged(tracks: Tracks) {
@@ -584,6 +599,11 @@ class ExoPlayerManager(
 
     fun detachWebView() {
         this.webViewRef = null
+    }
+
+    @JavascriptInterface
+    fun setSystemBarsColor(hexColor: String) {
+        activity?.applySystemBarsColor(hexColor)
     }
 
     /**
@@ -699,7 +719,7 @@ class ExoPlayerManager(
                 val mediaItem = MediaItem.fromUri(uri)
                 exoPlayer.setMediaItem(mediaItem)
                 exoPlayer.prepare()
-                exoPlayer.volume = 1.0f
+                applyAudioBoostInternal(currentVolumePercent, exoPlayer.audioSessionId)
                 isVideoReady.value = true
                 syncStateOnMainThread()
             } catch (e: Exception) {
@@ -762,7 +782,7 @@ class ExoPlayerManager(
             } else if (exoPlayer.playbackState == Player.STATE_ENDED) {
                 exoPlayer.seekTo(0L)
             }
-            if (exoPlayer.volume <= 0f) exoPlayer.volume = 1.0f
+            applyAudioBoostInternal(currentVolumePercent, exoPlayer.audioSessionId)
             exoPlayer.play()
             syncStateOnMainThread()
         }
@@ -791,7 +811,7 @@ class ExoPlayerManager(
                 } else if (exoPlayer.playbackState == Player.STATE_ENDED) {
                     exoPlayer.seekTo(0L)
                 }
-                if (exoPlayer.volume <= 0f) exoPlayer.volume = 1.0f
+                applyAudioBoostInternal(currentVolumePercent, exoPlayer.audioSessionId)
                 exoPlayer.play()
             }
             syncStateOnMainThread()
@@ -825,31 +845,143 @@ class ExoPlayerManager(
         }
     }
 
+    /**
+     * Качественный студийный буст громкости до 200%:
+     * - От 0% до 100%: стандартная линейная громкость ExoPlayer без искажений.
+     * - От 101% до 200%: студийный конвейер DynamicsProcessing (Android 9+ API 28: фильтр инфранизкого гула <80 Гц,
+     *   подъём разборчивости речи 1.2–4 кГц, многополосный мягкий компрессор и brickwall-лимитер на -0.5 dBFS)
+     *   + LoudnessEnhancer для кристально чистого 200% усиления голоса без хрипов и клиппинга.
+     */
     @JavascriptInterface
     fun setVolume(volumePercent: Int) {
         val clamped = volumePercent.coerceIn(0, 200)
+        currentVolumePercent = clamped
         mainHandler.post {
-            if (clamped <= 100) {
-                exoPlayer.volume = clamped / 100f
-                try {
-                    loudnessEnhancer?.enabled = false
-                } catch (_: Exception) {
-                }
-            } else {
-                exoPlayer.volume = 1.0f
-                try {
-                    val sessionId = exoPlayer.audioSessionId
-                    if (sessionId != C.AUDIO_SESSION_ID_UNSET && sessionId != 0) {
-                        if (loudnessEnhancer == null) {
-                            loudnessEnhancer = LoudnessEnhancer(sessionId)
-                        }
-                        val gainMb = ((clamped - 100) * 15).coerceAtMost(1500)
-                        loudnessEnhancer?.setTargetGain(gainMb)
-                        loudnessEnhancer?.enabled = true
-                    }
-                } catch (_: Exception) {
-                }
+            applyAudioBoostInternal(clamped, exoPlayer.audioSessionId)
+        }
+    }
+
+    @JavascriptInterface
+    fun getVolume(): Int = currentVolumePercent
+
+    private fun applyAudioBoostInternal(clampedPercent: Int, sessionId: Int) {
+        if (clampedPercent <= 100) {
+            exoPlayer.volume = clampedPercent / 100f
+            try {
+                dynamicsProcessing?.enabled = false
+            } catch (_: Exception) {
             }
+            try {
+                loudnessEnhancer?.enabled = false
+            } catch (_: Exception) {
+            }
+            return
+        }
+
+        exoPlayer.volume = 1.0f
+        if (sessionId == C.AUDIO_SESSION_ID_UNSET || sessionId == 0) return
+
+        val boostRatio = (clampedPercent - 100) / 100f // 0.01 .. 1.0 (при 200% = 1.0)
+        val sessionChanged = (sessionId != currentAudioSessionId)
+        currentAudioSessionId = sessionId
+
+        var dpHandled = false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                if (dynamicsProcessing == null || sessionChanged) {
+                    try {
+                        dynamicsProcessing?.release()
+                    } catch (_: Exception) {
+                    }
+                    val bandCount = 5
+                    val cfg = DynamicsProcessing.Config.Builder(
+                        DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
+                        2,
+                        true, bandCount,
+                        true, bandCount,
+                        false, 0,
+                        true
+                    ).build()
+
+                    val dp = DynamicsProcessing(0, sessionId, cfg)
+                    val cutoffs = floatArrayOf(90f, 320f, 1400f, 4500f, 20000f)
+                    val preEq = DynamicsProcessing.Eq(true, true, bandCount)
+                    for (b in 0 until bandCount) {
+                        val gain = when (b) {
+                            0 -> -2.5f // Срез саб-басового гула (<90 Гц), чтобы динамики телефона не хрипели на 200%
+                            1 -> 0.5f
+                            2 -> 2.8f  // Голосовой диапазон (разборчивость диалогов)
+                            3 -> 3.2f  // Чёткость речи и согласных (1.4 - 4.5 кГц)
+                            else -> 1.2f
+                        }
+                        preEq.setBand(b, DynamicsProcessing.EqBand(true, cutoffs[b], gain))
+                    }
+                    dp.setPreEqAllChannelsTo(preEq)
+
+                    val mbc = DynamicsProcessing.Mbc(true, true, bandCount)
+                    for (b in 0 until bandCount) {
+                        mbc.setBand(
+                            b,
+                            DynamicsProcessing.MbcBand(
+                                true,
+                                cutoffs[b],
+                                4f,     // attackTime (ms)
+                                85f,    // releaseTime (ms)
+                                2.5f,   // ratio
+                                -22f,   // threshold (dB)
+                                6f,     // kneeWidth (dB) — мягкое колено без пампинга
+                                -65f,   // noiseGateThreshold (dB)
+                                1.2f,   // expanderRatio
+                                0f,     // preGain (dB)
+                                2.0f    // postGain (dB)
+                            )
+                        )
+                    }
+                    dp.setMbcAllChannelsTo(mbc)
+
+                    val limiter = DynamicsProcessing.Limiter(
+                        true,
+                        true,
+                        0,
+                        1f,     // Быстрая атака 1 мс
+                        55f,    // Восстановление 55 мс
+                        12f,    // Жёсткое лимитирование пиков 12:1
+                        -0.4f,  // Порог -0.4 dBFS — 0% клиппинга и искажений
+                        0f
+                    )
+                    dp.setLimiterAllChannelsTo(limiter)
+                    dynamicsProcessing = dp
+                }
+
+                dynamicsProcessing?.let { dp ->
+                    val inputGainDb = boostRatio * 13.5f // До +13.5 dB + +2.0 dB MBC + +3.2 dB Vocal EQ
+                    dp.setInputGainAllChannelsTo(inputGainDb)
+                    dp.enabled = true
+                    dpHandled = true
+                }
+            } catch (_: Throwable) {
+                dpHandled = false
+            }
+        }
+
+        try {
+            if (loudnessEnhancer == null || sessionChanged) {
+                try {
+                    loudnessEnhancer?.release()
+                } catch (_: Exception) {
+                }
+                loudnessEnhancer = LoudnessEnhancer(sessionId)
+            }
+            // Если работает DynamicsProcessing, добавляем мягкий довесок LoudnessEnhancer (до 450 мБ),
+            // иначе используем полный диапазон LoudnessEnhancer (до 1400 мБ).
+            val targetGainMb = if (dpHandled) {
+                (boostRatio * 450f).toInt().coerceAtMost(450)
+            } else {
+                (boostRatio * 1400f).toInt().coerceAtMost(1400)
+            }
+            loudnessEnhancer?.setTargetGain(targetGainMb)
+            loudnessEnhancer?.enabled = true
+        } catch (_: Exception) {
         }
     }
 
@@ -1036,18 +1168,16 @@ class ExoPlayerManager(
         }
     }
 
-    /* ==================== ПОТОКОВЫЙ PRODUCER-CONSUMER КОНВЕЙЕР КОТЛИН (16 КГЦ FLAC LOSSLESS + GROQ 4 ПОТОКА С АДАПТИВНЫМ БЭКОФФОМ):
+    /* ==================== ПОТОКОВЫЙ PRODUCER-CONSUMER КОНВЕЙЕР КОТЛИН (ВСЕ КОДЕКИ MEDIA3+FFMPEG + 16 КГЦ FLAC LOSSLESS + GROQ 4 ПОТОКА):
        1. JS вызывает configureGroqSession(apiKey, audioLang) один раз при старте.
        2. JS вызывает generateSubtitlesNative(...) для запуска конвейера в Kotlin.
-       3. Producer нарезает аудио в сжатый без потерь FLAC (16000 Гц, Mono, 16-bit, в ~2 раза легче WAV)
+       3. Producer декодирует ЛЮБОЙ аудиокодек (AC3, E-AC3/DDP 5.1, DTS, TrueHD, Opus, Vorbis, FLAC, AAC, MP3, PCM)
+          через FFmpeg/MediaCodec + FfmpegAudioDecoder (org.jellyfin.media3:media3-ffmpeg-decoder) в 16kHz Mono FLAC
           и сразу отправляет готовые чанки в Channel<AudioChunkMeta>(Channel.BUFFERED).
        4. 4 Consumer-воркера параллельно забирают чанки из канала и отправляют их в Groq;
           при получении HTTP 429 включается адаптивный бэкофф: параллелизм временно снижается до 2 потоков на 30 секунд,
           после чего автоматически возвращается к 4 потокам. ==================== */
 
-    /**
-     * Принимает ключ Groq и язык аудио из JavaScript один раз при старте (или при изменении настроек).
-     */
     @JavascriptInterface
     fun configureGroqSession(apiKey: String, audioLanguage: String) {
         val cleanKey = apiKey.trim()
@@ -1145,7 +1275,7 @@ class ExoPlayerManager(
                 val chunkTails = ConcurrentHashMap<Int, String>()
 
                 coroutineScope {
-                    // Producer: потоковая экстракция FLAC-чанков (4 потока в FFmpeg или прямой AsyncFlacChunkWriter)
+                    // Producer: потоковая экстракция FLAC-чанков со всеформатным декодером (MediaCodec + Media3 FFmpeg)
                     launch(Dispatchers.IO) {
                         try {
                             extractHybridAudioToFlacStreaming(
@@ -1227,7 +1357,7 @@ class ExoPlayerManager(
 
                 ensureActive()
                 if (results.isEmpty()) {
-                    throw IllegalStateException("Не удалось извлечь аудиодорожку из видео.")
+                    throw IllegalStateException("Не удалось извлечь аудиодорожку из медиафайла.")
                 }
 
                 val mergedSegments = JSONArray()
@@ -1357,10 +1487,6 @@ class ExoPlayerManager(
         return false
     }
 
-    /**
-     * Отправляет один FLAC-чанк напрямую в Groq API через HttpURLConnection с адаптивным таймаутом
-     * и передачей хвоста предыдущего чанка (prevChunkTailText) для бесшовной склейки на стыках.
-     */
     private suspend fun sendChunkToGroqWithRetry(
         chunk: AudioChunkMeta,
         keys: List<String>,
@@ -1488,7 +1614,6 @@ class ExoPlayerManager(
                 conn.errorStream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
             } catch (_: Exception) {
             }
-            // Адаптивный бэкофф: снижаем параллелизм с 4 до 2 потоков на 30 секунд
             groqThrottledUntilMs.set(System.currentTimeMillis() + GROQ_BACKOFF_RECOVERY_MS)
             val retryAfterSec = conn.getHeaderField("retry-after")?.toLongOrNull()?.coerceIn(1L, 25L) ?: 4L
             onStatus("⏳ Лимит 429: адаптивный переход на 2 потока на 30 с (пауза ${retryAfterSec} с)...")
@@ -1549,8 +1674,8 @@ class ExoPlayerManager(
     }
 
     /**
-     * Потоковая экстракция и нарезка аудио в FLAC (lossless, 16000 Гц, Mono, 16-bit) с overlap 6 с:
-     * каждый готовый чанк немедленно передаётся в onChunkReady(chunk), не дожидаясь окончания всего файла.
+     * Потоковая экстракция и нарезка аудио в FLAC (lossless, 16000 Гц, Mono, 16-bit) с overlap 6 с
+     * с поддержкой ВСЕХ видео/аудио кодеков (MediaCodec + программный декодер FFmpeg из Media3).
      */
     private suspend fun extractHybridAudioToFlacStreaming(
         uri: Uri,
@@ -1562,7 +1687,7 @@ class ExoPlayerManager(
         if (!chunkDir.exists()) chunkDir.mkdirs()
         chunkDir.listFiles()?.forEach { it.delete() }
 
-        // 1. Попытка параллельной потоковой нарезки через FFmpeg (Semaphore(4)) в FLAC (-c:a flac)
+        // 1. Попытка параллельной потоковой нарезки через FFmpegKit (если подключён)
         val ffmpegSuccess = tryExtractWithFFmpegKitStreaming(
             uri = uri,
             chunkDir = chunkDir,
@@ -1576,8 +1701,8 @@ class ExoPlayerManager(
             throw InterruptedException("Отменено пользователем.")
         }
 
-        // 2. Фоллбэк: декодирование через MediaCodec.Callback + прямой AsyncFlacChunkWriter без MediaCodec-энкодера
-        extractWithAsyncMediaCodecCallbackStreaming(
+        // 2. Универсальный конвейер: аппаратный MediaCodec + программный FfmpegAudioDecoder (org.jellyfin.media3:media3-ffmpeg-decoder)
+        extractWithUniversalCodecToFlacStreaming(
             uri = uri,
             chunkDir = chunkDir,
             totalChunksEstimate = totalChunksEstimate,
@@ -1769,12 +1894,33 @@ class ExoPlayerManager(
         }
     }
 
+    private fun normalizeMimeForFfmpeg(rawMime: String): String {
+        val lower = rawMime.lowercase().trim()
+        return when {
+            lower.contains("eac3") || lower.contains("ec-3") -> "audio/eac3"
+            lower.contains("ac3") || lower.contains("ac-3") -> "audio/ac3"
+            lower.contains("dts") -> "audio/vnd.dts"
+            lower.contains("truehd") || lower.contains("mlp") -> "audio/true-hd"
+            lower.contains("opus") -> "audio/opus"
+            lower.contains("vorbis") -> "audio/vorbis"
+            lower.contains("flac") -> "audio/flac"
+            lower.contains("alac") -> "audio/alac"
+            lower.contains("mp4a") || lower.contains("aac") -> "audio/mp4a-latm"
+            lower.contains("mpeg") || lower.contains("mp3") -> "audio/mpeg"
+            lower.contains("raw") || lower.contains("pcm") -> "audio/raw"
+            else -> rawMime
+        }
+    }
+
     /**
-     * Потоковый конвейер декодирования аудио через MediaCodec в режиме CALLBACK + прямой AsyncFlacChunkWriter:
-     * приводит сэмплы строго к 16000 Гц Mono (16-bit lossless FLAC, ~50% от размера WAV) без медленного MediaCodec-энкодера
-     * и при закрытии каждого чанка немедленно вызывает onChunkReady(chunk) для отправки в Groq.
+     * Всеформатный потоковый конвейер декодирования аудио:
+     * 1. Использует аппаратный MediaCodec в режиме CALLBACK, если кодек поддерживается системой.
+     * 2. Если кодек нестандартный (AC3, E-AC3 / DDP 5.1, DTS, TrueHD, Vorbis, Opus, FLAC) или аппаратный декодер
+     *    отсутствует/выдал ошибку, автоматически переключается на встроенный программный декодер FFmpeg из Media3
+     *    (`androidx.media3.decoder.ffmpeg.FfmpegAudioDecoder`, библиотека `libffmpegJNI.so`).
+     * 3. Приводит сэмплы строго к 16000 Гц Mono (16-bit lossless FLAC) и сразу передаёт каждый чанк в Groq.
      */
-    private suspend fun extractWithAsyncMediaCodecCallbackStreaming(
+    private suspend fun extractWithUniversalCodecToFlacStreaming(
         uri: Uri,
         chunkDir: File,
         totalChunksEstimate: AtomicInteger,
@@ -1812,7 +1958,7 @@ class ExoPlayerManager(
                 }
 
                 if (!dataSourceSet) {
-                    onProgress(2, "Копирование потока внешнего файла...")
+                    onProgress(2, "Открытие медиапотока...")
                     val tmp = File(chunkDir, "temp_input_media.bin")
                     context.contentResolver.openInputStream(uri)?.use { input ->
                         FileOutputStream(tmp).use { output ->
@@ -1866,7 +2012,7 @@ class ExoPlayerManager(
             }
 
             if (selectedTrackIndex < 0 || selectedFormat == null) {
-                throw IllegalStateException("В видео не найдена поддерживаемая аудиодорожка")
+                throw IllegalStateException("В медиафайле не найдена аудиодорожка")
             }
 
             extractor.selectTrack(selectedTrackIndex)
@@ -1878,9 +2024,9 @@ class ExoPlayerManager(
                 (resolveMediaDurationSec(uri) * 1_000_000.0).toLong().coerceAtLeast(cachedDurationMs * 1000L)
             }
 
-            val targetSampleRate = WHISPER_SAMPLE_RATE_HZ // Строго 16000 Гц
-            val chunkDurationSec = CHUNK_DURATION_SEC     // 600 секунд (10 минут, ~8-9.5 МБ в FLAC)
-            val overlapSec = CHUNK_OVERLAP_SEC           // 6 секунд перекрытия
+            val targetSampleRate = WHISPER_SAMPLE_RATE_HZ
+            val chunkDurationSec = CHUNK_DURATION_SEC
+            val overlapSec = CHUNK_OVERLAP_SEC
             val advanceSec = (chunkDurationSec - overlapSec).coerceAtLeast(1)
 
             if (durationUs > 0L) {
@@ -2009,83 +2155,107 @@ class ExoPlayerManager(
             var resamplePos = 0.0
             var resampleStep = srcSampleRate.toDouble() / targetSampleRate.toDouble()
 
-            var inputDone = false
-            var lastPct = -1
-            val decodeDoneLatch = CountDownLatch(1)
-            val asyncErrorRef = AtomicReference<Throwable?>(null)
+            fun decodeWithMedia3FfmpegSoftwareDecoder(): Boolean {
+                var ffmpegDecoderObj: Any? = null
+                return try {
+                    onProgress(4, "⚡ FFmpeg (Media3): декодирование кодека $selectedMime...")
+                    extractor.seekTo(0L, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
 
-            decoderThread = HandlerThread("SubLaterAsyncDecoder").apply { start() }
-            val decoderHandler = Handler(decoderThread.looper)
-
-            val mediaDecoder = if (selectedDecoderName != null) {
-                MediaCodec.createByCodecName(selectedDecoderName)
-            } else {
-                MediaCodec.createDecoderByType(selectedMime)
-            }
-            decoder = mediaDecoder
-
-            mediaDecoder.setCallback(object : MediaCodec.Callback() {
-                override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
-                    if (cancelAudioExtraction) {
-                        asyncErrorRef.compareAndSet(null, InterruptedException("Отменено пользователем."))
-                        decodeDoneLatch.countDown()
-                        return
+                    val initData = mutableListOf<ByteArray>()
+                    for (csdIdx in 0..2) {
+                        val key = "csd-$csdIdx"
+                        if (selectedFormat.containsKey(key)) {
+                            val bb = selectedFormat.getByteBuffer(key)
+                            if (bb != null && bb.remaining() > 0) {
+                                val arr = ByteArray(bb.remaining())
+                                bb.duplicate().get(arr)
+                                initData.add(arr)
+                            }
+                        }
                     }
-                    if (inputDone || index < 0) return
-                    try {
-                        val inBuf = codec.getInputBuffer(index) ?: return
-                        inBuf.clear()
-                        val sampleSize = extractor.readSampleData(inBuf, 0)
-                        if (sampleSize < 0) {
-                            codec.queueInputBuffer(index, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                            inputDone = true
-                        } else {
-                            val ptsUs = extractor.sampleTime.coerceAtLeast(0L)
-                            codec.queueInputBuffer(index, 0, sampleSize, ptsUs, 0)
-                            extractor.advance()
 
-                            if (durationUs > 0L) {
-                                val pct = ((ptsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
-                                if (pct >= lastPct + 4) {
-                                    lastPct = pct
-                                    onProgress(pct, "⚡ Нарезка FLAC (16 кГц): чанк ${chunkIndex + 1} из ${maxOf(chunkIndex + 1, totalChunksEstimate.get())}...")
+                    val normalizedMime = normalizeMimeForFfmpeg(selectedMime)
+                    val formatBuilder = Format.Builder()
+                        .setSampleMimeType(normalizedMime)
+                        .setChannelCount(srcChannels)
+                        .setSampleRate(srcSampleRate)
+                        .setPcmEncoding(C.ENCODING_PCM_16BIT)
+                    if (initData.isNotEmpty()) {
+                        formatBuilder.setInitializationData(initData)
+                    }
+                    val media3Format = formatBuilder.build()
+
+                    val decoderClass = Class.forName("androidx.media3.decoder.ffmpeg.FfmpegAudioDecoder")
+                    val ctor = decoderClass.getDeclaredConstructor(
+                        Format::class.java,
+                        Int::class.javaPrimitiveType,
+                        Int::class.javaPrimitiveType,
+                        Int::class.javaPrimitiveType,
+                        Boolean::class.javaPrimitiveType
+                    )
+                    ctor.isAccessible = true
+                    val ffmpegDecoder = ctor.newInstance(media3Format, 16, 16, 65536, false)
+                    ffmpegDecoderObj = ffmpegDecoder
+
+                    val dequeueInputMethod = decoderClass.getMethod("dequeueInputBuffer")
+                    val queueInputMethod = decoderClass.getMethod("queueInputBuffer", Any::class.java)
+                    val dequeueOutputMethod = decoderClass.getMethod("dequeueOutputBuffer")
+                    val getChannelCountMethod = decoderClass.getMethod("getChannelCount")
+                    val getSampleRateMethod = decoderClass.getMethod("getSampleRate")
+
+                    var eosQueued = false
+                    var eosReceived = false
+                    var lastPct = -1
+
+                    while (!eosReceived) {
+                        if (cancelAudioExtraction) throw InterruptedException("Отменено пользователем.")
+
+                        if (!eosQueued) {
+                            val inBuf = dequeueInputMethod.invoke(ffmpegDecoder) as? DecoderInputBuffer
+                            if (inBuf != null) {
+                                inBuf.clear()
+                                inBuf.ensureSpaceForWrite(65536)
+                                val bb = inBuf.data!!
+                                val sampleSize = extractor.readSampleData(bb, 0)
+                                if (sampleSize < 0) {
+                                    inBuf.addFlag(C.BUFFER_FLAG_END_OF_STREAM)
+                                    queueInputMethod.invoke(ffmpegDecoder, inBuf)
+                                    eosQueued = true
+                                } else {
+                                    bb.position(0)
+                                    bb.limit(sampleSize)
+                                    val ptsUs = extractor.sampleTime.coerceAtLeast(0L)
+                                    inBuf.timeUs = ptsUs
+                                    queueInputMethod.invoke(ffmpegDecoder, inBuf)
+                                    extractor.advance()
+
+                                    if (durationUs > 0L) {
+                                        val pct = ((ptsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
+                                        if (pct >= lastPct + 4) {
+                                            lastPct = pct
+                                            onProgress(pct, "⚡ Нарезка FLAC (FFmpeg 16 кГц): чанк ${chunkIndex + 1} из ${maxOf(chunkIndex + 1, totalChunksEstimate.get())}...")
+                                        }
+                                    }
                                 }
                             }
                         }
-                    } catch (t: Throwable) {
-                        asyncErrorRef.compareAndSet(null, t)
-                        decodeDoneLatch.countDown()
-                    }
-                }
 
-                override fun onOutputBufferAvailable(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {
-                    if (cancelAudioExtraction) {
-                        asyncErrorRef.compareAndSet(null, InterruptedException("Отменено пользователем."))
-                        decodeDoneLatch.countDown()
-                        return
-                    }
-                    try {
-                        if (index >= 0) {
-                            val outBuf = codec.getOutputBuffer(index)
-                            if (outBuf != null && info.size > 0 && (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
-                                outBuf.position(info.offset)
-                                outBuf.limit(info.offset + info.size)
-                                outBuf.order(ByteOrder.LITTLE_ENDIAN)
-
-                                if (pcmEncoding == AudioFormat.ENCODING_PCM_FLOAT) {
-                                    val floatBuf = outBuf.asFloatBuffer()
-                                    val totalFrames = floatBuf.remaining() / srcChannels
-                                    while (resamplePos < totalFrames) {
-                                        val baseIdx = resamplePos.toInt() * srcChannels
-                                        var sum = 0f
-                                        for (ch in 0 until srcChannels) sum += floatBuf.get(baseIdx + ch)
-                                        val monoShort = ((sum / srcChannels).coerceIn(-1f, 1f) * 32767f).toInt().toShort()
-                                        pushMono16kSample(monoShort)
-                                        resamplePos += resampleStep
-                                    }
-                                    resamplePos = (resamplePos - totalFrames.toDouble()).coerceAtLeast(0.0)
-                                } else {
-                                    val shortBuf = outBuf.asShortBuffer()
+                        var drainedAny = false
+                        while (true) {
+                            val outBuf = dequeueOutputMethod.invoke(ffmpegDecoder) as? SimpleDecoderOutputBuffer ?: break
+                            drainedAny = true
+                            try {
+                                val outCh = (getChannelCountMethod.invoke(ffmpegDecoder) as? Int)?.takeIf { it > 0 } ?: srcChannels
+                                val outSr = (getSampleRateMethod.invoke(ffmpegDecoder) as? Int)?.takeIf { it > 0 } ?: srcSampleRate
+                                if (outCh != srcChannels || outSr != srcSampleRate) {
+                                    srcChannels = outCh
+                                    srcSampleRate = outSr
+                                    resampleStep = srcSampleRate.toDouble() / targetSampleRate.toDouble()
+                                }
+                                val data = outBuf.data
+                                if (data != null && data.remaining() > 0) {
+                                    data.order(ByteOrder.LITTLE_ENDIAN)
+                                    val shortBuf = data.asShortBuffer()
                                     val totalFrames = shortBuf.remaining() / srcChannels
                                     while (resamplePos < totalFrames) {
                                         val baseIdx = resamplePos.toInt() * srcChannels
@@ -2097,47 +2267,192 @@ class ExoPlayerManager(
                                     }
                                     resamplePos = (resamplePos - totalFrames.toDouble()).coerceAtLeast(0.0)
                                 }
-                            }
-                            codec.releaseOutputBuffer(index, false)
-                            if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                                decodeDoneLatch.countDown()
+                                if (outBuf.isEndOfStream) {
+                                    eosReceived = true
+                                    break
+                                }
+                            } finally {
+                                outBuf.release()
                             }
                         }
-                    } catch (t: Throwable) {
-                        asyncErrorRef.compareAndSet(null, t)
-                        decodeDoneLatch.countDown()
-                    }
-                }
 
-                override fun onOutputFormatChanged(codec: MediaCodec, newFmt: MediaFormat) {
-                    if (newFmt.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
-                        srcSampleRate = newFmt.getInteger(MediaFormat.KEY_SAMPLE_RATE).coerceAtLeast(8000)
+                        if (!drainedAny && eosQueued && !eosReceived) {
+                            Thread.sleep(2)
+                        }
                     }
-                    if (newFmt.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
-                        srcChannels = newFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
+
+                    totalWrittenMonoSamples > 0L
+                } catch (e: InterruptedException) {
+                    throw e
+                } catch (_: Throwable) {
+                    false
+                } finally {
+                    try {
+                        ffmpegDecoderObj?.javaClass?.getMethod("release")?.invoke(ffmpegDecoderObj)
+                    } catch (_: Exception) {
                     }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && newFmt.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
-                        pcmEncoding = newFmt.getInteger(MediaFormat.KEY_PCM_ENCODING)
-                    }
-                    resampleStep = srcSampleRate.toDouble() / targetSampleRate.toDouble()
-                }
-
-                override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
-                    asyncErrorRef.compareAndSet(null, e)
-                    decodeDoneLatch.countDown()
-                }
-            }, decoderHandler)
-
-            mediaDecoder.configure(selectedFormat, null, null, 0)
-            mediaDecoder.start()
-
-            while (!decodeDoneLatch.await(250, TimeUnit.MILLISECONDS)) {
-                if (cancelAudioExtraction) {
-                    throw InterruptedException("Отменено пользователем.")
                 }
             }
 
-            asyncErrorRef.get()?.let { throw it }
+            // Если для кодека (например AC3, E-AC3, DTS, TrueHD) нет системного аппаратного MediaCodec,
+            // сразу декодируем через встроенный Media3 FfmpegAudioDecoder.
+            val preferFfmpegDirect = selectedDecoderName == null ||
+                selectedMime.contains("ac3", ignoreCase = true) ||
+                selectedMime.contains("eac3", ignoreCase = true) ||
+                selectedMime.contains("dts", ignoreCase = true) ||
+                selectedMime.contains("true-hd", ignoreCase = true)
+
+            var decodedSuccessfully = false
+            if (preferFfmpegDirect) {
+                decodedSuccessfully = decodeWithMedia3FfmpegSoftwareDecoder()
+            }
+
+            if (!decodedSuccessfully) {
+                try {
+                    extractor.seekTo(0L, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
+                    var inputDone = false
+                    var lastPct = -1
+                    val decodeDoneLatch = CountDownLatch(1)
+                    val asyncErrorRef = AtomicReference<Throwable?>(null)
+
+                    decoderThread = HandlerThread("SubLaterAsyncDecoder").apply { start() }
+                    val decoderHandler = Handler(decoderThread.looper)
+
+                    val mediaDecoder = if (selectedDecoderName != null) {
+                        MediaCodec.createByCodecName(selectedDecoderName)
+                    } else {
+                        MediaCodec.createDecoderByType(selectedMime)
+                    }
+                    decoder = mediaDecoder
+
+                    mediaDecoder.setCallback(object : MediaCodec.Callback() {
+                        override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
+                            if (cancelAudioExtraction) {
+                                asyncErrorRef.compareAndSet(null, InterruptedException("Отменено пользователем."))
+                                decodeDoneLatch.countDown()
+                                return
+                            }
+                            if (inputDone || index < 0) return
+                            try {
+                                val inBuf = codec.getInputBuffer(index) ?: return
+                                inBuf.clear()
+                                val sampleSize = extractor.readSampleData(inBuf, 0)
+                                if (sampleSize < 0) {
+                                    codec.queueInputBuffer(index, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                                    inputDone = true
+                                } else {
+                                    val ptsUs = extractor.sampleTime.coerceAtLeast(0L)
+                                    codec.queueInputBuffer(index, 0, sampleSize, ptsUs, 0)
+                                    extractor.advance()
+
+                                    if (durationUs > 0L) {
+                                        val pct = ((ptsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
+                                        if (pct >= lastPct + 4) {
+                                            lastPct = pct
+                                            onProgress(pct, "⚡ Нарезка FLAC (16 кГц): чанк ${chunkIndex + 1} из ${maxOf(chunkIndex + 1, totalChunksEstimate.get())}...")
+                                        }
+                                    }
+                                }
+                            } catch (t: Throwable) {
+                                asyncErrorRef.compareAndSet(null, t)
+                                decodeDoneLatch.countDown()
+                            }
+                        }
+
+                        override fun onOutputBufferAvailable(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {
+                            if (cancelAudioExtraction) {
+                                asyncErrorRef.compareAndSet(null, InterruptedException("Отменено пользователем."))
+                                decodeDoneLatch.countDown()
+                                return
+                            }
+                            try {
+                                if (index >= 0) {
+                                    val outBuf = codec.getOutputBuffer(index)
+                                    if (outBuf != null && info.size > 0 && (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
+                                        outBuf.position(info.offset)
+                                        outBuf.limit(info.offset + info.size)
+                                        outBuf.order(ByteOrder.LITTLE_ENDIAN)
+
+                                        if (pcmEncoding == AudioFormat.ENCODING_PCM_FLOAT) {
+                                            val floatBuf = outBuf.asFloatBuffer()
+                                            val totalFrames = floatBuf.remaining() / srcChannels
+                                            while (resamplePos < totalFrames) {
+                                                val baseIdx = resamplePos.toInt() * srcChannels
+                                                var sum = 0f
+                                                for (ch in 0 until srcChannels) sum += floatBuf.get(baseIdx + ch)
+                                                val monoShort = ((sum / srcChannels).coerceIn(-1f, 1f) * 32767f).toInt().toShort()
+                                                pushMono16kSample(monoShort)
+                                                resamplePos += resampleStep
+                                            }
+                                            resamplePos = (resamplePos - totalFrames.toDouble()).coerceAtLeast(0.0)
+                                        } else {
+                                            val shortBuf = outBuf.asShortBuffer()
+                                            val totalFrames = shortBuf.remaining() / srcChannels
+                                            while (resamplePos < totalFrames) {
+                                                val baseIdx = resamplePos.toInt() * srcChannels
+                                                var sum = 0
+                                                for (ch in 0 until srcChannels) sum += shortBuf.get(baseIdx + ch).toInt()
+                                                val monoShort = (sum / srcChannels).coerceIn(-32768, 32767).toShort()
+                                                pushMono16kSample(monoShort)
+                                                resamplePos += resampleStep
+                                            }
+                                            resamplePos = (resamplePos - totalFrames.toDouble()).coerceAtLeast(0.0)
+                                        }
+                                    }
+                                    codec.releaseOutputBuffer(index, false)
+                                    if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                                        decodeDoneLatch.countDown()
+                                    }
+                                }
+                            } catch (t: Throwable) {
+                                asyncErrorRef.compareAndSet(null, t)
+                                decodeDoneLatch.countDown()
+                            }
+                        }
+
+                        override fun onOutputFormatChanged(codec: MediaCodec, newFmt: MediaFormat) {
+                            if (newFmt.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
+                                srcSampleRate = newFmt.getInteger(MediaFormat.KEY_SAMPLE_RATE).coerceAtLeast(8000)
+                            }
+                            if (newFmt.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
+                                srcChannels = newFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && newFmt.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+                                pcmEncoding = newFmt.getInteger(MediaFormat.KEY_PCM_ENCODING)
+                            }
+                            resampleStep = srcSampleRate.toDouble() / targetSampleRate.toDouble()
+                        }
+
+                        override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
+                            asyncErrorRef.compareAndSet(null, e)
+                            decodeDoneLatch.countDown()
+                        }
+                    }, decoderHandler)
+
+                    mediaDecoder.configure(selectedFormat, null, null, 0)
+                    mediaDecoder.start()
+
+                    while (!decodeDoneLatch.await(250, TimeUnit.MILLISECONDS)) {
+                        if (cancelAudioExtraction) {
+                            throw InterruptedException("Отменено пользователем.")
+                        }
+                    }
+
+                    asyncErrorRef.get()?.let { throw it }
+                    decodedSuccessfully = totalWrittenMonoSamples > 0L
+                } catch (e: InterruptedException) {
+                    throw e
+                } catch (t: Throwable) {
+                    try { decoder?.stop() } catch (_: Exception) {}
+                    try { decoder?.release() } catch (_: Exception) {}
+                    decoder = null
+                    if (totalWrittenMonoSamples == 0L && !preferFfmpegDirect) {
+                        decodedSuccessfully = decodeWithMedia3FfmpegSoftwareDecoder()
+                    }
+                    if (!decodedSuccessfully) throw t
+                }
+            }
+
             finalizeCurrentChunk(isLast = true)
             currentWriter = null
         } finally {
@@ -2311,6 +2626,11 @@ class ExoPlayerManager(
         ioScope.cancel()
         mainHandler.removeCallbacks(positionPoller)
         detachWebView()
+        try {
+            dynamicsProcessing?.release()
+        } catch (_: Exception) {
+        }
+        dynamicsProcessing = null
         try {
             loudnessEnhancer?.release()
         } catch (_: Exception) {

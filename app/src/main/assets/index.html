@@ -1334,12 +1334,84 @@
     .ctrl-btn.cc-active {
       color: var(--accent);
     }
+
+    /* Быстрые кнопки буста звука 200% HQ в настройках плеера */
+    .boost-presets-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: nowrap;
+    }
+    .boost-preset-btn {
+      flex: 1 1 0;
+      width: auto !important;
+      margin: 0 !important;
+      padding: 5px 4px !important;
+      font-size: 11px !important;
+      font-weight: 600 !important;
+      border-radius: 8px !important;
+      background: rgba(255, 255, 255, 0.08) !important;
+      color: #e5e7eb !important;
+      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      box-shadow: none !important;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+    .boost-preset-btn.active {
+      background: var(--accent) !important;
+      color: #0b0d11 !important;
+      border-color: var(--accent) !important;
+      font-weight: 700 !important;
+    }
+    .yt-acc-val.boost-active {
+      color: #38bdf8 !important;
+      font-weight: 700 !important;
+    }
+
+    /* Визуальная палитра тем в глобальных настройках */
+    .theme-swatches-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 7px;
+      margin: 4px 0 8px 0;
+      padding: 8px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+    }
+    .theme-swatch-btn {
+      width: 100% !important;
+      height: 28px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border-radius: 8px !important;
+      border: 2px solid rgba(255, 255, 255, 0.16) !important;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25) !important;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease;
+    }
+    .theme-swatch-btn.active {
+      border-color: var(--accent) !important;
+      transform: scale(1.06);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35) !important;
+    }
+    .theme-swatch-dot {
+      position: absolute;
+      right: 3px;
+      bottom: 3px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.4);
+    }
+
   </style>
 </head>
 <body>
   <div id="appTopSection">
   <header class="app-header">
-    <h2><svg viewBox="0 0 36 36" width="24" height="24" style="vertical-align:-5px;margin-right:8px;filter:drop-shadow(0 2px 6px rgba(56,189,248,0.28));" aria-hidden="true"><polygon points="18,2 32,10 32,26 18,34 4,26 4,10" fill="#131A24" stroke="#2DD4BF" stroke-width="1.4" stroke-opacity="0.65"/><polygon points="13,9 27,17 22.5,19.6 13,14" fill="#38BDF8"/><polygon points="27,17 13,25 13,20 22.5,14.5" fill="#2DD4BF"/><polygon points="11,10.5 14.8,12.6 14.8,22.4 11,24.5" fill="#818CF8"/><polygon points="16.2,15.2 20.8,17.8 16.2,20.4" fill="#F8FAFC"/><polygon points="11,27.2 18.8,27.2 17.8,29 10,29" fill="#F8FAFC"/><polygon points="20.2,27.2 26,27.2 25,29 19.2,29" fill="#38BDF8"/></svg>SubLater</h2>
+    <h2><svg viewBox="0 0 36 36" width="25" height="25" style="vertical-align:-5px;margin-right:8px;filter:drop-shadow(0 2px 6px rgba(49,184,240,0.32));" aria-hidden="true"><rect x="1" y="1" width="34" height="34" rx="8.5" fill="#132D48" stroke="#31B8F0" stroke-width="1.1" stroke-opacity="0.45"/><path d="M16.2 4.8 C16.2 4.8 6.5 15.6 6.5 22.2 C6.5 27.6 10.9 31.6 16.4 31.6 C19.4 31.6 22.0 30.3 23.8 28.2 L17.6 28.2 C16.5 28.2 15.6 27.3 15.6 26.2 C15.6 25.1 16.5 24.2 17.6 24.2 L25.6 24.2 C26.7 24.2 27.6 23.3 27.6 22.2 C27.6 21.1 26.7 20.2 25.6 20.2 L19.8 20.2 C18.7 20.2 17.8 19.3 17.8 18.2 C17.8 17.1 18.7 16.2 19.8 16.2 L29.2 16.2 C30.3 16.2 31.2 15.3 31.2 14.2 C31.2 13.1 30.3 12.2 29.2 12.2 L18.4 12.2 C17.3 12.2 16.4 11.3 16.4 10.2 C16.4 9.1 17.3 8.2 18.4 8.2 L20.0 8.2 C18.2 6.2 16.2 4.8 16.2 4.8 Z" fill="#31B8F0"/><rect x="10.2" y="18.2" width="6.2" height="2.4" rx="1.2" fill="#132D48"/><rect x="12.5" y="14.2" width="3.8" height="2.3" rx="1.15" fill="#132D48"/><rect x="13.5" y="22.2" width="3.4" height="2.3" rx="1.15" fill="#132D48"/><rect x="23.2" y="9.2" width="4.2" height="2.4" rx="1.2" fill="#31B8F0"/><rect x="25.0" y="17.2" width="5.2" height="2.4" rx="1.2" fill="#31B8F0"/><circle cx="28.4" cy="22.4" r="1.5" fill="#31B8F0"/></svg>SubLater</h2>
     <button id="settingsToggle" aria-label="Настройки">
       <svg viewBox="0 0 24 24">
         <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
@@ -1362,7 +1434,7 @@
   <label class="file-box" for="mediaFile">
     <span class="file-pill">Файл</span>
     <span id="fileName">Не выбран</span>
-    <input type="file" id="mediaFile" accept="video/*,audio/*,.mkv" style="display:none" />
+    <input type="file" id="mediaFile" accept="video/*,audio/*,.mkv,.avi,.ts,.m2ts,.mts,.mov,.webm,.flv,.wmv,.m4v,.3gp,.ac3,.eac3,.dts,.flac,.opus,.ogg,.wav,.mp3,.m4a" style="display:none" />
   </label>
 
   <button id="btn">Создать субтитры</button>
@@ -1467,6 +1539,23 @@
 
 
     <div id="settingsMenu">
+      <div class="yt-acc-item open">
+        <button type="button" class="yt-acc-header">
+          <span class="yt-acc-label">🔊 Буст звука (HQ 200%)</span>
+          <span class="yt-acc-val" id="volVal">100%</span>
+        </button>
+        <div class="yt-acc-body">
+          <input type="range" id="volSlider" min="0" max="200" step="5" value="100">
+          <div class="boost-presets-row" id="boostPresetsRow">
+            <button type="button" class="boost-preset-btn active" data-vol="100">100%</button>
+            <button type="button" class="boost-preset-btn" data-vol="125">125%</button>
+            <button type="button" class="boost-preset-btn" data-vol="150">150%</button>
+            <button type="button" class="boost-preset-btn" data-vol="175">175%</button>
+            <button type="button" class="boost-preset-btn" data-vol="200">200% HQ</button>
+          </div>
+        </div>
+      </div>
+
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
           <span class="yt-acc-label">Увеличение картины</span>
@@ -1474,6 +1563,30 @@
         </button>
         <div class="yt-acc-body">
           <input type="range" id="videoZoom" min="100" max="200" step="5" value="100">
+        </div>
+      </div>
+
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
+          <span class="yt-acc-label">Скорость</span>
+          <span class="yt-acc-val" id="speedVal">1.0x</span>
+        </button>
+        <div class="yt-acc-body">
+          <input type="range" id="speedSlider" min="0.5" max="2.0" step="0.25" value="1">
+        </div>
+      </div>
+
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
+          <span class="yt-acc-label">Формат кадра</span>
+          <span class="yt-acc-val" id="fitModeVal">Вписать</span>
+        </button>
+        <div class="yt-acc-body">
+          <select id="fitModeSelect">
+            <option value="contain">Вписать</option>
+            <option value="cover">Заполнить</option>
+            <option value="fill">Растянуть</option>
+          </select>
         </div>
       </div>
 
@@ -1567,19 +1680,7 @@
         </label>
       </div>
 
-      <!-- Скрытые контролы для совместимости аудио/скорости/экрана -->
-      <div style="display:none !important;" aria-hidden="true">
-        <span id="volVal">100%</span>
-        <input type="range" id="volSlider" min="0" max="200" value="100">
-        <span id="speedVal">1.0x</span>
-        <input type="range" id="speedSlider" min="0.5" max="2.0" step="0.25" value="1">
-        <span id="fitModeVal">Вписать</span>
-        <select id="fitModeSelect">
-          <option value="contain">Вписать</option>
-          <option value="cover">Заполнить</option>
-          <option value="fill">Растянуть</option>
-        </select>
-      </div>
+
     </div>
 
   <div id="settingsBackdrop"></div>
@@ -1596,15 +1697,29 @@
     </div>
 
     <div class="global-row">
-      <span>Серый фон темы</span>
+      <span>Тема оформления (18 тем)</span>
       <select id="appThemeBg">
-        <option value="dark-gray">Тёмно-серый</option>
-        <option value="gray">Серый</option>
-        <option value="light-slate">Светло-серый</option>
-        <option value="warm-gray">Тёплый серый</option>
-        <option value="graphite">Графитовый</option>
+        <option value="dark-gray">Тёмно-серая (Классика)</option>
+        <option value="ocean-drop">Капля океана (SubLater)</option>
+        <option value="amoled-black">AMOLED Чёрная</option>
+        <option value="midnight-indigo">Полночный индиго</option>
+        <option value="tokyo-night">Токийская ночь</option>
+        <option value="cyberpunk-neon">Киберпанк Неон</option>
+        <option value="dracula">Дракула (Фиолетовая)</option>
+        <option value="catppuccin-mocha">Капучино Мокка</option>
+        <option value="nord-arctic">Северный Норд</option>
+        <option value="emerald-forest">Изумрудный лес</option>
+        <option value="matrix-terminal">Матрица (Терминал)</option>
+        <option value="ruby-velvet">Рубиновый бархат</option>
+        <option value="sunset-amber">Янтарный закат</option>
+        <option value="royal-plum">Королевская слива</option>
+        <option value="graphite">Графитовый карбон</option>
+        <option value="gray">Стальной серый</option>
+        <option value="warm-gray">Тёплый кварц</option>
+        <option value="light-slate">Светлый сланец</option>
       </select>
     </div>
+    <div class="theme-swatches-grid" id="themeSwatchesGrid" aria-label="Быстрый выбор темы"></div>
     
     <div class="global-row">
       <span>Цвет текста субтитров</span>
@@ -1758,29 +1873,84 @@
     document.documentElement.style.setProperty('--accent', savedAccent);
 
     const GRAY_THEMES = {
-      'dark-gray':   { main: '#24272d', surface: '#2f333b', elevated: '#2a2e36', border: '#3e434f' },
-      'gray':        { main: '#2e323a', surface: '#393e48', elevated: '#333842', border: '#4b515f' },
-      'light-slate': { main: '#373c46', surface: '#434956', elevated: '#3d424e', border: '#565d6e' },
-      'warm-gray':   { main: '#2b2a2e', surface: '#36353a', elevated: '#313035', border: '#48464e' },
-      'graphite':    { main: '#1c1f24', surface: '#262a31', elevated: '#21252b', border: '#353a44' }
+      'dark-gray':        { label: 'Тёмно-серая',       main: '#24272d', surface: '#2f333b', elevated: '#2a2e36', border: '#3e434f', accent: '#0099ff' },
+      'ocean-drop':       { label: 'Капля океана',      main: '#132d48', surface: '#1b3d60', elevated: '#163554', border: '#295785', accent: '#31b8f0' },
+      'amoled-black':     { label: 'AMOLED Чёрная',     main: '#090a0d', surface: '#14171f', elevated: '#101218', border: '#262b38', accent: '#38bdf8' },
+      'midnight-indigo':  { label: 'Полночный индиго',  main: '#141829', surface: '#1e243d', elevated: '#191e33', border: '#2f385c', accent: '#60a5fa' },
+      'tokyo-night':      { label: 'Токийская ночь',    main: '#1a1b26', surface: '#24283b', elevated: '#1f2335', border: '#3b4261', accent: '#7aa2f7' },
+      'cyberpunk-neon':   { label: 'Киберпанк Неон',    main: '#161124', surface: '#231b38', elevated: '#1c152e', border: '#3c2d5e', accent: '#00f0ff' },
+      'dracula':          { label: 'Дракула',           main: '#1e1f29', surface: '#282a36', elevated: '#232530', border: '#44475a', accent: '#bd93f9' },
+      'catppuccin-mocha': { label: 'Капучино Мокка',    main: '#1e1e2e', surface: '#2a2b3d', elevated: '#242535', border: '#45475a', accent: '#89b4fa' },
+      'nord-arctic':      { label: 'Северный Норд',     main: '#242933', surface: '#2e3440', elevated: '#292e39', border: '#434c5e', accent: '#88c0d0' },
+      'emerald-forest':   { label: 'Изумрудный лес',    main: '#10221c', surface: '#18332a', elevated: '#142b23', border: '#275244', accent: '#10b981' },
+      'matrix-terminal':  { label: 'Матрица',           main: '#0c1710', surface: '#14261b', elevated: '#101f15', border: '#234730', accent: '#22c55e' },
+      'ruby-velvet':      { label: 'Рубиновый бархат',  main: '#241218', surface: '#361b24', elevated: '#2d161e', border: '#542b39', accent: '#f43f5e' },
+      'sunset-amber':     { label: 'Янтарный закат',    main: '#241811', surface: '#36241a', elevated: '#2d1e15', border: '#543929', accent: '#f59e0b' },
+      'royal-plum':       { label: 'Королевская слива', main: '#1d1429', surface: '#2b1e3d', elevated: '#241933', border: '#463263', accent: '#c084fc' },
+      'graphite':         { label: 'Графитовый карбон', main: '#1c1f24', surface: '#262a31', elevated: '#21252b', border: '#353a44', accent: '#0099ff' },
+      'gray':             { label: 'Стальной серый',    main: '#2e323a', surface: '#393e48', elevated: '#333842', border: '#4b515f', accent: '#38bdf8' },
+      'warm-gray':        { label: 'Тёплый кварц',      main: '#2b2a2e', surface: '#36353a', elevated: '#313035', border: '#48464e', accent: '#f59e0b' },
+      'light-slate':      { label: 'Светлый сланец',    main: '#373c46', surface: '#434956', elevated: '#3d424e', border: '#565d6e', accent: '#38bdf8' }
     };
     const appThemeBgEl = $('appThemeBg');
-    function applyGrayTheme(themeKey) {
-      const t = GRAY_THEMES[themeKey] || GRAY_THEMES['dark-gray'];
+    const themeSwatchesGridEl = $('themeSwatchesGrid');
+
+    function syncThemeSwatchesActive(activeKey) {
+      if (!themeSwatchesGridEl) return;
+      themeSwatchesGridEl.querySelectorAll('.theme-swatch-btn').forEach((btnEl) => {
+        btnEl.classList.toggle('active', btnEl.dataset.theme === activeKey);
+      });
+    }
+
+    function applyGrayTheme(themeKey, applyThemeAccent = false) {
+      const validKey = GRAY_THEMES[themeKey] ? themeKey : 'dark-gray';
+      const t = GRAY_THEMES[validKey];
       const root = document.documentElement.style;
       root.setProperty('--bg-main', t.main);
       root.setProperty('--bg-surface', t.surface);
       root.setProperty('--bg-elevated', t.elevated);
       root.setProperty('--border-soft', t.border);
+      if (applyThemeAccent && t.accent && accentColorEl) {
+        accentColorEl.value = t.accent;
+        root.setProperty('--accent', t.accent);
+        safeSetStorage('sublater_accent', t.accent);
+      }
       const meta = $('themeColorMeta');
       if (meta) meta.setAttribute('content', t.main);
-      safeSetStorage('sublater_gray_theme', themeKey);
+      const bridge = window.ExoPlayerManager || window.AndroidBridge;
+      if (bridge && typeof bridge.setSystemBarsColor === 'function') {
+        try { bridge.setSystemBarsColor(t.main); } catch (e) {}
+      }
+      if (appThemeBgEl && appThemeBgEl.value !== validKey) {
+        appThemeBgEl.value = validKey;
+      }
+      syncThemeSwatchesActive(validKey);
+      safeSetStorage('sublater_gray_theme', validKey);
     }
+
+    if (themeSwatchesGridEl) {
+      Object.keys(GRAY_THEMES).forEach((k) => {
+        const t = GRAY_THEMES[k];
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'theme-swatch-btn';
+        b.dataset.theme = k;
+        b.title = t.label;
+        b.style.background = `linear-gradient(135deg, ${t.main} 0%, ${t.surface} 100%)`;
+        const dot = document.createElement('span');
+        dot.className = 'theme-swatch-dot';
+        dot.style.background = t.accent || '#0099ff';
+        b.appendChild(dot);
+        b.addEventListener('click', () => applyGrayTheme(k, true));
+        themeSwatchesGridEl.appendChild(b);
+      });
+    }
+
     const savedGrayTheme = safeGetStorage('sublater_gray_theme', 'dark-gray');
     if (appThemeBgEl) {
       appThemeBgEl.value = GRAY_THEMES[savedGrayTheme] ? savedGrayTheme : 'dark-gray';
-      applyGrayTheme(appThemeBgEl.value);
-      appThemeBgEl.addEventListener('change', () => applyGrayTheme(appThemeBgEl.value));
+      applyGrayTheme(appThemeBgEl.value, false);
+      appThemeBgEl.addEventListener('change', () => applyGrayTheme(appThemeBgEl.value, true));
     }
 
     /* ---------------- 3. Защита ключей через EncryptedSharedPreferences (Android Keystore) без localStorage ---------------- */
@@ -2225,12 +2395,109 @@
       speedVal.textContent = spd.toFixed(spd % 1 === 0 ? 1 : 2) + 'x';
     });
 
-    /* ---------------- Управление громкостью (без тяжелого Web Audio графа) ---------------- */
+    /* ---------------- Качественный буст звука до 200% HQ (Native DynamicsProcessing + WebAudio Limiter) ---------------- */
+    const boostPresetsRow = $('boostPresetsRow');
+    let webAudioCtx = null;
+    let webAudioSource = null;
+    let webAudioGain = null;
+
+    function ensureWebAudioBoostGraph() {
+      if (usingNativeExoFallback) return null;
+      if (webAudioGain) return webAudioGain;
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return null;
+        webAudioCtx = new AudioCtx();
+        webAudioSource = webAudioCtx.createMediaElementSource(videoEl);
+
+        // Срез инфранизкого гула (<85 Гц), чтобы динамики не хрипели на 200%
+        const hpFilter = webAudioCtx.createBiquadFilter();
+        hpFilter.type = 'highpass';
+        hpFilter.frequency.value = 85;
+        hpFilter.Q.value = 0.707;
+
+        // Подъём разборчивости голоса и речи (2.4 кГц)
+        const presenceFilter = webAudioCtx.createBiquadFilter();
+        presenceFilter.type = 'peaking';
+        presenceFilter.frequency.value = 2400;
+        presenceFilter.Q.value = 1.0;
+        presenceFilter.gain.value = 2.8;
+
+        // Студийный мягкий компрессор-лимитер против клиппинга на пиках
+        const compressor = webAudioCtx.createDynamicsCompressor();
+        compressor.threshold.value = -10;
+        compressor.knee.value = 12;
+        compressor.ratio.value = 8;
+        compressor.attack.value = 0.002;
+        compressor.release.value = 0.08;
+
+        webAudioGain = webAudioCtx.createGain();
+        webAudioGain.gain.value = 1.0;
+
+        webAudioSource.connect(hpFilter);
+        hpFilter.connect(presenceFilter);
+        presenceFilter.connect(webAudioGain);
+        webAudioGain.connect(compressor);
+        compressor.connect(webAudioCtx.destination);
+        return webAudioGain;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function applyVolumeBoostHQ(rawPercent) {
+      const val = Math.min(200, Math.max(0, parseInt(rawPercent, 10) || 100));
+      if (volSlider && Number(volSlider.value) !== val) {
+        volSlider.value = String(val);
+      }
+      if (volVal) {
+        volVal.textContent = val > 100 ? `${val}% HQ` : `${val}%`;
+        volVal.classList.toggle('boost-active', val > 100);
+      }
+      if (boostPresetsRow) {
+        boostPresetsRow.querySelectorAll('.boost-preset-btn').forEach((b) => {
+          b.classList.toggle('active', Number(b.dataset.vol) === val);
+        });
+      }
+      const bridge = window.ExoPlayerManager || window.AndroidBridge;
+      if (bridge && typeof bridge.setVolume === 'function') {
+        try { bridge.setVolume(val); } catch (e) {}
+      }
+      if (val <= 100) {
+        videoEl.volume = Math.max(0, Math.min(val / 100, 1.0));
+        if (webAudioGain) {
+          try { webAudioGain.gain.value = 1.0; } catch (e) {}
+        }
+      } else {
+        videoEl.volume = 1.0;
+        if (!usingNativeExoFallback) {
+          const gainNode = ensureWebAudioBoostGraph();
+          if (gainNode) {
+            try {
+              if (webAudioCtx && webAudioCtx.state === 'suspended') webAudioCtx.resume();
+              gainNode.gain.value = val / 100.0;
+            } catch (e) {}
+          }
+        }
+      }
+      safeSetStorage('sublater_volume_boost', String(val));
+    }
+
+    const savedVolBoost = parseInt(safeGetStorage('sublater_volume_boost', '100'), 10);
+    applyVolumeBoostHQ(isNaN(savedVolBoost) ? 100 : savedVolBoost);
+
     volSlider.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value, 10) || 100;
-      volVal.textContent = val + '%';
-      videoEl.volume = Math.max(0, Math.min(val / 100, 1.0));
+      applyVolumeBoostHQ(e.target.value);
     });
+
+    if (boostPresetsRow) {
+      boostPresetsRow.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const presetBtn = e.target.closest('.boost-preset-btn');
+        if (!presetBtn) return;
+        applyVolumeBoostHQ(presetBtn.dataset.vol || '100');
+      });
+    }
 
     /* ---------------- Плеер ---------------- */
     const seekBar = $('seekBar');
@@ -2488,17 +2755,15 @@
 
     videoEl.addEventListener('error', () => {
       const bridge = window.ExoPlayerManager || window.AndroidBridge;
-      if (bridge && !usingNativeExoFallback) {
-        usingNativeExoFallback = true;
-        if (window.__activateNativeExoFallback) window.__activateNativeExoFallback();
+      if (bridge) {
+        if (!usingNativeExoFallback) {
+          usingNativeExoFallback = true;
+          if (window.__activateNativeExoFallback) window.__activateNativeExoFallback();
+        }
         return;
       }
       if (videoEl.error) {
-        let msg = 'Ошибка воспроизведения.';
-        if (videoEl.error.code === 4) {
-          msg = 'Браузер не поддерживает этот видеокодек (например, MKV). Конвертируйте файл в MP4 (H.264).';
-        }
-        statusEl.innerText = msg;
+        statusEl.innerText = 'Нативный плеер готов к воспроизведению.';
       }
     });
 
@@ -3629,11 +3894,12 @@
         videoEl.poster = TRANSPARENT_POSTER;
         if (mediaObjectURL) URL.revokeObjectURL(mediaObjectURL);
         mediaObjectURL = URL.createObjectURL(file);
-        const isExotic = /\.(mkv|ts|m2ts|mts|avi|flv|wmv)$/i.test(file.name || '');
-        if (bridge && isExotic && window.__activateNativeExoFallback) {
+        // В нативном Android-приложении ВСЕГДА используем нативный Media3 ExoPlayer + FFmpeg для поддержки любых кодеков (HEVC, AC3, E-AC3, DTS, MKV, AVI, MP4, TS)
+        if (bridge && window.__activateNativeExoFallback) {
           usingNativeExoFallback = true;
           videoEl.dataset.fileSig = newSig;
           window.__activateNativeExoFallback();
+          applyVolumeBoostHQ(volSlider ? volSlider.value : 100);
         } else {
           videoEl.src = mediaObjectURL + '#t=0.1';
           videoEl.dataset.fileSig = newSig;

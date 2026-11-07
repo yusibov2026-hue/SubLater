@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var exoPlayerManager: ExoPlayerManager
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var webViewRef: WebView? = null
+    private var currentThemeBgColor: Int = Color.parseColor("#24272D")
 
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -165,6 +166,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    fun applySystemBarsColor(hexColor: String) {
+        runOnUiThread {
+            try {
+                val parsed = Color.parseColor(hexColor.trim())
+                currentThemeBgColor = parsed
+                if (::exoPlayerManager.isInitialized) {
+                    exoPlayerManager.themeBgColorState.intValue = parsed
+                }
+                if (!::exoPlayerManager.isInitialized || !exoPlayerManager.videoBoundsState.value.isFullscreen) {
+                    window.statusBarColor = parsed
+                    window.navigationBarColor = parsed
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     fun applyImmersiveMode(fullscreen: Boolean) {
         runOnUiThread {
             if (fullscreen) {
@@ -207,9 +225,8 @@ class MainActivity : ComponentActivity() {
                         layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
                     }
                 }
-                val grayBg = Color.parseColor("#24272D")
-                window.statusBarColor = grayBg
-                window.navigationBarColor = grayBg
+                window.statusBarColor = currentThemeBgColor
+                window.navigationBarColor = currentThemeBgColor
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     window.insetsController?.show(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
@@ -234,9 +251,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val grayBg = Color.parseColor("#24272D")
-        window.statusBarColor = grayBg
-        window.navigationBarColor = grayBg
+        window.statusBarColor = currentThemeBgColor
+        window.navigationBarColor = currentThemeBgColor
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -376,6 +392,7 @@ fun HybridVideoApp(
     val resizeMode by exoPlayerManager.resizeModeState
     val bounds by exoPlayerManager.videoBoundsState
     val zoomScale by exoPlayerManager.videoZoomState
+    val themeBgColor by exoPlayerManager.themeBgColorState
 
     DisposableEffect(Unit) {
         onDispose {
@@ -386,7 +403,7 @@ fun HybridVideoApp(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (bounds.isFullscreen) ComposeColor(0xFF000000) else ComposeColor(0xFF24272D))
+            .background(if (bounds.isFullscreen) ComposeColor(0xFF000000) else ComposeColor(themeBgColor))
     ) {
         val maxW = maxWidth
         val maxH = maxHeight
