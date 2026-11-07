@@ -2883,34 +2883,39 @@
 
     async function translateSegments(cueArr, targetLang, statusElRef, signal) {
       const batchSize = 40;
+      const concurrency = 4;
       const primaryModel = llmModelEl.value || 'openai/gpt-oss-120b';
       const fallbackModel = 'openai/gpt-oss-20b';
-      let failedLines = 0;
+      const total = cueArr.length;
+      const originalTexts = cueArr.map(c => c.text);
+      const batchStarts = [];
+      for (let i = 0; i < total; i += batchSize) batchStarts.push(i);
 
-      for (let i = 0; i < cueArr.length; i += batchSize) {
+      let failedLines = 0;
+      let completedBatches = 0;
+      let nextBatch = 0;
+
+      const translateOne = async (i) => {
         if (signal && signal.aborted) throw new Error('Отменено пользователем.');
         const batch = cueArr.slice(i, i + batchSize);
-        const pct = 55 + Math.round((i / cueArr.length) * 42);
-        setProgress(pct);
-        statusElRef.innerText = `Перевод: строки ${i + 1}–${Math.min(i + batchSize, cueArr.length)} из ${cueArr.length}...`;
-
-        const prevContext = i >= 2 ? cueArr.slice(i - 2, i).map(c => c.text) : [];
-        const payload = batch.map((c, idx) => ({ id: idx, text: c.text }));
+        const rangeEnd = Math.min(i + batchSize, total);
+        const prevContext = i >= 2 ? originalTexts.slice(i - 2, i) : [];
+        const payload = batch.map((c, idx) => ({ id: idx, text: originalTexts[i + idx] }));
 
         try {
           let res = await requestTranslationBatch(payload, prevContext, targetLang, primaryModel, signal);
 
           if (!res.ok && primaryModel !== fallbackModel) {
-            statusElRef.innerText = `Резервный перевод через ${fallbackModel}: строки ${i + 1}–${Math.min(i + batchSize, cueArr.length)}...`;
+            statusElRef.innerText = `Резервный перевод через ${fallbackModel}: строки ${i + 1}–${rangeEnd}...`;
             res = await requestTranslationBatch(payload, prevContext, targetLang, fallbackModel, signal);
           }
 
-          if (!res.ok) { 
+          if (!res.ok) {
             const errData = await res.json().catch(() => ({}));
             const errMsg = errData.error?.message || `HTTP ${res.status}`;
             statusElRef.innerText = `⚠️ Ошибка перевода Groq: ${errMsg}`;
-            failedLines += batch.length; 
-            continue; 
+            failedLines += batch.length;
+            return;
           }
 
           const data = await res.json();
@@ -2937,8 +2942,27 @@
           if (e && e.message === 'Отменено пользователем.') throw e;
           failedLines += batch.length;
           statusElRef.innerText = `⚠️ Ошибка разбора ответа: ${e.message}`;
+        } finally {
+          completedBatches++;
+          const done = Math.min(completedBatches * batchSize, total);
+          setProgress(55 + Math.round((completedBatches / Math.max(1, batchStarts.length)) * 42));
+          if (statusElRef && !(signal && signal.aborted)) {
+            statusElRef.innerText = `Перевод: ${done} из ${total} строк (${concurrency} потока)...`;
+          }
         }
-      }
+      };
+
+      const worker = async () => {
+        while (true) {
+          const batchIdx = nextBatch++;
+          if (batchIdx >= batchStarts.length) return;
+          await translateOne(batchStarts[batchIdx]);
+        }
+      };
+
+      await Promise.all(
+        Array.from({ length: Math.min(concurrency, batchStarts.length) }, worker)
+      );
 
       for (const c of cueArr) {
         if (c._translated) distributeWords(c);
@@ -3319,7 +3343,7 @@
             } else {
             const channelData = audioBuffer.getChannelData(0);
             const sampleRate = audioBuffer.sampleRate;
-            const chunkDuration = 600;
+            const chunkDuration = 300;
             const overlap = 10;
             const advance = chunkDuration - overlap;
             const totalDuration = channelData.length / sampleRate;

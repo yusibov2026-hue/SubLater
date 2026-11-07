@@ -253,7 +253,7 @@ class ExoPlayerManager(
         /** Строго 16000 Гц (16 кГц) — частота, на которой обучен Whisper для максимальной точности */
         const val WHISPER_SAMPLE_RATE_HZ = 16000
         const val WHISPER_CHANNELS_MONO = 1
-        const val CHUNK_DURATION_SEC = 600               // 10 минут (WAV 16kHz Mono ~19 МБ)
+        const val CHUNK_DURATION_SEC = 300               // 5 минут (WAV 16kHz Mono ~9.6 МБ) — быстрее старт распознавания
         const val CHUNK_OVERLAP_SEC = 6                  // 6 секунд перекрытия для сохранения слов на стыках
         const val PARALLEL_GROQ_CONCURRENCY = 4          // 4 параллельных потока отправки в Groq
         const val GROQ_THROTTLED_CONCURRENCY = 2         // При 429 временно опускаемся до 2 потоков
