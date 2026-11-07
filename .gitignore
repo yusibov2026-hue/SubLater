@@ -1,0 +1,17 @@
+# Hefesto: lo que no debe subir a GitHub
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+.agent/
+.papelera/
+build/
+.gradle/
+local.properties
+*.apk
+*.aab
+*.keystore
+*.jks
+.idea/
+*.iml
+captures/
