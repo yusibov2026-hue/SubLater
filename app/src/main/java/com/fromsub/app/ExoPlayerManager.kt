@@ -525,6 +525,79 @@ class ExoPlayerManager(
         }
     }
 
+    @JavascriptInterface
+    fun shareSubtitleFile(fileName: String, content: String, format: String): Boolean {
+        val safeName = fileName.replace(Regex("[^a-zA-Z0-9._\\-а-яА-ЯёЁ ]"), "_").ifBlank {
+            "subtitles.${format.ifBlank { "vtt" }}"
+        }
+        val mimeType = when (format.lowercase()) {
+            "vtt" -> "text/vtt"
+            "srt" -> "application/x-subrip"
+            "ass" -> "text/x-ssa"
+            else -> "text/plain"
+        }
+
+        return try {
+            val cacheFolder = File(context.cacheDir, "shared_subs")
+            if (!cacheFolder.exists()) cacheFolder.mkdirs()
+            val shareFile = File(cacheFolder, safeName)
+            FileOutputStream(shareFile).use { out ->
+                out.write(content.toByteArray(Charsets.UTF_8))
+                out.flush()
+            }
+
+            val uri = try {
+                androidx.core.content.FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    shareFile
+                )
+            } catch (_: Exception) {
+                null
+            }
+
+            mainHandler.post {
+                try {
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = mimeType
+                        if (uri != null) {
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        putExtra(Intent.EXTRA_TEXT, content)
+                        putExtra(Intent.EXTRA_SUBJECT, safeName)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    val chooser = Intent.createChooser(shareIntent, "Поделиться субтитрами").apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(chooser)
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Не удалось открыть меню отправки: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+            true
+        } catch (e: Exception) {
+            mainHandler.post {
+                try {
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, content)
+                        putExtra(Intent.EXTRA_SUBJECT, safeName)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    val chooser = Intent.createChooser(shareIntent, "Поделиться субтитрами").apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(chooser)
+                } catch (err: Exception) {
+                    Toast.makeText(context, "Ошибка отправки: ${err.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+            false
+        }
+    }
+
     /* ==================== СТАБИЛЬНОЕ СИНХРОННОЕ ИЗВЛЕЧЕНИЕ 16кГц MONO WAV ПО 10 МИНУТ (БЕЗ DEADLOCK И БЕЗ VAD) ==================== */
 
     @JavascriptInterface

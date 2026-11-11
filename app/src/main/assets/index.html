@@ -338,7 +338,7 @@
       box-shadow: none; transition: width 0.25s ease;
     }
 
-    /* Блок кнопок: «Ещё раз» + «Скачать» (с выпадающим меню форматов) и «Текст» внизу */
+    /* Блок кнопок: «Ещё раз», «Скачать» (внутри — форматы и «Поделиться») и «Текст» */
     .action-row {
       display: none; width: 92%; margin: 10px auto; gap: 10px; flex-wrap: wrap; position: relative;
     }
@@ -465,6 +465,12 @@
       font-weight: 700;
       color: var(--accent);
       margin-left: auto;
+    }
+    .dl-sep {
+      height: 1px;
+      background: #333333;
+      margin: 4px 8px;
+      flex: 0 0 auto;
     }
 
     #openBtn {
@@ -1204,6 +1210,10 @@
         <button type="button" class="dl-fmt-item" data-fmt="ass"><span>Караоке</span><span class="fmt-ext">.ASS</span></button>
         <button type="button" class="dl-fmt-item" data-fmt="srt"><span>Универсальный</span><span class="fmt-ext">.SRT</span></button>
         <button type="button" class="dl-fmt-item" data-fmt="txt"><span>Только текст</span><span class="fmt-ext">.TXT</span></button>
+        <div class="dl-sep"></div>
+        <button type="button" class="dl-fmt-item" id="shareFmtItem">
+          <span>Поделиться</span><span class="fmt-ext" id="shareFmtExt">.VTT</span>
+        </button>
       </div>
     </div>
     <select id="exportFormat" style="display:none;">
@@ -1421,14 +1431,12 @@
     </div>
 
     <div class="global-row" style="margin-top: 10px; border-top: 1px solid #333333; padding-top: 14px;">
-      <span>API Ключ Groq №1</span>
+      <span>API Ключи Groq</span>
+      <span id="keysCountBadge" style="font-size: 11.5px; color: var(--accent); font-weight: 700;">0 ключей</span>
     </div>
-    <input type="password" id="apiKey" autocomplete="off" spellcheck="false" placeholder="Введите первый ключ Groq" style="margin:0 0 6px 0;" />
-
-    <div class="global-row" style="margin-top: 6px;">
-      <span>API Ключ Groq №2</span>
-    </div>
-    <input type="password" id="apiKey2" autocomplete="off" spellcheck="false" placeholder="Второй ключ Groq (необязательно)" style="margin:0 0 6px 0;" />
+    <textarea id="apiKeysList" rows="3" autocomplete="off" spellcheck="false" placeholder="Вставьте один или несколько ключей Groq (по одному на строку или через запятую — gsk_...)" style="margin:2px 0 6px 0; width:100%; border-radius:12px; border:1px solid var(--border-soft); background:var(--bg-surface); color:#fff; font-family:monospace; font-size:12px; padding:10px; resize:vertical;"></textarea>
+    <input type="hidden" id="apiKey" />
+    <input type="hidden" id="apiKey2" />
 
     <div class="global-row" style="margin-top: 6px; border-top: 1px solid #333333; padding-top: 12px;">
       <span>API Ключ Gemini</span>
@@ -1468,7 +1476,7 @@
       </label>
     </div>
     <div class="global-row">
-      <span>Быстрое сжатие аудио (&gt;10 МБ)</span>
+      <span>Быстрое сжатие аудио (16 кГц)</span>
       <label class="switch">
         <input type="checkbox" id="fastAudioCompress" checked>
         <span class="slider"></span>
@@ -1572,6 +1580,8 @@
     }
 
     /* ---------------- 3. Защита ключей через EncryptedSharedPreferences (Android Keystore) без localStorage ---------------- */
+    const apiKeysListEl = $('apiKeysList');
+    const keysCountBadge = $('keysCountBadge');
     const keyInput = $('apiKey');
     const keyInput2 = $('apiKey2');
     const geminiKeyInput = $('geminiApiKey');
@@ -1579,52 +1589,56 @@
     const aiActiveModelBadge = $('aiActiveModelBadge');
 
     const androidBridge = window.AndroidBridge || window.ExoPlayerManager || null;
-    let sessionGroqKey = '';
-    let sessionGroqKey2 = '';
+    let sessionGroqKeys = '';
     let sessionGeminiKey = '';
 
-    function saveGroqApiKeyToKeystore(key) {
-      const clean = String(key || '').trim();
-      sessionGroqKey = clean;
-      if (androidBridge && typeof androidBridge.saveApiKey === 'function') {
-        try { androidBridge.saveApiKey(clean); } catch (e) {}
-      } else if (androidBridge && typeof androidBridge.saveSecureKey === 'function') {
-        try { androidBridge.saveSecureKey('groq_api_key', clean); } catch (e) {}
+    function syncKeysBadge(keys) {
+      if (!keysCountBadge) return;
+      const count = keys.length;
+      if (count === 0) {
+        keysCountBadge.textContent = '0 ключей';
+        keysCountBadge.style.color = '#ff6b6b';
+      } else {
+        const word = count === 1 ? 'ключ' : (count >= 2 && count <= 4 ? 'ключа' : 'ключей');
+        keysCountBadge.textContent = `${count} ${word}`;
+        keysCountBadge.style.color = 'var(--accent)';
       }
     }
 
-    function getGroqApiKeyFromKeystore() {
-      if (androidBridge && typeof androidBridge.getApiKey === 'function') {
-        try {
-          const k = String(androidBridge.getApiKey() || '').trim();
-          if (k) return k;
-        } catch (e) {}
-      }
-      if (androidBridge && typeof androidBridge.getSecureKey === 'function') {
-        try {
-          const k = String(androidBridge.getSecureKey('groq_api_key') || '').trim();
-          if (k) return k;
-        } catch (e) {}
-      }
-      return sessionGroqKey;
-    }
-
-    function saveGroqApiKey2ToKeystore(key) {
-      const clean = String(key || '').trim();
-      sessionGroqKey2 = clean;
+    function saveGroqApiKeys(rawText) {
+      const clean = String(rawText || '').trim();
+      const keys = [];
+      clean.split(/[\s,;]+/).forEach(k => {
+        const item = k.trim();
+        if (item && !keys.includes(item)) keys.push(item);
+      });
+      const joined = keys.join('\n');
+      sessionGroqKeys = joined;
+      syncKeysBadge(keys);
+      if (keyInput) keyInput.value = keys[0] || '';
+      if (keyInput2) keyInput2.value = keys[1] || '';
       if (androidBridge && typeof androidBridge.saveSecureKey === 'function') {
-        try { androidBridge.saveSecureKey('groq_api_key_2', clean); } catch (e) {}
+        try {
+          androidBridge.saveSecureKey('groq_api_keys', joined);
+          if (keys[0]) androidBridge.saveSecureKey('groq_api_key', keys[0]);
+          if (keys[1]) androidBridge.saveSecureKey('groq_api_key_2', keys[1]);
+        } catch (e) {}
       }
     }
 
-    function getGroqApiKey2FromKeystore() {
+    function getGroqApiKeysFromKeystore() {
+      let stored = '';
       if (androidBridge && typeof androidBridge.getSecureKey === 'function') {
         try {
-          const k = String(androidBridge.getSecureKey('groq_api_key_2') || '').trim();
-          if (k) return k;
+          stored = String(androidBridge.getSecureKey('groq_api_keys') || '').trim();
+          if (!stored) {
+            const k1 = String(androidBridge.getSecureKey('groq_api_key') || '').trim();
+            const k2 = String(androidBridge.getSecureKey('groq_api_key_2') || '').trim();
+            stored = [k1, k2].filter(Boolean).join('\n');
+          }
         } catch (e) {}
       }
-      return sessionGroqKey2;
+      return stored || sessionGroqKeys || '';
     }
 
     function saveGeminiKeyToKeystore(key) {
@@ -1654,23 +1668,13 @@
     }
 
     // При старте приложения подтягиваем ключи напрямую из EncryptedSharedPreferences (Android Keystore)
-    keyInput.value = getGroqApiKeyFromKeystore();
-    keyInput2.value = getGroqApiKey2FromKeystore();
+    const initialGroqKeys = getGroqApiKeysFromKeystore();
+    if (apiKeysListEl) {
+      apiKeysListEl.value = initialGroqKeys;
+      apiKeysListEl.addEventListener('input', () => saveGroqApiKeys(apiKeysListEl.value));
+      apiKeysListEl.addEventListener('change', () => saveGroqApiKeys(apiKeysListEl.value));
+    }
     geminiKeyInput.value = getGeminiKeyFromKeystore();
-
-    keyInput.addEventListener('input', () => {
-      saveGroqApiKeyToKeystore(keyInput.value);
-    });
-    keyInput.addEventListener('change', () => {
-      saveGroqApiKeyToKeystore(keyInput.value);
-    });
-
-    keyInput2.addEventListener('input', () => {
-      saveGroqApiKey2ToKeystore(keyInput2.value);
-    });
-    keyInput2.addEventListener('change', () => {
-      saveGroqApiKey2ToKeystore(keyInput2.value);
-    });
 
     geminiKeyInput.addEventListener('input', () => {
       saveGeminiKeyToKeystore(geminiKeyInput.value);
@@ -1692,17 +1696,17 @@
     let activeKeyIdx = 0;
     let keyCounter = 0;
     function getApiKeys() {
-      const raw = [
-        keyInput.value.trim() || getGroqApiKeyFromKeystore(),
-        keyInput2.value.trim() || getGroqApiKey2FromKeystore()
-      ].join(',');
+      const raw = (apiKeysListEl && apiKeysListEl.value.trim()) || getGroqApiKeysFromKeystore();
       const keys = [];
       raw.split(/[\s,;]+/).forEach(k => {
         const clean = k.trim();
         if (clean && !keys.includes(clean)) keys.push(clean);
       });
+      syncKeysBadge(keys);
       return keys;
     }
+    syncKeysBadge(getApiKeys());
+
     function getCurrentKey() {
       const keys = getApiKeys();
       if (!keys.length) return '';
@@ -1722,6 +1726,58 @@
       if (keys.length <= 1) return false;
       activeKeyIdx = (activeKeyIdx + 1) % keys.length;
       return true;
+    }
+
+    /* ---------------- Локальная история проектов (IndexedDB) ---------------- */
+    const DB_NAME = 'SubLaterHistory';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'projects';
+
+    function openHistoryDb() {
+      return new Promise((resolve) => {
+        if (!window.indexedDB) return resolve(null);
+        try {
+          const req = indexedDB.open(DB_NAME, DB_VERSION);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+              db.createObjectStore(STORE_NAME, { keyPath: 'fileSig' });
+            }
+          };
+          req.onsuccess = (e) => resolve(e.target.result);
+          req.onerror = () => resolve(null);
+        } catch (err) {
+          resolve(null);
+        }
+      });
+    }
+
+    async function saveProjectToHistory(projectData) {
+      if (!projectData || !projectData.fileSig) return;
+      try {
+        const db = await openHistoryDb();
+        if (!db) return;
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.put(projectData);
+      } catch (e) {}
+    }
+
+    async function getProjectFromHistory(fileSig) {
+      if (!fileSig) return null;
+      try {
+        const db = await openHistoryDb();
+        if (!db) return null;
+        return new Promise((resolve) => {
+          const tx = db.transaction(STORE_NAME, 'readonly');
+          const store = tx.objectStore(STORE_NAME);
+          const req = store.get(fileSig);
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => resolve(null);
+        });
+      } catch (e) {
+        return null;
+      }
     }
 
     const LANG_CODES = { Russian: 'ru', English: 'en', Turkish: 'tr', Azerbaijani: 'az' };
@@ -2331,13 +2387,41 @@
       }
     }
 
-    function updateFileName() {
+    async function updateFileName() {
       const f = $('mediaFile').files[0];
       $('fileName').innerText = f ? f.name : 'Не выбран';
       if (f) {
         currentFileName = f.name.replace(/\.[^/.]+$/, '');
         applySettings();
         setupPlayer(f);
+
+        // Проверяем локальную историю IndexedDB
+        const sig = getFileSignature(f);
+        try {
+          const saved = await getProjectFromHistory(sig);
+          if (saved && saved.rawSegments && saved.rawSegments.length) {
+            cachedWhisper = {
+              fileSig: saved.fileSig,
+              model: saved.model || $('model').value,
+              rawSegments: saved.rawSegments,
+              rawWords: saved.rawWords || [],
+              translations: saved.translations || {},
+              activeLang: saved.activeLang || null,
+              aiSummary: saved.aiSummary || null
+            };
+            const tLang = $('translateLang').value;
+            if (!tLang) {
+              cues = buildCues(cachedWhisper.rawSegments, cachedWhisper.rawWords);
+            } else if (cachedWhisper.translations[tLang]) {
+              cues = cloneCues(cachedWhisper.translations[tLang]);
+            } else {
+              cues = buildCues(cachedWhisper.rawSegments, cachedWhisper.rawWords);
+            }
+            refreshAllExports();
+            actionRow.style.display = 'flex';
+            statusEl.innerText = '⚡ Субтитры мгновенно восстановлены из локальной истории!';
+          }
+        } catch (e) {}
       }
       aiSummaryBox.classList.remove('show');
       updateButtonLabel();
@@ -2411,10 +2495,13 @@
     const retryBtn = $('retryBtn');
     const dlWrap = $('dlWrap');
     const dlFormatMenu = $('dlFormatMenu');
+    const shareFmtItem = $('shareFmtItem');
+    const shareFmtExt = $('shareFmtExt');
 
     function updateExportPreview() {
       const fmt = exportFormat.value || 'vtt';
       vttPanel.innerText = exportData[fmt] || '';
+      if (shareFmtExt) shareFmtExt.textContent = '.' + fmt.toUpperCase();
     }
     exportFormat.addEventListener('change', updateExportPreview);
 
@@ -2441,14 +2528,53 @@
       setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
     }
 
-    /* Кнопка «Скачать» с выпадающим меню выбора формата (.VTT, .ASS, .SRT, .TXT) */
+    async function shareSubtitles(fmtOverride) {
+      const fmt = fmtOverride || exportFormat.value || 'vtt';
+      exportFormat.value = fmt;
+      updateExportPreview();
+      const content = exportData[fmt];
+      if (!content) {
+        statusEl.innerText = 'Сначала создайте субтитры!';
+        return;
+      }
+      const safeFileName = `${currentFileName}.${fmt}`;
+      const bridge = window.ExoPlayerManager || window.AndroidBridge;
+      if (bridge && typeof bridge.shareSubtitleFile === 'function') {
+        const ok = bridge.shareSubtitleFile(safeFileName, content, fmt);
+        if (ok) return;
+      }
+      if (navigator.share) {
+        try {
+          const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+          const file = new File([blob], safeFileName, { type: 'text/plain' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: safeFileName,
+              text: content
+            });
+            return;
+          }
+          await navigator.share({
+            title: safeFileName,
+            text: content
+          });
+          return;
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+        }
+      }
+      downloadSubtitle(fmt);
+    }
+
+    /* Кнопка «Скачать» с выпадающим меню: форматы (.VTT, .ASS, .SRT, .TXT) и «Поделиться» */
     dlBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const openNow = dlFormatMenu.classList.toggle('show');
       if (dlWrap) dlWrap.classList.toggle('open', openNow);
     });
 
-    dlFormatMenu.querySelectorAll('.dl-fmt-item').forEach((item) => {
+    dlFormatMenu.querySelectorAll('.dl-fmt-item[data-fmt]').forEach((item) => {
       item.addEventListener('click', (e) => {
         e.stopPropagation();
         const fmt = item.dataset.fmt || 'vtt';
@@ -2457,6 +2583,15 @@
         downloadSubtitle(fmt);
       });
     });
+
+    if (shareFmtItem) {
+      shareFmtItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dlFormatMenu.classList.remove('show');
+        if (dlWrap) dlWrap.classList.remove('open');
+        shareSubtitles(exportFormat.value || 'vtt');
+      });
+    }
 
     document.addEventListener('click', (e) => {
       if (dlFormatMenu.classList.contains('show') && !dlFormatMenu.contains(e.target) && !dlBtn.contains(e.target)) {
@@ -3034,11 +3169,60 @@
       return results;
     }
 
-    /* ---------------- Параллельный контекстный перевод батчами (до 6 батчей одновременно) ---------------- */
-    async function translateSegments(cueArr, targetLang, statusElRef, signal) {
-      const batchSize = 50;
+    /* ---------------- Прямой перевод батча реплик с авто-резервом модели ---------------- */
+    async function translateCuesDirect(batch, prevContext, targetLang, signal) {
+      if (!batch || !batch.length) return 0;
       const primaryModel = llmModelEl.value || 'openai/gpt-oss-120b';
       const fallbackModel = 'openai/gpt-oss-20b';
+      const payload = batch.map((c, idx) => ({ id: idx, text: c.text }));
+      let failed = 0;
+
+      try {
+        let res = await requestTranslationBatch(payload, prevContext, targetLang, primaryModel, signal);
+
+        if (!res.ok && primaryModel !== fallbackModel) {
+          res = await requestTranslationBatch(payload, prevContext, targetLang, fallbackModel, signal);
+        }
+
+        if (!res.ok) {
+          return batch.length;
+        }
+
+        const data = await res.json();
+        let content = String(data.choices?.[0]?.message?.content || '').trim();
+        content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+        const parsed = JSON.parse(content);
+
+        const received = new Set();
+        if (parsed.items && Array.isArray(parsed.items)) {
+          parsed.items.forEach((item) => {
+            const target = batch[item.id];
+            if (target && typeof item.text === 'string') {
+              received.add(item.id);
+              const txt = item.text.trim();
+              if (txt && txt !== target.text) {
+                target.text = txt;
+                target._translated = true;
+              }
+            }
+          });
+        }
+        failed = batch.length - received.size;
+      } catch (e) {
+        if (e && e.message === 'Отменено пользователем.') throw e;
+        failed = batch.length;
+      }
+
+      for (const c of batch) {
+        if (c._translated) distributeWords(c);
+        delete c._translated;
+      }
+      return failed;
+    }
+
+    /* ---------------- Параллельный контекстный перевод батчами (до 10 батчей одновременно) ---------------- */
+    async function translateSegments(cueArr, targetLang, statusElRef, signal) {
+      const batchSize = 50;
       let failedLines = 0;
 
       const batches = [];
@@ -3049,58 +3233,19 @@
       }
 
       let completedBatches = 0;
-      await runWithConcurrency(batches, 6, async (bObj) => {
+      await runWithConcurrency(batches, 10, async (bObj) => {
         if (signal && signal.aborted) throw new Error('Отменено пользователем.');
         const { startLine, batch, prevContext } = bObj;
-        const payload = batch.map((c, idx) => ({ id: idx, text: c.text }));
-
-        try {
-          let res = await requestTranslationBatch(payload, prevContext, targetLang, primaryModel, signal);
-
-          if (!res.ok && primaryModel !== fallbackModel) {
-            res = await requestTranslationBatch(payload, prevContext, targetLang, fallbackModel, signal);
-          }
-
-          if (!res.ok) {
-            failedLines += batch.length;
-            return;
-          }
-
-          const data = await res.json();
-          let content = String(data.choices[0].message.content || '').trim();
-          content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-          const parsed = JSON.parse(content);
-
-          const received = new Set();
-          if (parsed.items && Array.isArray(parsed.items)) {
-            parsed.items.forEach((item) => {
-              const target = batch[item.id];
-              if (target && typeof item.text === 'string') {
-                received.add(item.id);
-                const txt = item.text.trim();
-                if (txt && txt !== target.text) {
-                  target.text = txt;
-                  target._translated = true;
-                }
-              }
-            });
-          }
-          failedLines += batch.length - received.size;
-        } catch (e) {
-          if (e && e.message === 'Отменено пользователем.') throw e;
-          failedLines += batch.length;
-        } finally {
-          completedBatches++;
-          const pct = 58 + Math.round((completedBatches / Math.max(1, batches.length)) * 40);
-          setProgress(pct);
+        const failed = await translateCuesDirect(batch, prevContext, targetLang, signal);
+        failedLines += failed;
+        completedBatches++;
+        const pct = 58 + Math.round((completedBatches / Math.max(1, batches.length)) * 40);
+        setProgress(pct);
+        if (statusElRef) {
           statusElRef.innerText = `⚡ Параллельный перевод: батч ${completedBatches} из ${batches.length} (строки ${startLine + 1}–${Math.min(startLine + batchSize, cueArr.length)})...`;
         }
       });
 
-      for (const c of cueArr) {
-        if (c._translated) distributeWords(c);
-        delete c._translated;
-      }
       return failedLines;
     }
 
@@ -3347,8 +3492,8 @@
       }
     });
 
-    /* ---------------- Ускоренное стабильное извлечение аудио (WAV 12кГц, Int16Array) + нарезка по 3 мин + 6 параллельных потоков в Groq ---------------- */
-    const PARALLEL_CHUNK_CONCURRENCY = 6;
+    /* ---------------- Ультрабыстрое извлечение аудио (WAV 16кГц, Int16Array) + нарезка по 60 с + 10 параллельных потоков в Groq + пайплайн перевода ---------------- */
+    const PARALLEL_CHUNK_CONCURRENCY = 10;
 
     function encodeWAV(samples, sampleRate) {
       const numSamples = samples.length;
@@ -3429,20 +3574,23 @@
         try { bridge.startForegroundService('Генерация субтитров...'); } catch (e) {}
       }
 
+      let totalChunks = 0;
+      const pipelineTranslatedCuesMap = new Map();
+
       try {
         if (cachedWhisper.fileSig !== fileSig || cachedWhisper.model !== model || !cachedWhisper.rawSegments.length) {
           const allSegments = [];
           const allWords = [];
-          const shouldCompress = file.size > 24 * 1024 * 1024 || (fastAudioCompressEl.checked && file.size > 14 * 1024 * 1024);
+          const shouldCompress = file.size > 24 * 1024 * 1024 || fastAudioCompressEl.checked;
 
           let audioBuffer = null;
           if (shouldCompress) {
-            statusEl.innerText = '⚡ Быстрое извлечение и сжатие аудиодорожки...';
+            statusEl.innerText = '⚡ Быстрое извлечение и сжатие аудиодорожки (16 кГц)...';
             setProgress(10);
             try {
               const ab = await file.arrayBuffer();
-              // Частота 12000 Гц идеально передаёт человеческую речь для Whisper и уменьшает объём данных на 25%
-              const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 12000 });
+              // Частота 16000 Гц идеально передаёт человеческую речь и является нативной для Whisper
+              const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
               audioBuffer = await decodeCtx.decodeAudioData(ab);
               if (decodeCtx.close) decodeCtx.close();
             } catch (e) {
@@ -3461,10 +3609,10 @@
           } else {
             const channelData = audioBuffer.getChannelData(0);
             const sampleRate = audioBuffer.sampleRate;
-            // Чанки по 3 минуты (180 сек) с перекрытием 3 сек: каждый кусок весит ~4 МБ,
-            // поэтому первый результат приходит раньше, а 6 параллельных потоков быстрее обрабатывают длинные видео.
-            const chunkDuration = 180;
-            const overlap = 3;
+            // Чанки по 60 секунд с перекрытием 1 сек: каждый кусок весит ~1.9 МБ при 16 кГц,
+            // поэтому Groq отвечает мгновенно, а параллельные потоки насыщают все доступные ключи.
+            const chunkDuration = 60;
+            const overlap = 1;
             const advance = chunkDuration - overlap;
             const totalDuration = channelData.length / sampleRate;
 
@@ -3497,53 +3645,176 @@
               c++;
             }
 
-            const totalChunks = chunkTasks.length;
+            totalChunks = chunkTasks.length;
             let completedChunks = 0;
 
-            statusEl.innerText = `🚀 Параллельная отправка в Groq (${Math.min(PARALLEL_CHUNK_CONCURRENCY, totalChunks)} потока, частей: ${totalChunks})...`;
+            statusEl.innerText = `🚀 Сначала первый фрагмент, затем ${Math.min(PARALLEL_CHUNK_CONCURRENCY, Math.max(0, totalChunks - 1))} потоков (частей: ${totalChunks})...`;
             setProgress(16);
 
-            // Параллельная отправка по 6 чанков одновременно через пул Promise.all
-            const orderedResults = await runWithConcurrency(
-              chunkTasks,
-              PARALLEL_CHUNK_CONCURRENCY,
-              async (task, workerIdx) => {
-                if (signal.aborted) throw new Error('Отменено пользователем.');
-                // Небольшой сдвиг старта потоков (60 мс), чтобы равномерно распределить ключи и сетевой буфер
-                if (workerIdx > 0 && workerIdx < PARALLEL_CHUNK_CONCURRENCY) {
-                  await new Promise((r) => setTimeout(r, workerIdx * 60));
-                }
-                if (signal.aborted) throw new Error('Отменено пользователем.');
+            // Потоковый пайплайн: если выбран перевод, переводим чанки сразу по мере их возврата от Groq
+            const streamingTranslate = Boolean(targetLang && !cachedWhisper.translations?.[targetLang]);
+            const completedChunkMap = new Map();
+            let nextChunkToStream = 0;
+            let streamContextLines = [];
+            const streamTranslationPromises = [];
 
-                const chunkSamples = channelData.subarray(task.startSample, task.endSample);
-                const wavBlob = encodeWAV(chunkSamples, sampleRate);
+            // Живые субтитры: как только чанк распознан (и переведён), сразу отдаём его в плеер
+            const liveCues = [];
+            const liveChunkCuesMap = new Map();
+            let nextLiveChunk = 0;
+            let livePlayerStarted = false;
+            let lastLivePublishedCount = 0;
 
-                const r = await sendToGroq(
-                  wavBlob,
-                  `chunk_${task.index}.wav`,
-                  model,
-                  customPrompt,
-                  signal
-                );
+            function buildLiveChunkCues(chunkItem) {
+              const cSegs = [];
+              const cWords = [];
+              chunkItem.segments.forEach((seg) => {
+                const absMid = (seg.start + seg.end) / 2 + chunkItem.pos;
+                if (absMid < chunkItem.cutoff || absMid >= chunkItem.nextCutoff) return;
+                cSegs.push({ start: seg.start + chunkItem.pos, end: seg.end + chunkItem.pos, text: seg.text });
+              });
+              chunkItem.words.forEach((w) => {
+                const absMid = (w.start + w.end) / 2 + chunkItem.pos;
+                if (absMid < chunkItem.cutoff || absMid >= chunkItem.nextCutoff) return;
+                cWords.push({ word: w.word, start: w.start + chunkItem.pos, end: w.end + chunkItem.pos });
+              });
+              return cSegs.length > 0 ? buildCues(cSegs, cWords) : [];
+            }
 
-                completedChunks++;
-                const msg = `🚀 Распознано: ${completedChunks} из ${totalChunks} (${Math.round(task.pos)}–${Math.round(task.chunkEnd)} с)...`;
-                statusEl.innerText = msg;
-                setProgress(16 + Math.round((completedChunks / Math.max(1, totalChunks)) * 42));
-                if (bridge && typeof bridge.updateForegroundNotification === 'function') {
-                  try { bridge.updateForegroundNotification(msg); } catch (e) {}
-                }
-
-                return {
-                  index: task.index,
-                  pos: task.pos,
-                  cutoff: task.cutoff,
-                  nextCutoff: task.nextCutoff,
-                  segments: r.segments || [],
-                  words: r.words || []
-                };
+            function flushLiveCues() {
+              if (targetLang && !streamingTranslate) return;
+              while (liveChunkCuesMap.has(nextLiveChunk)) {
+                const arr = liveChunkCuesMap.get(nextLiveChunk);
+                nextLiveChunk++;
+                if (arr && arr.length) liveCues.push(...arr);
               }
-            );
+              if (liveCues.length === lastLivePublishedCount) return;
+              lastLivePublishedCount = liveCues.length;
+              cues = liveCues.slice();
+
+              if (!livePlayerStarted) {
+                livePlayerStarted = true;
+                setupPlayer(file);
+                statusEl.innerText = '▶️ Первые субтитры готовы — можно смотреть. Обработка остальных частей продолжается...';
+                if (autoPlayToggle.checked) videoEl.play().catch(() => {});
+              }
+
+              refreshAllExports();
+              updateSubtitleFrame();
+            }
+
+            function checkAndTriggerStreamTranslations() {
+              if (!streamingTranslate) return;
+              while (completedChunkMap.has(nextChunkToStream)) {
+                const cIdx = nextChunkToStream;
+                const chunkItem = completedChunkMap.get(cIdx);
+                nextChunkToStream++;
+
+                const cSegs = [];
+                const cWords = [];
+                chunkItem.segments.forEach((seg) => {
+                  const absMid = (seg.start + seg.end) / 2 + chunkItem.pos;
+                  if (absMid < chunkItem.cutoff || absMid >= chunkItem.nextCutoff) return;
+                  cSegs.push({ start: seg.start + chunkItem.pos, end: seg.end + chunkItem.pos, text: seg.text });
+                });
+                chunkItem.words.forEach((w) => {
+                  const absMid = (w.start + w.end) / 2 + chunkItem.pos;
+                  if (absMid < chunkItem.cutoff || absMid >= chunkItem.nextCutoff) return;
+                  cWords.push({ word: w.word, start: w.start + chunkItem.pos, end: w.end + chunkItem.pos });
+                });
+
+                const chunkCues = cSegs.length > 0 ? buildCues(cSegs, cWords) : [];
+                liveChunkCuesMap.set(cIdx, chunkCues);
+                if (chunkCues.length > 0) {
+                  const prevCtx = streamContextLines.slice(-2);
+                  streamContextLines = chunkCues.map(c => c.text);
+                  const p = translateCuesDirect(chunkCues, prevCtx, targetLang, signal).then((res) => {
+                    pipelineTranslatedCuesMap.set(cIdx, chunkCues);
+                    flushLiveCues();
+                    return res;
+                  });
+                  streamTranslationPromises.push(p);
+                } else {
+                  flushLiveCues();
+                }
+              }
+            }
+
+            // Сначала отдельно первый чанк, остальные — параллельно: первые субтитры появляются как можно раньше
+            const orderedResults = new Array(chunkTasks.length);
+            const processChunkTask = async (task, workerIdx) => {
+              if (signal.aborted) throw new Error('Отменено пользователем.');
+              // Небольшой сдвиг старта потоков (30 мс), чтобы равномерно распределить ключи и сетевой буфер
+              if (workerIdx > 0 && workerIdx < PARALLEL_CHUNK_CONCURRENCY) {
+                await new Promise((r) => setTimeout(r, workerIdx * 30));
+              }
+              if (signal.aborted) throw new Error('Отменено пользователем.');
+
+              const chunkSamples = channelData.subarray(task.startSample, task.endSample);
+              const wavBlob = encodeWAV(chunkSamples, sampleRate);
+
+              const r = await sendToGroq(
+                wavBlob,
+                `chunk_${task.index}.wav`,
+                model,
+                customPrompt,
+                signal
+              );
+
+              completedChunks++;
+              const msg = `🚀 Распознано: ${completedChunks} из ${totalChunks} (${Math.round(task.pos)}–${Math.round(task.chunkEnd)} с)...`;
+              statusEl.innerText = msg;
+              setProgress(16 + Math.round((completedChunks / Math.max(1, totalChunks)) * 42));
+              if (bridge && typeof bridge.updateForegroundNotification === 'function') {
+                try { bridge.updateForegroundNotification(msg); } catch (e) {}
+              }
+
+              const chunkItem = {
+                pos: task.pos,
+                cutoff: task.cutoff,
+                nextCutoff: task.nextCutoff,
+                segments: r.segments || [],
+                words: r.words || []
+              };
+              completedChunkMap.set(task.index, chunkItem);
+              checkAndTriggerStreamTranslations();
+
+              if (!streamingTranslate) {
+                liveChunkCuesMap.set(task.index, buildLiveChunkCues(chunkItem));
+                flushLiveCues();
+              }
+
+              return {
+                index: task.index,
+                pos: task.pos,
+                cutoff: task.cutoff,
+                nextCutoff: task.nextCutoff,
+                segments: r.segments || [],
+                words: r.words || []
+              };
+            };
+
+            if (chunkTasks.length > 0) {
+              orderedResults[0] = await processChunkTask(chunkTasks[0], 0);
+            }
+
+            if (chunkTasks.length > 1) {
+              const restResults = await runWithConcurrency(
+                chunkTasks.slice(1),
+                PARALLEL_CHUNK_CONCURRENCY,
+                (task, workerIdx) => processChunkTask(task, workerIdx)
+              );
+              for (let i = 0; i < restResults.length; i++) {
+                orderedResults[i + 1] = restResults[i];
+              }
+            }
+
+            checkAndTriggerStreamTranslations();
+            if (streamingTranslate && streamTranslationPromises.length > 0) {
+              statusEl.innerText = '⚡ Потоковый перевод последних фрагментов...';
+              setProgress(88);
+              await Promise.all(streamTranslationPromises);
+            }
 
             // Склеиваем ответы строго в хронологическом порядке по индексу (0 .. totalChunks - 1)
             for (let idx = 0; idx < orderedResults.length; idx++) {
@@ -3594,6 +3865,23 @@
           cues = buildCues(cachedWhisper.rawSegments, cachedWhisper.rawWords);
         } else if (cachedWhisper.translations[targetLang]) {
           cues = cloneCues(cachedWhisper.translations[targetLang]);
+        } else if (pipelineTranslatedCuesMap.size > 0) {
+          // Собираем уже переведённые чанки из потокового пайплайна
+          const streamedCues = [];
+          for (let i = 0; i < (totalChunks || 0); i++) {
+            const chCues = pipelineTranslatedCuesMap.get(i);
+            if (chCues && chCues.length) streamedCues.push(...chCues);
+          }
+          if (streamedCues.length > 0) {
+            cues = streamedCues;
+            cachedWhisper.translations[targetLang] = cloneCues(cues);
+          } else {
+            const freshCues = buildCues(cachedWhisper.rawSegments, cachedWhisper.rawWords);
+            const failed = await translateSegments(freshCues, targetLang, statusEl, signal);
+            if (failed > 0) translationWarn = ` (${failed} строк не переведены).`;
+            cachedWhisper.translations[targetLang] = cloneCues(freshCues);
+            cues = freshCues;
+          }
         } else {
           const freshCues = buildCues(cachedWhisper.rawSegments, cachedWhisper.rawWords);
           const failed = await translateSegments(freshCues, targetLang, statusEl, signal);
@@ -3612,8 +3900,22 @@
         setProgress(100);
         refreshAllExports();
 
+        // Автоматически сохраняем результат в локальную историю IndexedDB
+        saveProjectToHistory({
+          fileSig,
+          fileName: file.name,
+          fileSize: file.size,
+          updatedAt: Date.now(),
+          model,
+          rawSegments: cachedWhisper.rawSegments,
+          rawWords: cachedWhisper.rawWords,
+          translations: cachedWhisper.translations,
+          activeLang: cachedWhisper.activeLang,
+          cues
+        });
+
         actionRow.style.display = 'flex';
-        statusEl.innerText = 'Готово! Субтитры загружены.' + translationWarn;
+        statusEl.innerText = 'Готово! Субтитры загружены и сохранены в истории.' + translationWarn;
 
         setupPlayer(file);
 
