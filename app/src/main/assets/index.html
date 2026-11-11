@@ -3525,9 +3525,21 @@
       return new Blob([buffer], { type: 'audio/wav' });
     }
 
+    function b64ToBlob(b64, type = 'audio/wav') {
+      const bin = atob(b64);
+      const len = bin.length;
+      const u8 = new Uint8Array(len);
+      for (let i = 0; i < len; i++) u8[i] = bin.charCodeAt(i);
+      return new Blob([u8], { type });
+    }
+
     async function generateSubtitles() {
       if (activeAbortCtrl) {
         activeAbortCtrl.abort();
+        const bridge = window.AndroidBridge || window.ExoPlayerManager || null;
+        if (bridge && typeof bridge.cancelNativeAudioExtraction === 'function') {
+          try { bridge.cancelNativeAudioExtraction(); } catch (e) {}
+        }
         return;
       }
 
@@ -3582,23 +3594,313 @@
           const allSegments = [];
           const allWords = [];
           const shouldCompress = file.size > 24 * 1024 * 1024 || fastAudioCompressEl.checked;
+          const useNativeExtractor = Boolean(
+            shouldCompress &&
+            bridge &&
+            typeof bridge.startNativeAudioExtraction === 'function' &&
+            typeof bridge.readChunkBase64 === 'function' &&
+            bridge.hasNativeVideo()
+          );
 
-          let audioBuffer = null;
-          if (shouldCompress) {
-            statusEl.innerText = '⚡ Быстрое извлечение и сжатие аудиодорожки (16 кГц)...';
-            setProgress(10);
-            try {
-              const ab = await file.arrayBuffer();
-              // Частота 16000 Гц идеально передаёт человеческую речь и является нативной для Whisper
-              const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-              audioBuffer = await decodeCtx.decodeAudioData(ab);
-              if (decodeCtx.close) decodeCtx.close();
-            } catch (e) {
-              if (file.size > 24 * 1024 * 1024) {
-                throw new Error('Браузер не поддерживает кодек файла (>24 МБ). Конвертируйте в MP4/MP3.');
+          if (useNativeExtractor) {
+            statusEl.innerText = '⚡ Асинхронное нативное извлечение аудио (16 кГц, чанки по 60 с)...';
+            setProgress(12);
+
+            const streamingTranslate = Boolean(targetLang && !cachedWhisper.translations?.[targetLang]);
+            const completedChunkMap = new Map();
+            let nextChunkToStream = 0;
+            let streamContextLines = [];
+            const streamTranslationPromises = [];
+
+            const liveCues = [];
+            const liveChunkCuesMap = new Map();
+            let nextLiveChunk = 0;
+            let livePlayerStarted = false;
+            let lastLivePublishedCount = 0;
+
+            function buildLiveChunkCues(chunkItem) {
+              const cSegs = [];
+              const cWords = [];
+              chunkItem.segments.forEach((seg) => {
+                const absMid = (seg.start + seg.end) / 2 + chunkItem.pos;
+                if (absMid < chunkItem.cutoff || absMid >= chunkItem.nextCutoff) return;
+                cSegs.push({ start: seg.start + chunkItem.pos, end: seg.end + chunkItem.pos, text: seg.text });
+              });
+              chunkItem.words.forEach((w) => {
+                const absMid = (w.start + w.end) / 2 + chunkItem.pos;
+                if (absMid < chunkItem.cutoff || absMid >= chunkItem.nextCutoff) return;
+                cWords.push({ word: w.word, start: w.start + chunkItem.pos, end: w.end + chunkItem.pos });
+              });
+              return cSegs.length > 0 ? buildCues(cSegs, cWords) : [];
+            }
+
+            function flushLiveCues() {
+              if (targetLang && !streamingTranslate) return;
+              while (liveChunkCuesMap.has(nextLiveChunk)) {
+                const arr = liveChunkCuesMap.get(nextLiveChunk);
+                nextLiveChunk++;
+                if (arr && arr.length) liveCues.push(...arr);
+              }
+              if (liveCues.length === lastLivePublishedCount) return;
+              lastLivePublishedCount = liveCues.length;
+              cues = liveCues.slice();
+
+              if (!livePlayerStarted) {
+                livePlayerStarted = true;
+                setupPlayer(file);
+                statusEl.innerText = '▶️ Первые субтитры готовы — можно смотреть. Обработка остальных частей продолжается...';
+                if (autoPlayToggle.checked) videoEl.play().catch(() => {});
+              }
+
+              refreshAllExports();
+              updateSubtitleFrame();
+            }
+
+            function checkAndTriggerStreamTranslations() {
+              if (!streamingTranslate) return;
+              while (completedChunkMap.has(nextChunkToStream)) {
+                const cIdx = nextChunkToStream;
+                const chunkItem = completedChunkMap.get(cIdx);
+                nextChunkToStream++;
+
+                const cSegs = [];
+                const cWords = [];
+                chunkItem.segments.forEach((seg) => {
+                  const absMid = (seg.start + seg.end) / 2 + chunkItem.pos;
+                  if (absMid < chunkItem.cutoff || absMid >= chunkItem.nextCutoff) return;
+                  cSegs.push({ start: seg.start + chunkItem.pos, end: seg.end + chunkItem.pos, text: seg.text });
+                });
+                chunkItem.words.forEach((w) => {
+                  const absMid = (w.start + w.end) / 2 + chunkItem.pos;
+                  if (absMid < chunkItem.cutoff || absMid >= chunkItem.nextCutoff) return;
+                  cWords.push({ word: w.word, start: w.start + chunkItem.pos, end: w.end + chunkItem.pos });
+                });
+
+                const chunkCues = cSegs.length > 0 ? buildCues(cSegs, cWords) : [];
+                liveChunkCuesMap.set(cIdx, chunkCues);
+                if (chunkCues.length > 0) {
+                  const prevCtx = streamContextLines.slice(-2);
+                  streamContextLines = chunkCues.map(c => c.text);
+                  const p = translateCuesDirect(chunkCues, prevCtx, targetLang, signal).then((res) => {
+                    pipelineTranslatedCuesMap.set(cIdx, chunkCues);
+                    flushLiveCues();
+                    return res;
+                  });
+                  streamTranslationPromises.push(p);
+                } else {
+                  flushLiveCues();
+                }
               }
             }
-          }
+
+            // Очередь нативного извлечения и параллельной обработки
+            const incomingQueue = [];
+            const nativeOrderedResults = [];
+            let nativeExtractionFinished = false;
+            let nativeError = null;
+            let totalChunksSeen = 0;
+            let completedChunks = 0;
+            const chunkWaiters = [];
+
+            function notifyWaiters() {
+              if (nativeError || nativeExtractionFinished) {
+                while (chunkWaiters.length > 0) {
+                  const w = chunkWaiters.shift();
+                  if (w) w();
+                }
+                return;
+              }
+              while (chunkWaiters.length > 0 && incomingQueue.length > 0) {
+                const w = chunkWaiters.shift();
+                if (w) w();
+              }
+            }
+
+            window.__onNativeChunkReady = (chunkObj, isLast) => {
+              incomingQueue.push({ chunkObj, isLast });
+              totalChunksSeen = Math.max(totalChunksSeen, chunkObj.index + 1);
+              totalChunks = totalChunksSeen;
+              if (isLast) {
+                nativeExtractionFinished = true;
+              }
+              notifyWaiters();
+            };
+
+            window.__onNativeChunkDone = (count) => {
+              nativeExtractionFinished = true;
+              if (typeof count === 'number' && count > 0) {
+                totalChunksSeen = Math.max(totalChunksSeen, count);
+                totalChunks = totalChunksSeen;
+              }
+              notifyWaiters();
+            };
+
+            window.__onNativeChunkError = (errMsg) => {
+              nativeError = new Error(errMsg || 'Ошибка нативного извлечения аудио');
+              nativeExtractionFinished = true;
+              notifyWaiters();
+            };
+
+            const onSignalAbort = () => {
+              if (bridge && typeof bridge.cancelNativeAudioExtraction === 'function') {
+                try { bridge.cancelNativeAudioExtraction(); } catch (_) {}
+              }
+              notifyWaiters();
+            };
+            signal.addEventListener('abort', onSignalAbort, { once: true });
+
+            if (bridge && typeof bridge.clearAudioCache === 'function') {
+              try { bridge.clearAudioCache(); } catch (_) {}
+            }
+
+            const startedOk = bridge.startNativeAudioExtraction();
+            if (!startedOk) {
+              throw new Error('Не удалось запустить нативный аудиоэкстрактор');
+            }
+
+            const getNextIncomingChunk = async () => {
+              while (true) {
+                if (signal.aborted) throw new Error('Отменено пользователем.');
+                if (nativeError) throw nativeError;
+                if (incomingQueue.length > 0) {
+                  return incomingQueue.shift();
+                }
+                if (nativeExtractionFinished) {
+                  return null;
+                }
+                await new Promise((resolve) => {
+                  chunkWaiters.push(resolve);
+                });
+              }
+            };
+
+            const processSingleChunk = async (chunkItem) => {
+              if (signal.aborted) throw new Error('Отменено пользователем.');
+              const { chunkObj } = chunkItem;
+              const b64 = bridge.readChunkBase64(chunkObj.path);
+              if (!b64) throw new Error(`Не удалось прочитать чанк ${chunkObj.index}`);
+              if (typeof bridge.deleteChunkFile === 'function') {
+                try { bridge.deleteChunkFile(chunkObj.path); } catch (_) {}
+              }
+              const wavBlob = b64ToBlob(b64, 'audio/wav');
+
+              const r = await sendToGroq(
+                wavBlob,
+                chunkObj.fileName || `chunk_${chunkObj.index}.wav`,
+                model,
+                customPrompt,
+                signal
+              );
+
+              completedChunks++;
+              const startSec = chunkObj.pos !== undefined ? chunkObj.pos : chunkObj.startSec;
+              const endSec = chunkObj.chunkEnd !== undefined ? chunkObj.chunkEnd : chunkObj.endSec;
+              const cutoffSec = chunkObj.cutoff !== undefined ? chunkObj.cutoff : chunkObj.cutoffSec;
+              const nextCutoffSec = chunkObj.nextCutoff !== undefined ? chunkObj.nextCutoff : chunkObj.nextCutoffSec;
+
+              const msg = `🚀 Распознано: ${completedChunks} фрагментов (${Math.round(startSec)}–${Math.round(endSec)} с)...`;
+              statusEl.innerText = msg;
+              setProgress(16 + Math.min(64, Math.round((completedChunks / Math.max(1, totalChunksSeen)) * 50)));
+              if (bridge && typeof bridge.updateForegroundNotification === 'function') {
+                try { bridge.updateForegroundNotification(msg); } catch (e) {}
+              }
+
+              const resItem = {
+                index: chunkObj.index,
+                pos: startSec,
+                cutoff: cutoffSec,
+                nextCutoff: nextCutoffSec,
+                segments: r.segments || [],
+                words: r.words || []
+              };
+
+              nativeOrderedResults[chunkObj.index] = resItem;
+              completedChunkMap.set(chunkObj.index, resItem);
+              checkAndTriggerStreamTranslations();
+
+              if (!streamingTranslate) {
+                liveChunkCuesMap.set(chunkObj.index, buildLiveChunkCues(resItem));
+                flushLiveCues();
+              }
+
+              return resItem;
+            };
+
+            try {
+              // 1. Первый чанк обрабатываем отдельно для моментального старта плеера
+              const firstItem = await getNextIncomingChunk();
+              if (firstItem) {
+                await processSingleChunk(firstItem);
+              }
+
+              // 2. Все последующие чанки обрабатываем параллельным пулом (PARALLEL_CHUNK_CONCURRENCY)
+              const workerCount = Math.min(PARALLEL_CHUNK_CONCURRENCY, 10);
+              const workers = Array.from({ length: workerCount }, async () => {
+                while (true) {
+                  const item = await getNextIncomingChunk();
+                  if (!item) break;
+                  await processSingleChunk(item);
+                }
+              });
+              await Promise.all(workers);
+
+              checkAndTriggerStreamTranslations();
+              if (streamingTranslate && streamTranslationPromises.length > 0) {
+                statusEl.innerText = '⚡ Потоковый перевод последних фрагментов...';
+                setProgress(88);
+                await Promise.all(streamTranslationPromises);
+              }
+
+              // Склеиваем результаты
+              for (let idx = 0; idx < nativeOrderedResults.length; idx++) {
+                const item = nativeOrderedResults[idx];
+                if (!item) continue;
+                const { pos: cPos, cutoff: cCutoff, nextCutoff: cNextCutoff, segments, words } = item;
+
+                segments.forEach((seg) => {
+                  const absMid = (seg.start + seg.end) / 2 + cPos;
+                  if (absMid < cCutoff || absMid >= cNextCutoff) return;
+                  allSegments.push({
+                    start: seg.start + cPos,
+                    end: seg.end + cPos,
+                    text: seg.text
+                  });
+                });
+
+                words.forEach((w) => {
+                  const absMid = (w.start + w.end) / 2 + cPos;
+                  if (absMid < cCutoff || absMid >= cNextCutoff) return;
+                  allWords.push({
+                    word: w.word,
+                    start: w.start + cPos,
+                    end: w.end + cPos
+                  });
+                });
+              }
+            } finally {
+              window.__onNativeChunkReady = null;
+              window.__onNativeChunkDone = null;
+              window.__onNativeChunkError = null;
+              signal.removeEventListener('abort', onSignalAbort);
+            }
+          } else {
+            // WebAudio / fallback путь для браузера или при отсутствии нативного моста
+            let audioBuffer = null;
+            if (shouldCompress) {
+              statusEl.innerText = '⚡ Быстрое извлечение и сжатие аудиодорожки (16 кГц)...';
+              setProgress(10);
+              try {
+                const ab = await file.arrayBuffer();
+                // Частота 16000 Гц идеально передаёт человеческую речь и является нативной для Whisper
+                const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                audioBuffer = await decodeCtx.decodeAudioData(ab);
+                if (decodeCtx.close) decodeCtx.close();
+              } catch (e) {
+                if (file.size > 24 * 1024 * 1024) {
+                  throw new Error('Браузер не поддерживает кодек файла (>24 МБ). Конвертируйте в MP4/MP3.');
+                }
+              }
+            }
 
           if (!audioBuffer) {
             statusEl.innerText = '🚀 Прямая отправка в Groq...';
@@ -3843,6 +4145,7 @@
               });
             }
           }
+        }
 
           if (!allSegments.length) throw new Error('Не удалось распознать речь.');
 
@@ -3926,6 +4229,9 @@
       } catch (e) {
         statusEl.innerText = 'Статус: ' + (e && e.message ? e.message : e);
       } finally {
+        if (bridge && typeof bridge.cancelNativeAudioExtraction === 'function') {
+          try { bridge.cancelNativeAudioExtraction(); } catch (e) {}
+        }
         if (bridge && typeof bridge.stopForegroundService === 'function') {
           try { bridge.stopForegroundService(); } catch (e) {}
         }

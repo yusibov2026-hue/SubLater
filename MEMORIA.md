@@ -11,3 +11,4 @@
 - 2026-11-10: Гибридная отправка: первый чанк отдельно (быстрый старт живых субтитров), затем остальные параллельно; кнопка «Поделиться» перенесена в меню «Скачать»; versionCode 32, versionName 1.0.29.
 - 2026-11-10: APK 1.0.29 собран: `app/build/outputs/apk/debug/app-debug.apk` (BUILD SUCCESSFUL).
 - 2026-11-11: Release v1.0.45 publicado desde `fast-1.0.24` (tag v1.0.<run_number>, run 45) con app-debug.apk adjunto; commit d76a094. Los tags v1.0.25–v1.0.32 ya estaban ocupados por commits antiguos.
+- 2026-11-11: Асинхронное нативное извлечение аудио (MediaExtractor + MediaCodec) чанками по 60 с (16 кГц mono WAV, overlap 1 с) с потоковой передачей в JS (__onNativeChunkReady/__onNativeChunkError) без блокировки UI и без полного decodeAudioData; моментальный старт плеера с живыми субтитрами после первого чанка; versionCode 33, versionName 1.0.30.

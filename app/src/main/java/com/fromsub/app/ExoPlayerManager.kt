@@ -598,7 +598,7 @@ class ExoPlayerManager(
         }
     }
 
-    /* ==================== СТАБИЛЬНОЕ СИНХРОННОЕ ИЗВЛЕЧЕНИЕ 16кГц MONO WAV ПО 10 МИНУТ (БЕЗ DEADLOCK И БЕЗ VAD) ==================== */
+    /* ==================== АСИНХРОННОЕ НАТИВНОЕ ИЗВЛЕЧЕНИЕ 16кГц MONO WAV ПО 60 СЕКУНД ==================== */
 
     @JavascriptInterface
     fun cancelNativeAudioExtraction() {
@@ -630,6 +630,20 @@ class ExoPlayerManager(
         }
     }
 
+    @JavascriptInterface
+    fun deleteChunkFile(filePath: String): Boolean {
+        return try {
+            val f = File(filePath)
+            if (f.exists() && f.parentFile?.name == "sublater_chunks") {
+                f.delete()
+            } else {
+                false
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun writeWavHeader(raf: RandomAccessFile, pcmDataBytes: Int, sampleRate: Int = 16000, channels: Int = 1) {
         val byteRate = sampleRate * channels * 2
         val totalDataLen = pcmDataBytes + 36
@@ -651,6 +665,35 @@ class ExoPlayerManager(
         raf.write(header.array())
     }
 
+    private fun postJs(jsCode: String) {
+        mainHandler.post {
+            try {
+                webViewRef?.evaluateJavascript(jsCode, null)
+            } catch (_: Exception) {}
+        }
+    }
+
+    @JavascriptInterface
+    fun startNativeAudioExtraction(uriString: String = ""): Boolean {
+        cancelAudioExtraction = false
+        val targetUri = if (uriString.isNotBlank() && !uriString.startsWith("blob:")) {
+            Uri.parse(uriString)
+        } else {
+            currentVideoUri ?: return false
+        }
+
+        Thread({
+            try {
+                extractFixed60SecWavChunksAsync(targetUri)
+            } catch (e: Exception) {
+                val errorMsg = JSONObject.quote(e.message ?: "Ошибка извлечения аудио")
+                postJs("if (window.__onNativeChunkError) { window.__onNativeChunkError($errorMsg); }")
+            }
+        }, "SubLater-AudioExtractor").start()
+
+        return true
+    }
+
     @JavascriptInterface
     fun extractAudioChunks(uriString: String = ""): String {
         cancelAudioExtraction = false
@@ -660,13 +703,33 @@ class ExoPlayerManager(
             currentVideoUri ?: return "[]"
         }
         return try {
-            extractFixed10MinWavChunksSync(targetUri)
+            extractFixed60SecWavChunksSync(targetUri)
         } catch (_: Exception) {
             "[]"
         }
     }
 
-    private fun extractFixed10MinWavChunksSync(uri: Uri): String {
+    private fun extractFixed60SecWavChunksSync(uri: Uri): String {
+        val chunkPathsArray = JSONArray()
+        extractWavChunksInternal(uri) { chunkJson, _ ->
+            chunkPathsArray.put(chunkJson)
+        }
+        return chunkPathsArray.toString()
+    }
+
+    private fun extractFixed60SecWavChunksAsync(uri: Uri) {
+        var count = 0
+        extractWavChunksInternal(uri) { chunkJson, isLast ->
+            count++
+            val jsonStr = chunkJson.toString()
+            postJs("if (window.__onNativeChunkReady) { window.__onNativeChunkReady($jsonStr, $isLast); }")
+        }
+        if (!cancelAudioExtraction) {
+            postJs("if (window.__onNativeChunkDone) { window.__onNativeChunkDone($count); }")
+        }
+    }
+
+    private fun extractWavChunksInternal(uri: Uri, onChunkReady: (JSONObject, Boolean) -> Unit) {
         val chunkDir = File(context.cacheDir, "sublater_chunks")
         if (!chunkDir.exists()) chunkDir.mkdirs()
         chunkDir.listFiles()?.forEach { it.delete() }
@@ -691,13 +754,15 @@ class ExoPlayerManager(
 
         if (audioTrackIndex < 0 || audioFormat == null) {
             extractor.release()
-            return "[]"
+            val err = JSONObject.quote("Аудиодорожка не найдена в файле")
+            postJs("if (window.__onNativeChunkError) { window.__onNativeChunkError($err); }")
+            return
         }
 
         extractor.selectTrack(audioTrackIndex)
         val targetSampleRate = 16000
-        val chunkDurationSec = 600 // жесткая нарезка по 10 минут
-        val overlapSec = 10 // перекрытие 10 секунд
+        val chunkDurationSec = 60 // нарезка по 60 секунд
+        val overlapSec = 1 // перекрытие 1 секунда
         val maxChunkBytes = chunkDurationSec * targetSampleRate * 2
         val overlapBytesCount = overlapSec * targetSampleRate * 2
         val overlapRing = ByteArray(overlapBytesCount)
@@ -708,7 +773,6 @@ class ExoPlayerManager(
         codec.configure(audioFormat, null, null, 0)
         codec.start()
 
-        val chunkPathsArray = JSONArray()
         var chunkIndex = 0
         var currentChunkStartSample = 0L
         var totalWrittenMonoSamples = 0L
@@ -743,18 +807,28 @@ class ExoPlayerManager(
                 val cutoffSec = if (chunkIndex == 0) 0.0 else (startSec + overlapSec / 2.0)
                 val nextCutoffSec = if (isLast) (endSec + 100.0) else (endSec - overlapSec / 2.0)
 
-                chunkPathsArray.put(JSONObject().apply {
+                val chunkObj = JSONObject().apply {
                     put("index", chunkIndex)
                     put("path", currentFile.absolutePath)
                     put("fileUrl", "file://${currentFile.absolutePath}")
                     put("fileName", currentFile.name)
+                    put("pos", startSec)
                     put("startSec", startSec)
+                    put("chunkEnd", endSec)
                     put("endSec", endSec)
+                    put("cutoff", cutoffSec)
                     put("cutoffSec", cutoffSec)
+                    put("nextCutoff", nextCutoffSec)
                     put("nextCutoffSec", nextCutoffSec)
-                })
+                    put("isLast", isLast)
+                }
+                onChunkReady(chunkObj, isLast)
             } else {
                 currentFile.delete()
+                if (isLast && chunkIndex == 0) {
+                    val err = JSONObject.quote("Не удалось декодировать аудиоданные")
+                    postJs("if (window.__onNativeChunkError) { window.__onNativeChunkError($err); }")
+                }
             }
         }
 
@@ -893,15 +967,17 @@ class ExoPlayerManager(
                     outIndex = codec.dequeueOutputBuffer(bufferInfo, 0L)
                 }
             }
-            finalizeChunk(isLast = true)
+            if (cancelAudioExtraction) {
+                try { currentFile.delete() } catch (_: Exception) {}
+            } else {
+                finalizeChunk(isLast = true)
+            }
         } finally {
             try { currentOut.close() } catch (_: Exception) {}
             try { codec.stop() } catch (_: Exception) {}
             try { codec.release() } catch (_: Exception) {}
             try { extractor.release() } catch (_: Exception) {}
         }
-
-        return chunkPathsArray.toString()
     }
 
     /* ==================== ЗАЩИТА API-КЛЮЧЕЙ ЧЕРЕЗ ENCRYPTEDSHAREDPREFERENCES (ANDROID KEYSTORE) ==================== */
