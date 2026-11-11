@@ -10,3 +10,4 @@
 - 2026-11-10: APK 1.0.28 собран: `app/build/outputs/apk/debug/app-debug.apk` (BUILD SUCCESSFUL).
 - 2026-11-10: Гибридная отправка: первый чанк отдельно (быстрый старт живых субтитров), затем остальные параллельно; кнопка «Поделиться» перенесена в меню «Скачать»; versionCode 32, versionName 1.0.29.
 - 2026-11-10: APK 1.0.29 собран: `app/build/outputs/apk/debug/app-debug.apk` (BUILD SUCCESSFUL).
+- 2026-11-11: Release v1.0.45 publicado desde `fast-1.0.24` (tag v1.0.<run_number>, run 45) con app-debug.apk adjunto; commit d76a094. Los tags v1.0.25–v1.0.32 ya estaban ocupados por commits antiguos.
