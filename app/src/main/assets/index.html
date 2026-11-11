@@ -39,25 +39,133 @@
 
     html {
       background: var(--bg-main);
+      min-height: 100vh;
     }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       -webkit-font-smoothing: antialiased;
-      background: var(--bg-main);
+      background: transparent;
       color: #f3f4f6;
       padding: 20px;
       max-width: 640px;
       margin: auto;
       min-height: 100vh;
       overflow-x: hidden;
+      position: relative;
+      z-index: 1;
     }
 
     #appTopSection {
-      background: var(--bg-main);
+      background: transparent;
       position: relative;
       z-index: 40;
       padding-bottom: 4px;
+    }
+
+    /* ---------------- Обои с акцентом ---------------- */
+    #appWallpaper {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 0;
+      opacity: var(--wallpaper-opacity, 0.45);
+      transition: opacity 0.25s ease;
+      will-change: opacity, background;
+    }
+
+    body.player-fullscreen-open #appWallpaper {
+      display: none !important;
+    }
+
+    /* Обои: Аврора (Мягкое свечение) */
+    #appWallpaper[data-wallpaper="aurora"] {
+      background:
+        radial-gradient(ellipse 75% 55% at 15% -5%, color-mix(in srgb, var(--accent) 42%, transparent), transparent 72%),
+        radial-gradient(ellipse 70% 50% at 85% 95%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 72%),
+        radial-gradient(circle 380px at 50% 50%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 80%);
+    }
+
+    /* Обои: Неоновый Mesh */
+    #appWallpaper[data-wallpaper="mesh"] {
+      background:
+        radial-gradient(at 0% 0%, color-mix(in srgb, var(--accent) 45%, transparent) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, color-mix(in srgb, var(--accent) 28%, #a855f7 20%, transparent) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, color-mix(in srgb, var(--accent) 36%, transparent) 0px, transparent 55%),
+        radial-gradient(at 0% 100%, color-mix(in srgb, var(--accent) 25%, transparent) 0px, transparent 50%),
+        radial-gradient(at 50% 50%, color-mix(in srgb, var(--accent) 18%, transparent) 0px, transparent 65%);
+    }
+
+    /* Обои: Звуковые волны */
+    #appWallpaper[data-wallpaper="soundwaves"] {
+      background-image:
+        repeating-linear-gradient(90deg,
+          color-mix(in srgb, var(--accent) 26%, transparent) 0px,
+          color-mix(in srgb, var(--accent) 26%, transparent) 2px,
+          transparent 2px,
+          transparent 14px),
+        radial-gradient(ellipse 90% 55% at 50% 40%, color-mix(in srgb, var(--accent) 36%, transparent), transparent 85%);
+    }
+
+    /* Обои: Кибер-сетка */
+    #appWallpaper[data-wallpaper="grid"] {
+      background-image:
+        linear-gradient(to right, color-mix(in srgb, var(--accent) 16%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--accent) 16%, transparent) 1px, transparent 1px),
+        radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 75%);
+      background-size: 32px 32px, 32px 32px, 100% 100%;
+    }
+
+    /* Обои: Матрица точек */
+    #appWallpaper[data-wallpaper="dots"] {
+      background-image:
+        radial-gradient(color-mix(in srgb, var(--accent) 42%, transparent) 1.5px, transparent 1.5px),
+        radial-gradient(circle at 80% 20%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 65%),
+        radial-gradient(circle at 20% 80%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%);
+      background-size: 24px 24px, 100% 100%, 100% 100%;
+    }
+
+    /* Обои: Звёздная пыль */
+    #appWallpaper[data-wallpaper="stardust"] {
+      background-image:
+        radial-gradient(1px 1px at 25px 35px, color-mix(in srgb, var(--accent) 80%, #fff), transparent),
+        radial-gradient(1.5px 1.5px at 85px 75px, var(--accent), transparent),
+        radial-gradient(1px 1px at 150px 120px, color-mix(in srgb, var(--accent) 70%, #fff), transparent),
+        radial-gradient(2px 2px at 220px 40px, var(--accent), transparent),
+        radial-gradient(1.2px 1.2px at 290px 180px, color-mix(in srgb, var(--accent) 90%, #fff), transparent),
+        radial-gradient(ellipse 70% 50% at 50% 25%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 75%);
+      background-size: 320px 240px, 320px 240px, 320px 240px, 320px 240px, 320px 240px, 100% 100%;
+    }
+
+    /* Обои: Техно-схема (Circuit) */
+    #appWallpaper[data-wallpaper="circuit"] {
+      background-image:
+        linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent) 25%, transparent 25%),
+        linear-gradient(225deg, color-mix(in srgb, var(--accent) 15%, transparent) 25%, transparent 25%),
+        linear-gradient(45deg, color-mix(in srgb, var(--accent) 15%, transparent) 25%, transparent 25%),
+        linear-gradient(315deg, color-mix(in srgb, var(--accent) 15%, transparent) 25%, transparent 25%),
+        radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 75%);
+      background-position: 16px 0, 16px 0, 0 0, 0 0, 0 0;
+      background-size: 32px 32px, 32px 32px, 32px 32px, 32px 32px, 100% 100%;
+    }
+
+    /* Обои: Диагональные полосы */
+    #appWallpaper[data-wallpaper="diagonal"] {
+      background-image:
+        repeating-linear-gradient(45deg,
+          color-mix(in srgb, var(--accent) 14%, transparent),
+          color-mix(in srgb, var(--accent) 14%, transparent) 10px,
+          transparent 10px,
+          transparent 22px),
+        radial-gradient(circle at 30% 70%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%);
+    }
+
+    /* Обои: Без обоев */
+    #appWallpaper[data-wallpaper="none"] {
+      display: none;
     }
 
     html.player-fullscreen-open,
@@ -272,7 +380,10 @@
     .file-box {
       display: flex; align-items: center; gap: 12px;
       padding: 8px 12px; margin: 6px 0;
-      border-radius: 12px; border: 1px solid var(--border-soft); background: var(--bg-surface);
+      border-radius: 12px; border: 1px solid var(--border-soft);
+      background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       cursor: pointer; user-select: none;
       transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease;
     }
@@ -1160,6 +1271,7 @@
   </style>
 </head>
 <body>
+  <div id="appWallpaper" aria-hidden="true" data-wallpaper="aurora"></div>
   <div id="appTopSection">
   <header class="app-header">
     <h2>SubLater</h2>
@@ -1403,6 +1515,26 @@
         <option value="graphite">Графитовый</option>
       </select>
     </div>
+
+    <div class="global-row">
+      <span>Обои с акцентом</span>
+      <select id="accentWallpaper">
+        <option value="aurora">Аврора (Свечение)</option>
+        <option value="mesh">Неоновый Mesh</option>
+        <option value="soundwaves">Звуковые волны</option>
+        <option value="grid">Кибер-сетка</option>
+        <option value="dots">Матрица точек</option>
+        <option value="stardust">Звёздная пыль</option>
+        <option value="circuit">Техно-схема</option>
+        <option value="diagonal">Диагональные полосы</option>
+        <option value="none">Без обоев (Сплошной)</option>
+      </select>
+    </div>
+
+    <div class="global-row" id="wallpaperOpacityRow">
+      <span>Яркость обоев</span>
+      <input type="range" id="wallpaperOpacity" min="10" max="100" value="45" style="width: 100px;">
+    </div>
     
     <div class="global-row">
       <span>Цвет текста субтитров</span>
@@ -1577,6 +1709,46 @@
       appThemeBgEl.value = GRAY_THEMES[savedGrayTheme] ? savedGrayTheme : 'dark-gray';
       applyGrayTheme(appThemeBgEl.value);
       appThemeBgEl.addEventListener('change', () => applyGrayTheme(appThemeBgEl.value));
+    }
+
+    /* ---------------- Обои с акцентом ---------------- */
+    const appWallpaperEl = $('appWallpaper');
+    const accentWallpaperSelect = $('accentWallpaper');
+    const wallpaperOpacityInput = $('wallpaperOpacity');
+    const wallpaperOpacityRow = $('wallpaperOpacityRow');
+
+    function applyAccentWallpaper(wallpaperKey, opacityVal) {
+      const key = wallpaperKey || 'aurora';
+      const op = opacityVal !== undefined ? opacityVal : 45;
+
+      if (appWallpaperEl) {
+        appWallpaperEl.setAttribute('data-wallpaper', key);
+        appWallpaperEl.style.setProperty('--wallpaper-opacity', (op / 100).toString());
+      }
+      if (wallpaperOpacityRow) {
+        wallpaperOpacityRow.style.display = key === 'none' ? 'none' : 'flex';
+      }
+      safeSetStorage('sublater_accent_wallpaper', key);
+      safeSetStorage('sublater_wallpaper_opacity', op.toString());
+    }
+
+    const savedWallpaper = safeGetStorage('sublater_accent_wallpaper', 'aurora');
+    const savedWallpaperOpacity = parseInt(safeGetStorage('sublater_wallpaper_opacity', '45'), 10) || 45;
+
+    if (accentWallpaperSelect) {
+      accentWallpaperSelect.value = savedWallpaper;
+      if (wallpaperOpacityInput) wallpaperOpacityInput.value = savedWallpaperOpacity;
+      applyAccentWallpaper(savedWallpaper, savedWallpaperOpacity);
+
+      accentWallpaperSelect.addEventListener('change', () => {
+        const op = wallpaperOpacityInput ? parseInt(wallpaperOpacityInput.value, 10) : 45;
+        applyAccentWallpaper(accentWallpaperSelect.value, op);
+      });
+      if (wallpaperOpacityInput) {
+        wallpaperOpacityInput.addEventListener('input', () => {
+          applyAccentWallpaper(accentWallpaperSelect.value, parseInt(wallpaperOpacityInput.value, 10));
+        });
+      }
     }
 
     /* ---------------- 3. Защита ключей через EncryptedSharedPreferences (Android Keystore) без localStorage ---------------- */
