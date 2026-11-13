@@ -8,6 +8,7 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.database.Cursor
 import android.graphics.Color
+import android.graphics.Outline
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -16,6 +17,7 @@ import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
@@ -26,16 +28,21 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -47,8 +54,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
@@ -61,6 +68,31 @@ class MainActivity : ComponentActivity() {
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var webViewRef: WebView? = null
     private var currentThemeBgColor: Int = Color.parseColor("#24272D")
+    private var pendingExportContent: String? = null
+    private var pendingExportFileName: String = "subtitles.vtt"
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { _ -> }
+
+    private val createDocumentLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("*/*")
+    ) { uri ->
+        val content = pendingExportContent
+        val fileName = pendingExportFileName
+        pendingExportContent = null
+        if (uri != null && content != null) {
+            try {
+                contentResolver.openOutputStream(uri)?.use { out ->
+                    out.write(content.toByteArray(Charsets.UTF_8))
+                    out.flush()
+                }
+                Toast.makeText(this, "Сохранено: $fileName", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(this, "Ошибка сохранения: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -106,6 +138,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    fun launchSafExportDocument(fileName: String, content: String) {
+        runOnUiThread {
+            pendingExportFileName = fileName
+            pendingExportContent = content
+            createDocumentLauncher.launch(fileName)
+        }
+    }
+
     private fun resolveUriDisplayName(uri: Uri): String {
         if (uri.scheme == "content") {
             var cursor: Cursor? = null
@@ -132,10 +172,6 @@ class MainActivity : ComponentActivity() {
         return if (!seg.isNullOrBlank()) seg else "external_video.mp4"
     }
 
-    /**
-     * Полная очистка ресурсов WebView в onDestroy() и при закрытии плеера:
-     * удаляет WebView из родительского ViewGroup, очищает историю/кэш, вызывает destroy() и обнуляет ссылки.
-     */
     fun cleanupWebView() {
         runOnUiThread {
             filePathCallback?.onReceiveValue(null)
@@ -174,9 +210,16 @@ class MainActivity : ComponentActivity() {
                 if (::exoPlayerManager.isInitialized) {
                     exoPlayerManager.themeBgColorState.intValue = parsed
                 }
+                val isLightBg = ColorUtils.calculateLuminance(parsed) > 0.5
+                val insetsController = WindowCompat.getInsetsController(window, window.decorView)
                 if (!::exoPlayerManager.isInitialized || !exoPlayerManager.videoBoundsState.value.isFullscreen) {
-                    window.statusBarColor = parsed
-                    window.navigationBarColor = parsed
+                    insetsController.isAppearanceLightStatusBars = isLightBg
+                    insetsController.isAppearanceLightNavigationBars = isLightBg
+                    @Suppress("DEPRECATION")
+                    if (Build.VERSION.SDK_INT < 35) {
+                        window.statusBarColor = parsed
+                        window.navigationBarColor = parsed
+                    }
                 }
             } catch (_: Exception) {
             }
@@ -185,8 +228,8 @@ class MainActivity : ComponentActivity() {
 
     fun applyImmersiveMode(fullscreen: Boolean) {
         runOnUiThread {
+            val insetsController = WindowCompat.getInsetsController(window, window.decorView)
             if (fullscreen) {
-                WindowCompat.setDecorFitsSystemWindows(window, false)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     window.attributes = window.attributes.apply {
                         layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -196,8 +239,13 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-                window.statusBarColor = Color.BLACK
-                window.navigationBarColor = Color.BLACK
+                insetsController.isAppearanceLightStatusBars = false
+                insetsController.isAppearanceLightNavigationBars = false
+                @Suppress("DEPRECATION")
+                if (Build.VERSION.SDK_INT < 35) {
+                    window.statusBarColor = Color.BLACK
+                    window.navigationBarColor = Color.BLACK
+                }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     window.insetsController?.let { controller ->
                         controller.hide(
@@ -219,20 +267,29 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             } else {
-                WindowCompat.setDecorFitsSystemWindows(window, true)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     window.attributes = window.attributes.apply {
                         layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
                     }
                 }
-                window.statusBarColor = currentThemeBgColor
-                window.navigationBarColor = currentThemeBgColor
+                val isLightBg = ColorUtils.calculateLuminance(currentThemeBgColor) > 0.5
+                insetsController.isAppearanceLightStatusBars = isLightBg
+                insetsController.isAppearanceLightNavigationBars = isLightBg
+                @Suppress("DEPRECATION")
+                if (Build.VERSION.SDK_INT < 35) {
+                    window.statusBarColor = currentThemeBgColor
+                    window.navigationBarColor = currentThemeBgColor
+                }
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     window.insetsController?.show(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
                 } else {
                     @Suppress("DEPRECATION")
-                    window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+                    window.decorView.systemUiVisibility = (
+                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    )
                 }
             }
         }
@@ -240,10 +297,16 @@ class MainActivity : ComponentActivity() {
 
     fun applyLandscapeOrientation(landscape: Boolean) {
         runOnUiThread {
-            requestedOrientation = if (landscape) {
-                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            if (!landscape) {
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                return@runOnUiThread
+            }
+            val w = exoPlayerManager.getVideoWidth()
+            val h = exoPlayerManager.getVideoHeight()
+            requestedOrientation = if (h > w && w > 0) {
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
             } else {
-                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             }
         }
     }
@@ -251,12 +314,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        window.statusBarColor = currentThemeBgColor
-        window.navigationBarColor = currentThemeBgColor
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(currentThemeBgColor),
+            navigationBarStyle = SystemBarStyle.dark(currentThemeBgColor)
+        )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
 
@@ -273,7 +338,7 @@ class MainActivity : ComponentActivity() {
                 val wv = webViewRef
                 if (wv != null) {
                     wv.evaluateJavascript(
-                        "(function(){ if (document.body.classList.contains('global-settings-open')) { document.getElementById('closeSettingsBtn').click(); return 'handled'; } if (document.body.classList.contains('player-fullscreen-open') && !document.body.classList.contains('intent-player-mode')) { document.getElementById('fsBtn').click(); return 'handled'; } return 'exit'; })()"
+                        "(function(){ if (document.body.classList.contains('global-settings-open')) { document.getElementById('closeSettingsBtn').click(); return 'handled'; } if (document.body.classList.contains('player-fullscreen-open')) { document.getElementById('fsBtn').click(); return 'handled'; } return 'exit'; })()"
                     ) { res ->
                         if (res != null && res.contains("handled")) {
                             // Закрыли модальное окно или вышли из полноэкранного режима
@@ -365,10 +430,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        webViewRef?.onResume()
+        webViewRef?.resumeTimers()
+    }
+
     override fun onPause() {
         super.onPause()
-        exoPlayerManager.pause()
-        webViewRef?.resumeTimers()
+        if (::exoPlayerManager.isInitialized) {
+            exoPlayerManager.pause()
+            if (!exoPlayerManager.isBusyInBackground()) {
+                webViewRef?.onPause()
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -400,114 +475,127 @@ fun HybridVideoApp(
         }
     }
 
-    BoxWithConstraints(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(if (bounds.isFullscreen) ComposeColor(0xFF000000) else ComposeColor(themeBgColor))
     ) {
-        val maxW = maxWidth
-        val maxH = maxHeight
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (!bounds.isFullscreen) Modifier.systemBarsPadding() else Modifier)
+        ) {
+            val maxW = maxWidth
+            val maxH = maxHeight
 
-        val playerModifier = if (!bounds.isVisible) {
-            Modifier
-                .width(0.dp)
-                .height(0.dp)
-                .alpha(0f)
-        } else if (bounds.isFullscreen) {
-            Modifier.fillMaxSize()
-        } else {
-            Modifier
-                .offset(
-                    x = maxW * bounds.leftRatio,
-                    y = maxH * bounds.topRatio
-                )
-                .width(maxW * bounds.widthRatio)
-                .height(maxH * bounds.heightRatio)
-                .clip(RoundedCornerShape(16.dp))
+            val playerModifier = if (!bounds.isVisible) {
+                Modifier
+                    .width(0.dp)
+                    .height(0.dp)
+                    .alpha(0f)
+            } else if (bounds.isFullscreen) {
+                Modifier.fillMaxSize()
+            } else {
+                Modifier
+                    .offset(
+                        x = maxW * bounds.leftRatio,
+                        y = maxH * bounds.topRatio
+                    )
+                    .width(maxW * bounds.widthRatio)
+                    .height(maxH * bounds.heightRatio)
+                    .clip(RoundedCornerShape(16.dp))
+            }
+
+            // Layer 1 (Background): Native AndroidX Media3 ExoPlayer + FFmpeg Audio Decoder
+            AndroidView(
+                factory = { ctx ->
+                    PlayerView(ctx).apply {
+                        player = exoPlayerManager.exoPlayer
+                        useController = false
+                        this.resizeMode = resizeMode
+                        setBackgroundColor(Color.BLACK)
+                        setShutterBackgroundColor(Color.BLACK)
+                        setKeepContentOnPlayerReset(true)
+                        outlineProvider = object : ViewOutlineProvider() {
+                            override fun getOutline(view: View, outline: Outline) {
+                                val radiusPx = 16f * view.resources.displayMetrics.density
+                                outline.setRoundRect(0, 0, view.width, view.height, radiusPx)
+                            }
+                        }
+                        layoutParams = FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            Gravity.CENTER
+                        )
+                    }
+                },
+                update = { playerView ->
+                    playerView.resizeMode = resizeMode
+                    playerView.scaleX = zoomScale
+                    playerView.scaleY = zoomScale
+                    playerView.clipToOutline = !bounds.isFullscreen
+                },
+                modifier = playerModifier
+            )
+
+            // Layer 2 (Foreground): WebView with SubLater UI & Subtitle Overlay
+            AndroidView(
+                factory = { ctx ->
+                    WebView(ctx).apply {
+                        layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+                        setBackgroundColor(Color.TRANSPARENT)
+                        setLayerType(View.LAYER_TYPE_HARDWARE, null)
+
+                        settings.apply {
+                            javaScriptEnabled = true
+                            domStorageEnabled = true
+                            databaseEnabled = true
+                            allowFileAccess = true
+                            allowContentAccess = true
+                            @Suppress("DEPRECATION")
+                            allowFileAccessFromFileURLs = true
+                            @Suppress("DEPRECATION")
+                            allowUniversalAccessFromFileURLs = true
+                            mediaPlaybackRequiresUserGesture = false
+                            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                            cacheMode = WebSettings.LOAD_DEFAULT
+                        }
+
+                        addJavascriptInterface(exoPlayerManager, "ExoPlayerManager")
+                        addJavascriptInterface(exoPlayerManager, "AndroidBridge")
+                        addJavascriptInterface(exoPlayerManager, "Android")
+
+                        webViewClient = object : WebViewClient() {
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                super.onPageFinished(view, url)
+                                exoPlayerManager.notifyExternalMediaIfPresent()
+                            }
+                        }
+                        webChromeClient = object : WebChromeClient() {
+                            override fun onShowFileChooser(
+                                webView: WebView?,
+                                filePathCallback: ValueCallback<Array<Uri>>?,
+                                fileChooserParams: FileChooserParams?
+                            ): Boolean {
+                                if (filePathCallback == null) return false
+                                return onOpenFileChooser(filePathCallback, fileChooserParams)
+                            }
+
+                            override fun onPermissionRequest(request: PermissionRequest?) {
+                                request?.grant(request.resources)
+                            }
+                        }
+
+                        exoPlayerManager.attachWebView(this)
+                        loadUrl("file:///android_asset/index.html")
+                        onWebViewCreated(this)
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
         }
-
-        // Layer 1 (Background): Native AndroidX Media3 ExoPlayer + FFmpeg Audio Decoder
-        AndroidView(
-            factory = { ctx ->
-                PlayerView(ctx).apply {
-                    player = exoPlayerManager.exoPlayer
-                    useController = false
-                    this.resizeMode = resizeMode
-                    setBackgroundColor(Color.BLACK)
-                    setShutterBackgroundColor(Color.BLACK)
-                    setKeepContentOnPlayerReset(true)
-                    layoutParams = FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        Gravity.CENTER
-                    )
-                }
-            },
-            update = { playerView ->
-                playerView.resizeMode = resizeMode
-                playerView.scaleX = zoomScale
-                playerView.scaleY = zoomScale
-            },
-            modifier = playerModifier
-        )
-
-        // Layer 2 (Foreground): WebView with lightweight SubLater UI & Subtitle Overlay
-        AndroidView(
-            factory = { ctx ->
-                WebView(ctx).apply {
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
-                    setBackgroundColor(Color.TRANSPARENT)
-                    setLayerType(View.LAYER_TYPE_HARDWARE, null)
-
-                    settings.apply {
-                        javaScriptEnabled = true
-                        domStorageEnabled = true
-                        databaseEnabled = true
-                        allowFileAccess = true
-                        allowContentAccess = true
-                        @Suppress("DEPRECATION")
-                        allowFileAccessFromFileURLs = true
-                        @Suppress("DEPRECATION")
-                        allowUniversalAccessFromFileURLs = true
-                        mediaPlaybackRequiresUserGesture = false
-                        mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                        cacheMode = WebSettings.LOAD_DEFAULT
-                    }
-
-                    addJavascriptInterface(exoPlayerManager, "ExoPlayerManager")
-                    addJavascriptInterface(exoPlayerManager, "AndroidBridge")
-                    addJavascriptInterface(exoPlayerManager, "Android")
-
-                    webViewClient = object : WebViewClient() {
-                        override fun onPageFinished(view: WebView?, url: String?) {
-                            super.onPageFinished(view, url)
-                            exoPlayerManager.notifyExternalMediaIfPresent()
-                        }
-                    }
-                    webChromeClient = object : WebChromeClient() {
-                        override fun onShowFileChooser(
-                            webView: WebView?,
-                            filePathCallback: ValueCallback<Array<Uri>>?,
-                            fileChooserParams: FileChooserParams?
-                        ): Boolean {
-                            if (filePathCallback == null) return false
-                            return onOpenFileChooser(filePathCallback, fileChooserParams)
-                        }
-
-                        override fun onPermissionRequest(request: PermissionRequest?) {
-                            request?.grant(request.resources)
-                        }
-                    }
-
-                    exoPlayerManager.attachWebView(this)
-                    loadUrl("file:///android_asset/index.html")
-                    onWebViewCreated(this)
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
     }
 }

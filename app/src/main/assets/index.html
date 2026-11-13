@@ -8,8 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SubLater">
   <title>SubLater</title>
-<rect width='100' height='100' rx='26' fill='%2324272d' stroke='%230099ff' stroke-width='6'/><text x='50' y='64' font-family='sans-serif' font-weight='900' font-size='38' fill='%230099ff' text-anchor='middle'>SUB</text></svg>">
-<rect width=\"100\" height=\"100\" rx=\"26\" fill=\"%2324272d\"/><text x=\"50\" y=\"64\" font-family=\"sans-serif\" font-weight=\"900\" font-size=\"38\" fill=\"%230099ff\" text-anchor=\"middle\">SUB</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='26' fill='%2324272d' stroke='%230099ff' stroke-width='6'/><text x='50' y='64' font-family='sans-serif' font-weight='900' font-size='38' fill='%230099ff' text-anchor='middle'>SUB</text></svg>">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1115,7 +1114,6 @@
     <div class="global-row">
       <span>Модель Gemini</span>
       <select id="geminiModel">
-        <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
         <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
         <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
         <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
@@ -1164,6 +1162,20 @@
     <option value="whisper-large-v3">whisper-large-v3 (Точная)</option>
   </select>
 
+  <select id="sourceAudioLang">
+    <option value="auto">Язык речи: Автоопределение</option>
+    <option value="ru">Язык речи: Русский</option>
+    <option value="en">Язык речи: Английский</option>
+    <option value="tr">Язык речи: Турецкий</option>
+    <option value="az">Язык речи: Азербайджанский</option>
+    <option value="uk">Язык речи: Украинский</option>
+    <option value="de">Язык речи: Немецкий</option>
+    <option value="fr">Язык речи: Французский</option>
+    <option value="es">Язык речи: Испанский</option>
+    <option value="ja">Язык речи: Японский</option>
+    <option value="ko">Язык речи: Корейский</option>
+  </select>
+
   <select id="translateLang">
     <option value="">Без перевода</option>
     <option value="Russian">Перевести на русский</option>
@@ -1208,7 +1220,7 @@
     <div class="ai-title">
       <div class="ai-title-left">
         <span class="ai-sparkle-badge">✨ ИИ-видео</span>
-        <span class="ai-model-pill" id="aiActiveModelBadge">Gemini 3.8 Flash</span>
+        <span class="ai-model-pill" id="aiActiveModelBadge">Gemini 2.5 Flash</span>
       </div>
       <div class="ai-header-actions">
         <button type="button" class="ai-clear-btn" id="clearAiChatBtn">Очистить</button>
@@ -1522,7 +1534,7 @@
       appThemeBgEl.addEventListener('change', () => applyGrayTheme(appThemeBgEl.value, true));
     }
 
-    /* ---------------- Ключи API Groq и Gemini (без захардкоженных ключей) ---------------- */
+    /* ---------------- Ключи API Groq и Gemini (хранятся только в Android EncryptedSharedPreferences) ---------------- */
     const keyInput = $('apiKey');
     const geminiKeyInput = $('geminiApiKey');
     const geminiModelSelect = $('geminiModel');
@@ -1531,35 +1543,53 @@
     try { localStorage.removeItem('groq_key'); } catch (e) {}
 
     const keyBridge = window.ExoPlayerManager || window.AndroidBridge;
-    const savedGroqLocal = safeGetStorage('sublater_groq_key', '');
-    const savedGroqNative = (keyBridge && typeof keyBridge.getApiKey === 'function') ? String(keyBridge.getApiKey() || '').trim() : '';
-    keyInput.value = savedGroqLocal || savedGroqNative || '';
-    if (keyInput.value && !savedGroqLocal) safeSetStorage('sublater_groq_key', keyInput.value);
+    const hasNativeKeystore = Boolean(keyBridge && typeof keyBridge.saveApiKey === 'function' && typeof keyBridge.getApiKey === 'function');
+    if (hasNativeKeystore) {
+      const legacyGroq = safeGetStorage('sublater_groq_key', '');
+      const nativeGroq = String(keyBridge.getApiKey() || '').trim();
+      if (!nativeGroq && legacyGroq) {
+        try { keyBridge.saveApiKey(legacyGroq); } catch (e) {}
+      }
+      keyInput.value = nativeGroq || legacyGroq || '';
+      try { localStorage.removeItem('sublater_groq_key'); } catch (e) {}
+    } else {
+      keyInput.value = safeGetStorage('sublater_groq_key', '');
+    }
     keyInput.addEventListener('input', () => {
       const v = keyInput.value.trim();
-      safeSetStorage('sublater_groq_key', v);
-      if (keyBridge && typeof keyBridge.saveApiKey === 'function') {
+      if (hasNativeKeystore) {
         try { keyBridge.saveApiKey(v); } catch (e) {}
+      } else {
+        safeSetStorage('sublater_groq_key', v);
       }
     });
 
-    const savedGemLocal = safeGetStorage('gemini_key', '');
-    const savedGemNative = (keyBridge && typeof keyBridge.getGeminiApiKey === 'function') ? String(keyBridge.getGeminiApiKey() || '').trim() : '';
-    geminiKeyInput.value = savedGemLocal || savedGemNative || '';
-    if (geminiKeyInput.value && !savedGemLocal) safeSetStorage('gemini_key', geminiKeyInput.value);
+    if (hasNativeKeystore && typeof keyBridge.getGeminiApiKey === 'function' && typeof keyBridge.saveGeminiApiKey === 'function') {
+      const legacyGem = safeGetStorage('gemini_key', '');
+      const nativeGem = String(keyBridge.getGeminiApiKey() || '').trim();
+      if (!nativeGem && legacyGem) {
+        try { keyBridge.saveGeminiApiKey(legacyGem); } catch (e) {}
+      }
+      geminiKeyInput.value = nativeGem || legacyGem || '';
+      try { localStorage.removeItem('gemini_key'); } catch (e) {}
+    } else {
+      geminiKeyInput.value = safeGetStorage('gemini_key', '');
+    }
     geminiKeyInput.addEventListener('input', () => {
       const v = geminiKeyInput.value.trim();
-      safeSetStorage('gemini_key', v);
-      if (keyBridge && typeof keyBridge.saveGeminiApiKey === 'function') {
+      if (hasNativeKeystore && typeof keyBridge.saveGeminiApiKey === 'function') {
         try { keyBridge.saveGeminiApiKey(v); } catch (e) {}
+      } else {
+        safeSetStorage('gemini_key', v);
       }
     });
 
-    const savedGeminiModel = safeGetStorage('gemini_model', 'gemini-3.8-flash');
-    if (savedGeminiModel) geminiModelSelect.value = savedGeminiModel;
+    const savedGeminiModel = safeGetStorage('gemini_model', 'gemini-2.5-flash');
+    const validGeminiOpts = Array.from(geminiModelSelect.options).map(o => o.value);
+    geminiModelSelect.value = validGeminiOpts.includes(savedGeminiModel) ? savedGeminiModel : 'gemini-2.5-flash';
     function syncModelBadge() {
       const opt = geminiModelSelect.options[geminiModelSelect.selectedIndex];
-      aiActiveModelBadge.textContent = opt ? opt.textContent : 'Gemini 3.8 Flash';
+      aiActiveModelBadge.textContent = opt ? opt.textContent : 'Gemini 2.5 Flash';
       safeSetStorage('gemini_model', geminiModelSelect.value);
     }
     geminiModelSelect.addEventListener('change', syncModelBadge);
@@ -1631,6 +1661,7 @@
     const llmModelEl = $('llmModel');
     const hallucinationFilterEl = $('hallucinationFilter');
     const smartSplitToggleEl = $('smartSplitToggle');
+    const sourceAudioLangEl = $('sourceAudioLang');
     const fastAudioCompressEl = $('fastAudioCompress');
     const whisperPromptEl = $('whisperPrompt');
 
@@ -1638,6 +1669,7 @@
     let exportData = { vtt: '', srt: '', ass: '', txt: '' };
     let currentFileName = 'subtitles';
     let mediaObjectURL = null;
+    let externalMediaInfo = null; // { uri, name, sig } для видео, открытых через «Открыть с помощью» / «Поделиться»
     let cues = [];
     let cachedWhisper = {
       fileSig: '',
@@ -1726,6 +1758,7 @@
           textColor, fontFamily, bgOpacity,
           subOffset, subHold,
           autoPlay: autoPlayToggle.checked,
+          sourceAudioLang: sourceAudioLangEl.value,
           llmModel: llmModelEl.value,
           hallucinationFilter: hallucinationFilterEl.checked,
           smartSplit: smartSplitToggleEl.checked,
@@ -1752,6 +1785,7 @@
         if (s.subHold !== undefined) subHoldEl.value = s.subHold;
 
         if (s.autoPlay !== undefined) autoPlayToggle.checked = s.autoPlay;
+        if (s.sourceAudioLang) sourceAudioLangEl.value = s.sourceAudioLang;
         if (s.llmModel) llmModelEl.value = s.llmModel;
         if (s.hallucinationFilter !== undefined) hallucinationFilterEl.checked = s.hallucinationFilter;
         if (s.smartSplit !== undefined) smartSplitToggleEl.checked = s.smartSplit;
@@ -1765,8 +1799,8 @@
       sizeEl, widthEl, bottomEl, bgToggle, wordModeSelect,
       fitModeSelect,
       subTextColorEl, subFontFamilyEl, bgOpacityEl,
-      subOffsetEl, subHoldEl, // <-- добавили в массив слушателей
-      autoPlayToggle, llmModelEl, hallucinationFilterEl,
+      subOffsetEl, subHoldEl,
+      autoPlayToggle, sourceAudioLangEl, llmModelEl, hallucinationFilterEl,
       fastAudioCompressEl, whisperPromptEl
     ].forEach((el) => {
       el.addEventListener('input', applySettings);
@@ -2164,6 +2198,66 @@
       return file ? `${file.name}_${file.size}_${file.lastModified}` : '';
     }
 
+    function getActiveMediaInfo() {
+      const f = $('mediaFile').files[0];
+      if (f) {
+        return { isExternal: false, file: f, name: f.name, sig: getFileSignature(f) };
+      }
+      if (externalMediaInfo && externalMediaInfo.uri) {
+        return {
+          isExternal: true,
+          file: null,
+          uri: externalMediaInfo.uri,
+          name: externalMediaInfo.name || 'external_video.mp4',
+          sig: externalMediaInfo.sig || `ext_${externalMediaInfo.name}_${externalMediaInfo.uri}`
+        };
+      }
+      return null;
+    }
+
+    function saveWhisperDiskCache() {
+      const bridge = window.ExoPlayerManager || window.AndroidBridge;
+      if (!bridge || typeof bridge.saveSubtitleCache !== 'function') return;
+      if (!cachedWhisper.fileSig || !cachedWhisper.rawSegments.length) return;
+      try {
+        const key = `${cachedWhisper.fileSig}__${cachedWhisper.model}`;
+        bridge.saveSubtitleCache(key, JSON.stringify(cachedWhisper));
+      } catch (e) {}
+    }
+
+    function tryRestoreWhisperDiskCache(sig, model) {
+      const bridge = window.ExoPlayerManager || window.AndroidBridge;
+      if (!bridge || typeof bridge.loadSubtitleCache !== 'function' || !sig) return false;
+      try {
+        const raw = bridge.loadSubtitleCache(`${sig}__${model}`);
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.rawSegments) && parsed.rawSegments.length > 0) {
+          cachedWhisper = parsed;
+          const targetLang = $('translateLang').value;
+          const langCode = LANG_CODES[targetLang] || '';
+          const mediaInfo = getActiveMediaInfo();
+          if (mediaInfo) {
+            currentFileName = mediaInfo.name.replace(/\.[^/.]+$/, '') + (langCode ? `_${langCode}` : '');
+          }
+          if (targetLang && cachedWhisper.translations && cachedWhisper.translations[targetLang]) {
+            cues = cloneCues(cachedWhisper.translations[targetLang]);
+            cachedWhisper.activeLang = targetLang;
+          } else {
+            cues = buildCues(cachedWhisper.rawSegments, cachedWhisper.rawWords);
+            cachedWhisper.activeLang = '';
+          }
+          if (cues.length) {
+            refreshAllExports();
+            actionRow.style.display = 'flex';
+            statusEl.innerText = 'Восстановлены сохранённые субтитры из кэша.';
+            return true;
+          }
+        }
+      } catch (e) {}
+      return false;
+    }
+
     function cloneCues(cueList) {
       return cueList.map(c => ({
         start: c.start,
@@ -2175,12 +2269,12 @@
 
     function updateButtonLabel() {
       if (activeAbortCtrl) return;
-      const f = $('mediaFile').files[0];
-      const sig = getFileSignature(f);
+      const media = getActiveMediaInfo();
+      const sig = media ? media.sig : '';
       const model = $('model').value;
       const tLang = $('translateLang').value;
 
-      if (f && cachedWhisper.fileSig === sig && cachedWhisper.model === model && cachedWhisper.rawSegments.length) {
+      if (media && cachedWhisper.fileSig === sig && cachedWhisper.model === model && cachedWhisper.rawSegments.length) {
         if (!tLang) {
           btn.innerText = cachedWhisper.activeLang === ''
             ? '✨ ИИ-видео (вопросы по видео)'
@@ -2199,18 +2293,34 @@
 
     function updateFileName() {
       const f = $('mediaFile').files[0];
-      $('fileName').innerText = f ? f.name : 'Не выбран';
       if (f) {
-        currentFileName = f.name.replace(/\.[^/.]+$/, '');
+        externalMediaInfo = null;
+      }
+      const media = getActiveMediaInfo();
+      $('fileName').innerText = media ? media.name : 'Не выбран';
+      if (media) {
+        currentFileName = media.name.replace(/\.[^/.]+$/, '');
         applySettings();
-        setupPlayer(f);
+        if (!tryRestoreWhisperDiskCache(media.sig, $('model').value)) {
+          cues = [];
+          actionRow.style.display = 'none';
+          vttPanel.classList.add('hidden');
+          statusEl.innerText = '';
+        }
+        setupPlayer(media);
       }
       aiSummaryBox.classList.remove('show');
       updateButtonLabel();
     }
     $('mediaFile').addEventListener('change', updateFileName);
     $('translateLang').addEventListener('change', updateButtonLabel);
-    $('model').addEventListener('change', updateButtonLabel);
+    $('model').addEventListener('change', () => {
+      const media = getActiveMediaInfo();
+      if (media && (cachedWhisper.fileSig !== media.sig || cachedWhisper.model !== $('model').value)) {
+        tryRestoreWhisperDiskCache(media.sig, $('model').value);
+      }
+      updateButtonLabel();
+    });
 
     const timeVTT = (sec) => {
       const ms = Math.max(0, Math.round(sec * 1000));
@@ -2368,12 +2478,37 @@
       return geminiKeyInput.value.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
     }
 
-    function captureCurrentVideoFrameBase64() {
+    const pendingFrameRequests = new Map();
+    window.__onNativeFrameCaptured = (reqId, b64) => {
+      const resolver = pendingFrameRequests.get(reqId);
+      if (resolver) {
+        pendingFrameRequests.delete(reqId);
+        resolver(b64 && b64.length > 32 ? b64 : null);
+      }
+    };
+
+    async function captureCurrentVideoFrameBase64Async() {
       try {
         const bridge = window.ExoPlayerManager || window.AndroidBridge;
-        if (bridge && typeof bridge.getCurrentFrameBase64 === 'function') {
-          const nativeFrame = bridge.getCurrentFrameBase64();
-          if (nativeFrame && nativeFrame.length > 32) return nativeFrame;
+        if (bridge && typeof bridge.requestCurrentFrameBase64Async === 'function') {
+          return await new Promise((resolve) => {
+            const reqId = 'frame_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+            const timer = setTimeout(() => {
+              pendingFrameRequests.delete(reqId);
+              resolve(null);
+            }, 3500);
+            pendingFrameRequests.set(reqId, (val) => {
+              clearTimeout(timer);
+              resolve(val);
+            });
+            try {
+              bridge.requestCurrentFrameBase64Async(reqId);
+            } catch (err) {
+              clearTimeout(timer);
+              pendingFrameRequests.delete(reqId);
+              resolve(null);
+            }
+          });
         }
         if (!videoEl || videoEl.readyState < 2 || !videoEl.videoWidth) return null;
         const canvas = document.createElement('canvas');
@@ -2475,11 +2610,11 @@
       try {
         const transcript = buildTranscriptContext();
         const curTimeStr = formatTime(videoEl.currentTime || 0);
-        const frameB64 = captureCurrentVideoFrameBase64();
-        const selectedModel = geminiModelSelect.value || 'gemini-3.8-flash';
+        const frameB64 = await captureCurrentVideoFrameBase64Async();
+        const selectedModel = geminiModelSelect.value || 'gemini-2.5-flash';
 
         const candidateModels = [selectedModel];
-        ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'].forEach(m => {
+        ['gemini-2.5-flash', 'gemini-2.0-flash'].forEach(m => {
           if (!candidateModels.includes(m)) candidateModels.push(m);
         });
 
@@ -2623,9 +2758,9 @@
       actionRow.style.display = 'flex';
       closeSettings();
 
-      const mediaF = $('mediaFile').files[0];
-      if (mediaF) {
-        setupPlayer(mediaF);
+      const media = getActiveMediaInfo();
+      if (media) {
+        setupPlayer(media);
         statusEl.innerText = `Готовые субтитры (${cues.length} строк) загружены в плеер!`;
       } else {
         statusEl.innerText = `Субтитры загружены (${cues.length} строк). Выберите видеофайл для просмотра.`;
@@ -2882,9 +3017,69 @@
     }
 
     async function translateSegments(cueArr, targetLang, statusElRef, signal) {
+      const bridge = window.ExoPlayerManager || window.AndroidBridge;
+      const primaryModel = llmModelEl.value || 'openai/gpt-oss-120b';
+
+      if (bridge && typeof bridge.translateSubtitlesNative === 'function') {
+        statusElRef.innerText = `Перевод субтитров (${targetLang}) в фоне...`;
+        setProgress(56);
+        const resObj = await new Promise((resolve, reject) => {
+          let done = false;
+          const onAbort = () => {
+            if (done) return;
+            done = true;
+            try { if (typeof bridge.cancelNativeSubtitles === 'function') bridge.cancelNativeSubtitles(); } catch (err) {}
+            reject(new Error('Отменено пользователем.'));
+          };
+          if (signal) {
+            if (signal.aborted) { onAbort(); return; }
+            signal.addEventListener('abort', onAbort, { once: true });
+          }
+          window.__onNativeTranslateProgress = (pct, msg) => {
+            if (done) return;
+            setProgress(Math.max(55, Math.min(97, Number(pct) || 60)));
+            if (msg && statusElRef) statusElRef.innerText = msg;
+          };
+          window.__onNativeTranslateDone = (jsonStr) => {
+            if (done) return;
+            done = true;
+            if (signal) signal.removeEventListener('abort', onAbort);
+            try { resolve(JSON.parse(jsonStr || '{}')); }
+            catch (err) { reject(new Error('Ошибка чтения перевода.')); }
+          };
+          window.__onNativeTranslateError = (errMsg) => {
+            if (done) return;
+            done = true;
+            if (signal) signal.removeEventListener('abort', onAbort);
+            reject(new Error(errMsg || 'Ошибка перевода субтитров.'));
+          };
+          try {
+            bridge.translateSubtitlesNative(
+              getApiKeys().join(','),
+              JSON.stringify(cueArr.map(c => c.text)),
+              targetLang,
+              primaryModel
+            );
+          } catch (err) {
+            done = true;
+            if (signal) signal.removeEventListener('abort', onAbort);
+            reject(err);
+          }
+        });
+
+        const translatedList = Array.isArray(resObj.translations) ? resObj.translations : [];
+        for (let i = 0; i < cueArr.length; i++) {
+          const nextTxt = typeof translatedList[i] === 'string' ? translatedList[i].trim() : '';
+          if (nextTxt && nextTxt !== cueArr[i].text) {
+            cueArr[i].text = nextTxt;
+            distributeWords(cueArr[i]);
+          }
+        }
+        return Number(resObj.failedLines) || 0;
+      }
+
       const batchSize = 40;
       const concurrency = 4;
-      const primaryModel = llmModelEl.value || 'openai/gpt-oss-120b';
       const fallbackModel = 'openai/gpt-oss-20b';
       const total = cueArr.length;
       const originalTexts = cueArr.map(c => c.text);
@@ -3052,9 +3247,12 @@
       }
     });
 
-    function setupPlayer(file) {
-      const newSig = getFileSignature(file);
-      if (file && videoEl.dataset.fileSig !== newSig) {
+    function setupPlayer(mediaInput) {
+      const isWrapped = mediaInput && typeof mediaInput === 'object' && ('sig' in mediaInput);
+      const fileObj = isWrapped ? mediaInput.file : mediaInput;
+      const newSig = isWrapped ? mediaInput.sig : getFileSignature(fileObj);
+
+      if (mediaInput && videoEl.dataset.fileSig !== newSig) {
         usingNativeExoFallback = false;
         document.documentElement.classList.remove('native-exo-fallback');
         document.body.classList.remove('native-exo-fallback');
@@ -3068,14 +3266,12 @@
           videoEl.dataset.fileSig = newSig;
           window.__activateNativeExoFallback();
           applyVolumeBoost200(volSlider.value || 100);
-        } else {
+        } else if (fileObj) {
           if (mediaObjectURL) URL.revokeObjectURL(mediaObjectURL);
-          mediaObjectURL = URL.createObjectURL(file);
+          mediaObjectURL = URL.createObjectURL(fileObj);
           videoEl.src = mediaObjectURL + '#t=0.1';
           videoEl.dataset.fileSig = newSig;
         }
-        setTimeout(applyRealVideoPreviewPoster, 120);
-        setTimeout(applyRealVideoPreviewPoster, 450);
       }
 
       playerBox.style.display = 'flex';
@@ -3227,14 +3423,15 @@
         return;
       }
 
-      const file = $('mediaFile').files[0];
+      const media = getActiveMediaInfo();
       const model = $('model').value;
       const targetLang = $('translateLang').value;
-      const fileSig = getFileSignature(file);
+      const audioLang = sourceAudioLangEl.value || 'auto';
+      const fileSig = media ? media.sig : '';
       const langCode = LANG_CODES[targetLang] || '';
 
       if (
-        file &&
+        media &&
         cachedWhisper.fileSig === fileSig &&
         cachedWhisper.model === model &&
         cachedWhisper.rawSegments.length &&
@@ -3247,7 +3444,7 @@
       const keys = getApiKeys();
       const customPrompt = whisperPromptEl.value.trim();
 
-      if (!keys.length || !file) { statusEl.innerText = 'Укажите хотя бы один API ключ Groq и выберите файл!'; return; }
+      if (!keys.length || !media) { statusEl.innerText = 'Укажите хотя бы один API ключ Groq и выберите файл!'; return; }
 
       activeAbortCtrl = new AbortController();
       const signal = activeAbortCtrl.signal;
@@ -3260,7 +3457,7 @@
       setProgress(5);
       await requestWakeLock();
 
-      currentFileName = file.name.replace(/\.[^/.]+$/, '') + (langCode ? `_${langCode}` : '');
+      currentFileName = media.name.replace(/\.[^/.]+$/, '') + (langCode ? `_${langCode}` : '');
 
       try {
         if (cachedWhisper.fileSig !== fileSig || cachedWhisper.model !== model || !cachedWhisper.rawSegments.length) {
@@ -3306,7 +3503,7 @@
                 bridge.generateSubtitlesNative(
                   keys.join(','),
                   model,
-                  'auto',
+                  audioLang,
                   customPrompt,
                   Boolean(hallucinationFilterEl.checked)
                 );
@@ -3319,6 +3516,8 @@
             (nativeRes.segments || []).forEach((s) => allSegments.push({ start: s.start, end: s.end, text: s.text }));
             (nativeRes.words || []).forEach((w) => allWords.push({ word: w.word, start: w.start, end: w.end }));
           } else {
+            const file = media.file;
+            if (!file) throw new Error('Выберите видеофайл.');
             const shouldCompress = file.size > 24 * 1024 * 1024 || (fastAudioCompressEl.checked && file.size > 10 * 1024 * 1024);
             let audioBuffer = null;
             if (shouldCompress) {
@@ -3430,13 +3629,14 @@
         if (!cues.length) throw new Error('Не удалось построить субтитры.');
 
         cachedWhisper.activeLang = targetLang;
+        saveWhisperDiskCache();
         setProgress(100);
         refreshAllExports();
 
         actionRow.style.display = 'flex';
         statusEl.innerText = 'Готово! Субтитры загружены.' + translationWarn;
 
-        setupPlayer(file);
+        setupPlayer(media);
 
         if (autoPlayToggle.checked && videoEl.paused) {
           videoEl.play().catch(() => {});
@@ -3477,13 +3677,14 @@
       return new Blob([buffer], { type: 'audio/wav' });
     }
 
-    /* ==================== МОСТ ANDROID EXOPLAYER (ДЛЯ MKV/HEVC И ЗАХВАТА ПРЕВЬЮ-КАДРА) ==================== */
+    /* ==================== МОСТ ANDROID EXOPLAYER (ДЛЯ MKV/HEVC И ВНЕШНИХ INTENT) ==================== */
     const nativeBridge = window.ExoPlayerManager || window.AndroidBridge || null;
     if (nativeBridge) {
       let nativePaused = true;
       let nativeCurrentTime = 0;
       let nativeDuration = 0;
       let lastUserPlayActionAt = 0;
+      let lastSentBoundsKey = '';
 
       try {
         if (typeof nativeBridge.setPlayerVisibility === 'function') {
@@ -3491,40 +3692,72 @@
         }
       } catch (e) {}
 
-      function syncNativePlayerBounds() {
-        if (!playerActive || !usingNativeExoFallback || playerBox.style.display === 'none' || document.body.classList.contains('global-settings-open')) {
-          try {
-            if (typeof nativeBridge.setPlayerVisibility === 'function') {
-              nativeBridge.setPlayerVisibility(false);
-            }
-          } catch (e) {}
+      function syncNativePlayerBounds(force = false) {
+        const shouldHide = !playerActive || !usingNativeExoFallback || playerBox.style.display === 'none' || document.body.classList.contains('global-settings-open');
+        if (shouldHide) {
+          if (lastSentBoundsKey !== 'hidden' || force) {
+            lastSentBoundsKey = 'hidden';
+            try {
+              if (typeof nativeBridge.setPlayerVisibility === 'function') {
+                nativeBridge.setPlayerVisibility(false);
+              }
+            } catch (e) {}
+          }
           return;
         }
         try {
-          if (typeof nativeBridge.setPlayerVisibility === 'function') {
-            nativeBridge.setPlayerVisibility(true);
-          }
           const rect = playerBox.getBoundingClientRect();
           const isFs = Boolean(
             document.body.classList.contains('player-fullscreen-open') ||
             document.fullscreenElement ||
             document.webkitFullscreenElement
           );
+          const vw = window.innerWidth || 1;
+          const vh = window.innerHeight || 1;
+          const nextKey = `${Math.round(rect.left)}:${Math.round(rect.top)}:${Math.round(rect.width)}:${Math.round(rect.height)}:${vw}:${vh}:${isFs}`;
+          if (!force && nextKey === lastSentBoundsKey) return;
+          lastSentBoundsKey = nextKey;
+
+          if (typeof nativeBridge.setPlayerVisibility === 'function') {
+            nativeBridge.setPlayerVisibility(true);
+          }
           nativeBridge.setPlayerBounds(
             rect.left,
             rect.top,
             rect.width,
             rect.height,
-            window.innerWidth || 1,
-            window.innerHeight || 1,
+            vw,
+            vh,
             isFs
           );
         } catch (e) {}
       }
 
       window.__syncNativePlayerBounds = syncNativePlayerBounds;
-      window.addEventListener('scroll', syncNativePlayerBounds, { passive: true });
-      window.addEventListener('resize', syncNativePlayerBounds);
+      window.addEventListener('scroll', () => syncNativePlayerBounds(false), { passive: true });
+      window.addEventListener('resize', () => syncNativePlayerBounds(true));
+
+      window.__onExternalMediaOpened = function (uri, name) {
+        if (!uri) return;
+        const cleanName = name || 'external_video.mp4';
+        externalMediaInfo = {
+          uri: String(uri),
+          name: cleanName,
+          sig: `ext_${cleanName}_${String(uri)}`
+        };
+        $('fileName').innerText = cleanName;
+        currentFileName = cleanName.replace(/\.[^/.]+$/, '');
+        applySettings();
+        if (!tryRestoreWhisperDiskCache(externalMediaInfo.sig, $('model').value)) {
+          cues = [];
+          actionRow.style.display = 'none';
+          vttPanel.classList.add('hidden');
+          statusEl.innerText = 'Видео открыто. Нажмите «Создать субтитры» или воспроизведите.';
+        }
+        setupPlayer(externalMediaInfo);
+        aiSummaryBox.classList.remove('show');
+        updateButtonLabel();
+      };
 
       window.__activateNativeExoFallback = function () {
         document.documentElement.classList.add('native-exo-fallback');
@@ -3601,13 +3834,14 @@
             } catch (e) {}
           };
 
-          syncNativePlayerBounds();
+          syncNativePlayerBounds(true);
           if (autoPlayToggle.checked && cues.length > 0) {
             videoEl.play();
           }
         } catch (e) {}
       };
 
+      let idlePollTick = 0;
       setInterval(() => {
         if (!playerActive || !usingNativeExoFallback) return;
         try {
@@ -3618,6 +3852,11 @@
               videoEl.dispatchEvent(new Event(playingNow ? 'play' : 'pause'));
             }
           }
+          // На паузе опрашиваем реже (~240 мс), чтобы не нагружать мост в простое
+          if (nativePaused) {
+            idlePollTick = (idlePollTick + 1) % 4;
+            if (idlePollTick !== 0 && Date.now() - lastUserPlayActionAt >= 500) return;
+          }
           nativeCurrentTime = Number(nativeBridge.getCurrentTime()) || 0;
           const dur = Number(nativeBridge.getDuration()) || 0;
           if (dur > 0 && Math.abs(dur - nativeDuration) > 0.1) {
@@ -3625,11 +3864,13 @@
             updateOverlayGeometry();
             videoEl.dispatchEvent(new Event('loadedmetadata'));
           }
-          syncTimeUI();
-          updateSubtitleFrame();
-          syncNativePlayerBounds();
+          if (nativePaused) {
+            syncTimeUI();
+            updateSubtitleFrame();
+          }
+          syncNativePlayerBounds(false);
         } catch (e) {}
-      }, 40);
+      }, 60);
 
       volSlider.addEventListener('input', (e) => {
         if (!usingNativeExoFallback) return;
@@ -3643,6 +3884,16 @@
         if (!usingNativeExoFallback) return;
         try { nativeBridge.setResizeMode(e.target.value || 'contain'); } catch (err) {}
       });
+
+      // Подхватываем внешнее медиа, если приложение было запущено через «Открыть с помощью» до загрузки WebView
+      try {
+        if (typeof nativeBridge.getExternalMediaInfoJson === 'function') {
+          const info = JSON.parse(nativeBridge.getExternalMediaInfoJson() || '{}');
+          if (info && info.hasMedia && info.isExternalIntent && info.uri) {
+            window.__onExternalMediaOpened(info.uri, info.name);
+          }
+        }
+      } catch (e) {}
     }
 
   })();
