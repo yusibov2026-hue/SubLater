@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Outer geometric hexagon frame -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#2DD4BF"
+        android:strokeWidth="1.6"
+        android:strokeAlpha="0.45"
+        android:pathData="M54,24 L80,39 L80,69 L54,84 L28,69 L28,39 Z" />
+
+    <!-- Facet 1 (Top-Right Cyan Isometric Blade of Play Prism) -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M41,31 L73,49.5 L63.5,55 L41,42 Z" />
+
+    <!-- Facet 2 (Bottom-Right Mint-Teal Isometric Blade of Play Prism) -->
+    <path
+        android:fillColor="#2DD4BF"
+        android:pathData="M73,49.5 L41,68 L41,57 L63.5,44 Z" />
+
+    <!-- Facet 3 (Left Vertical Indigo-Slate Pillar with negative-space cut) -->
+    <path
+        android:fillColor="#818CF8"
+        android:pathData="M37,33.5 L45,38 L45,61 L37,65.5 Z" />
+
+    <!-- Central crisp white core triangle -->
+    <path
+        android:fillColor="#F8FAFC"
+        android:pathData="M48,45 L58.5,51 L48,57 Z" />
+
+    <!-- Minimalist Geometric Subtitle Bar 1 (Left pill) -->
+    <path
+        android:fillColor="#F8FAFC"
+        android:pathData="M36,73 L55,73 L53,76.5 L34,76.5 Z" />
+
+    <!-- Minimalist Geometric Subtitle Bar 2 (Right accent diamond-pill) -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M58,73 L73,73 L71,76.5 L56,76.5 Z" />
+</vector>

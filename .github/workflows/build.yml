@@ -1,8 +1,6 @@
 name: Android CI & Release
 
 on:
-  push:
-    branches: [ "main" ]
   workflow_dispatch:
 
 permissions:
@@ -27,16 +25,20 @@ jobs:
         with:
           gradle-version: '8.7'
 
+      - name: Read Version
+        id: ver
+        run: echo "version=$(sed -n 's/.*versionName = \"\([^\"]*\)\".*/\1/p' app/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+
       - name: Build Debug APK
         run: gradle assembleDebug --stacktrace
 
       - name: Create GitHub Release and Attach APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: SubLater Release v1.0.${{ github.run_number }}
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: SubLyter v${{ steps.ver.outputs.version }}
           body: |
-            Автоматическая сборка гибридного Android-приложения **SubLater** (Media3 ExoPlayer + Transparent WebView + JS Bridge).
+            Автоматическая сборка гибридного Android-приложения **SubLyter** (Media3 ExoPlayer + Transparent WebView + JS Bridge).
             Скачайте прикрепленный файл `app-debug.apk` ниже для установки на Android.
           files: app/build/outputs/apk/debug/app-debug.apk
           draft: false
