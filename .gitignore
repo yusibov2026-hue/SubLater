@@ -1,0 +1,17 @@
+# Build
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+
+# Local / temporales
+.tmpcheck/
+adjuntos/
+.agent/
+local.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
