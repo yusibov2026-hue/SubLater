@@ -8,3 +8,4 @@
 - 2026-11-19: Renombrado visible `SubLater` → `SubLyter` (manteniendo `com.fromsub.app` y claves internas `sublater_*`), `versionCode = 68`, `versionName = "1.0.68"`; eliminadas etiquetas/versiones `2.x` (`v2.4.0-33` y CI), cambios commiteados y subidos a `main`, APK compilado en `app/build/outputs/apk/debug/app-debug.apk` y publicado release GitHub `v1.0.68` (`SubLyter-1.0.68.apk`).
 - 2026-11-19: Версия 1.0.66 собрана из нового кода (SubLyter/Outfit/Gemini 4), история `main` сведена к двум коммитам (1.0.52 и 1.0.66); релизы, теги и APK v1.0.67/v1.0.68 удалены полностью.
 - 2026-11-19: APK 1.0.66 (versionCode 66, `com.fromsub.app`) собран и залит в релиз `v1.0.66` вместо старого; тег `v1.0.66` перевешен на `719f3ed`.
+- 2026-11-20: Версия, тег, коммиты, локальный APK и релиз GitHub v1.0.67 удалены полностью; ветка main возвращена к 1.0.66 (с сохранением screenshots/ для Orion Store), последним релизом назначен v1.0.66.
