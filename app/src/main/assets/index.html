@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#161922" id="themeColorMeta">
+  <meta name="theme-color" content="#11131a" id="themeColorMeta">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SubLyter">
   <title>SubLyter</title>
 
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='26' fill='%23161922' stroke='%231b8ef2' stroke-width='6'/><text x='50' y='64' font-family='sans-serif' font-weight='900' font-size='38' fill='%231b8ef2' text-anchor='middle'>SUB</text></svg>">
-  <link rel="manifest" href='data:application/manifest+json,{"name":"SubLyter","short_name":"SubLyter","start_url":".","display":"standalone","background_color":"#161922","theme_color":"#1b8ef2","icons":[{"src":"data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" rx=\"26\" fill=\"%23161922\"/><text x=\"50\" y=\"64\" font-family=\"sans-serif\" font-weight=\"900\" font-size=\"38\" fill=\"%231b8ef2\" text-anchor=\"middle\">SUB</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='26' fill='%2311131a' stroke='%231b8ef2' stroke-width='6'/><text x='50' y='64' font-family='sans-serif' font-weight='900' font-size='38' fill='%231b8ef2' text-anchor='middle'>SUB</text></svg>">
+  <link rel="manifest" href='data:application/manifest+json,{"name":"SubLyter","short_name":"SubLyter","start_url":".","display":"standalone","background_color":"#11131a","theme_color":"#1b8ef2","icons":[{"src":"data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" rx=\"26\" fill=\"%2311131a\"/><text x=\"50\" y=\"64\" font-family=\"sans-serif\" font-weight=\"900\" font-size=\"38\" fill=\"%231b8ef2\" text-anchor=\"middle\">SUB</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
 
   <style>
 /* Inter (cyrillic 400) */
@@ -379,14 +379,14 @@
       --sub-width: 85%;
       --sub-bottom: 12%;
       --sub-font: 'Inter', -apple-system, sans-serif;
-      --title-font: 'Plus Jakarta Sans', 'Inter', sans-serif;
-      --title-size: 24px;
+      --title-font: 'DM Sans', 'Inter', sans-serif;
+      --title-size: 33px;
       --bg-opacity: 62;
       --accent: #1b8ef2;
-      --bg-main: #161922;
-      --bg-surface: #202532;
-      --bg-elevated: #1b202c;
-      --border-soft: #31384a;
+      --bg-main: #11131a;
+      --bg-surface: #1a1d27;
+      --bg-elevated: #151821;
+      --border-soft: #2a2f3d;
       --text-muted: #9aa4b8;
       --radius-sm: 12px;
       --radius-md: 16px;
@@ -2585,7 +2585,7 @@
         <option value="gray">Gray</option>
         <option value="light-slate">Light Slate</option>
         <option value="warm-gray">Warm Gray</option>
-        <option value="graphite">Graphite</option>
+        <option value="graphite" selected>Graphite</option>
       </select>
     </div>
 
@@ -2595,7 +2595,7 @@
         <option value="'Plus Jakarta Sans', 'Inter', sans-serif">Plus Jakarta Sans</option>
         <option value="'Inter', sans-serif">Inter</option>
         <option value="'Outfit', 'Inter', sans-serif">Outfit</option>
-        <option value="'DM Sans', 'Inter', sans-serif">DM Sans</option>
+        <option value="'DM Sans', 'Inter', sans-serif" selected>DM Sans</option>
         <option value="'Sora', 'Inter', sans-serif">Sora</option>
         <option value="'Space Grotesk', 'Inter', sans-serif">Space Grotesk</option>
         <option value="'Poppins', 'Inter', sans-serif">Poppins</option>
@@ -2620,8 +2620,8 @@
     </div>
 
     <div class="global-row">
-      <span>Title size <small id="titleFontSizeVal" style="color:var(--text-muted);font-weight:600;margin-left:4px;">24px</small></span>
-      <input type="range" id="titleFontSize" min="18" max="38" step="1" value="24" style="width: 110px;">
+      <span>Title size <small id="titleFontSizeVal" style="color:var(--text-muted);font-weight:600;margin-left:4px;">33px</small></span>
+      <input type="range" id="titleFontSize" min="18" max="38" step="1" value="33" style="width: 110px;">
     </div>
     <div class="title-font-preview-row">
       <span style="font-size:11px;color:var(--text-muted);flex-shrink:0;">Preview</span>
@@ -3038,7 +3038,7 @@
     };
     const appThemeBgEl = $('appThemeBg');
     function applyGrayTheme(themeKey) {
-      const t = GRAY_THEMES[themeKey] || GRAY_THEMES['dark-gray'];
+      const t = GRAY_THEMES[themeKey] || GRAY_THEMES['graphite'];
       const root = document.documentElement.style;
       root.setProperty('--bg-main', t.main);
       root.setProperty('--bg-surface', t.surface);
@@ -3048,31 +3048,33 @@
       if (meta) meta.setAttribute('content', t.main);
       safeSetStorage('sublater_gray_theme', themeKey);
     }
-    const savedGrayTheme = safeGetStorage('sublater_gray_theme', 'dark-gray');
+    const savedGrayTheme = safeGetStorage('sublater_gray_theme', 'graphite');
     if (appThemeBgEl) {
-      appThemeBgEl.value = GRAY_THEMES[savedGrayTheme] ? savedGrayTheme : 'dark-gray';
+      appThemeBgEl.value = GRAY_THEMES[savedGrayTheme] ? savedGrayTheme : 'graphite';
       applyGrayTheme(appThemeBgEl.value);
       appThemeBgEl.addEventListener('change', () => applyGrayTheme(appThemeBgEl.value));
     }
 
     /* ---------------- Шрифт и размер заголовка SubLyter ---------------- */
+    const DEFAULT_TITLE_FONT = "'DM Sans', 'Inter', sans-serif";
+    const DEFAULT_TITLE_SIZE = 33;
     const titleFontFamilyEl = $('titleFontFamily');
     const titleFontSizeEl = $('titleFontSize');
     const titleFontSizeValEl = $('titleFontSizeVal');
     function applyTitleTypography(fontCss, sizePx) {
-      const font = fontCss || "'Plus Jakarta Sans', 'Inter', sans-serif";
-      const size = Math.min(38, Math.max(18, parseInt(sizePx, 10) || 24));
+      const font = fontCss || DEFAULT_TITLE_FONT;
+      const size = Math.min(38, Math.max(18, parseInt(sizePx, 10) || DEFAULT_TITLE_SIZE));
       document.documentElement.style.setProperty('--title-font', font);
       document.documentElement.style.setProperty('--title-size', size + 'px');
       if (titleFontSizeValEl) titleFontSizeValEl.textContent = size + 'px';
       safeSetStorage('sublater_title_font', font);
       safeSetStorage('sublater_title_size', String(size));
     }
-    const savedTitleFont = safeGetStorage('sublater_title_font', "'Plus Jakarta Sans', 'Inter', sans-serif");
-    const savedTitleSize = parseInt(safeGetStorage('sublater_title_size', '24'), 10) || 24;
+    const savedTitleFont = safeGetStorage('sublater_title_font', DEFAULT_TITLE_FONT);
+    const savedTitleSize = parseInt(safeGetStorage('sublater_title_size', String(DEFAULT_TITLE_SIZE)), 10) || DEFAULT_TITLE_SIZE;
     if (titleFontFamilyEl) {
       const hasFontOpt = Array.from(titleFontFamilyEl.options).some(o => o.value === savedTitleFont);
-      titleFontFamilyEl.value = hasFontOpt ? savedTitleFont : titleFontFamilyEl.options[0].value;
+      titleFontFamilyEl.value = hasFontOpt ? savedTitleFont : DEFAULT_TITLE_FONT;
       titleFontFamilyEl.addEventListener('change', () => {
         applyTitleTypography(titleFontFamilyEl.value, titleFontSizeEl ? titleFontSizeEl.value : savedTitleSize);
       });
@@ -3126,19 +3128,34 @@
       }
       if (appWallpaperEl.querySelector('.sf')) return;
       const frag = document.createDocumentFragment();
-      const total = 52;
+      // Стратифицированная 2D-сетка (6x13 = 78 снежинок = 1.5x) с равномерным заполнением без пустых зон
+      const cols = 6;
+      const rows = 13;
+      const total = cols * rows;
       for (let i = 0; i < total; i++) {
         const outer = document.createElement('span');
         outer.className = 'sf';
-        const x = (4 + ((i * 37.7) % 92)).toFixed(1);
-        const sz = (2.6 + ((i * 1.13) % 2.2)).toFixed(1);
-        const dur = (15 + ((i * 3.7) % 13)).toFixed(2);
-        const delay = (-((i * 4.3) % 28)).toFixed(2);
-        const drift = Math.round(-42 + ((i * 29.3) % 86));
-        const sway = (8 + ((i * 5.9) % 14)).toFixed(1);
-        const swayDur = (4.4 + ((i * 1.9) % 4.2)).toFixed(2);
-        const swayDelay = (-((i * 2.1) % 8.6)).toFixed(2);
-        const op = (0.42 + ((i * 0.19) % 0.5)).toFixed(2);
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        // Детерминированный джиттер внутри ячейки, чтобы снег выглядел естественно и без пустых областей
+        const h1 = Math.sin((i + 1) * 12.9898) * 43758.5453;
+        const h2 = Math.sin((i + 1) * 78.233) * 24634.6345;
+        const h3 = Math.sin((i + 1) * 45.164) * 19283.7191;
+        const r1 = h1 - Math.floor(h1);
+        const r2 = h2 - Math.floor(h2);
+        const r3 = h3 - Math.floor(h3);
+
+        const cellW = 100 / cols;
+        const x = (col * cellW + (0.14 + r1 * 0.72) * cellW).toFixed(1);
+        const phase = (row + 0.12 + r2 * 0.76) / rows;
+        const sz = (2.6 + r3 * 2.2).toFixed(1);
+        const dur = (16.5 + r1 * 5.5).toFixed(2);
+        const delay = (-phase * parseFloat(dur)).toFixed(2);
+        const drift = Math.round(-22 + r2 * 44);
+        const sway = (7 + r3 * 12).toFixed(1);
+        const swayDur = (4.2 + r1 * 3.8).toFixed(2);
+        const swayDelay = (-(r2 * parseFloat(swayDur))).toFixed(2);
+        const op = (0.42 + r3 * 0.48).toFixed(2);
         outer.style.setProperty('--x', x + '%');
         outer.style.setProperty('--sz', sz + 'px');
         outer.style.setProperty('--dur', dur + 's');

@@ -463,7 +463,7 @@ fun HybridVideoApp(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (bounds.isFullscreen) ComposeColor(0xFF000000) else ComposeColor(0xFF161922))
+            .background(if (bounds.isFullscreen) ComposeColor(0xFF000000) else ComposeColor(0xFF11131A))
     ) {
         val maxW = maxWidth
         val maxH = maxHeight
