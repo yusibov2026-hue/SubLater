@@ -130,7 +130,10 @@ class MainActivity : ComponentActivity() {
 
     private fun systemBarHeightPx(name: String): Int {
         val resId = resources.getIdentifier(name, "dimen", "android")
-        return if (resId > 0) resources.getDimensionPixelSize(resId) else 0
+        if (resId <= 0) return 0
+        val rawPx = resources.getDimensionPixelSize(resId)
+        val density = resources.displayMetrics.density.coerceAtLeast(1f)
+        return (rawPx / density + 0.5f).toInt()
     }
 
     private fun applyBarIconAppearance(color: Int) {

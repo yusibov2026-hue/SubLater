@@ -9,8 +9,8 @@
   <meta name="apple-mobile-web-app-title" content="SubLater">
   <title>SubLater</title>
 
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='26' fill='%23161922' stroke='%2338bdf8' stroke-width='6'/><text x='50' y='64' font-family='sans-serif' font-weight='900' font-size='38' fill='%2338bdf8' text-anchor='middle'>SUB</text></svg>">
-  <link rel="manifest" href='data:application/manifest+json,{"name":"SubLater","short_name":"SubLater","start_url":".","display":"standalone","background_color":"#161922","theme_color":"#38bdf8","icons":[{"src":"data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" rx=\"26\" fill=\"%23161922\"/><text x=\"50\" y=\"64\" font-family=\"sans-serif\" font-weight=\"900\" font-size=\"38\" fill=\"%2338bdf8\" text-anchor=\"middle\">SUB</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='26' fill='%23161922' stroke='%231b8ef2' stroke-width='6'/><text x='50' y='64' font-family='sans-serif' font-weight='900' font-size='38' fill='%231b8ef2' text-anchor='middle'>SUB</text></svg>">
+  <link rel="manifest" href='data:application/manifest+json,{"name":"SubLater","short_name":"SubLater","start_url":".","display":"standalone","background_color":"#161922","theme_color":"#1b8ef2","icons":[{"src":"data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" rx=\"26\" fill=\"%23161922\"/><text x=\"50\" y=\"64\" font-family=\"sans-serif\" font-weight=\"900\" font-size=\"38\" fill=\"%231b8ef2\" text-anchor=\"middle\">SUB</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,7 +23,7 @@
       --sub-bottom: 12%;
       --sub-font: 'Inter', -apple-system, sans-serif;
       --bg-opacity: 62;
-      --accent: #38bdf8;
+      --accent: #1b8ef2;
       --bg-main: #161922;
       --bg-surface: #202532;
       --bg-elevated: #1b202c;
@@ -83,13 +83,20 @@
       height: 100vh;
       pointer-events: none;
       z-index: 0;
+      overflow: hidden;
       opacity: var(--wallpaper-opacity, 0.45);
       transition: opacity 0.25s ease;
-      will-change: opacity, background;
+      contain: strict;
     }
 
-    body.player-fullscreen-open #appWallpaper {
-      display: none !important;
+    body.player-fullscreen-open #appWallpaper,
+    body.global-settings-open #appWallpaper {
+      visibility: hidden !important;
+      animation-play-state: paused !important;
+    }
+    body.player-fullscreen-open #appWallpaper::before,
+    body.global-settings-open #appWallpaper::before {
+      animation-play-state: paused !important;
     }
 
     /* Обои: Аврора (Мягкое свечение) */
@@ -350,8 +357,14 @@
         radial-gradient(ellipse 80% 60% at 50% 50%, color-mix(in srgb, var(--wall-col) 14%, transparent), transparent 80%);
     }
 
-    /* Обои: Снегопад (живые снежинки с акцентным свечением) */
-    #appWallpaper[data-wallpaper="snow"] {
+    /* Обои: Снегопад (живые снежинки на GPU-композиторе без перерисовок CPU) */
+    #appWallpaper[data-wallpaper="snow"]::before {
+      content: "";
+      position: absolute;
+      top: -360px;
+      left: -180px;
+      width: calc(100% + 360px);
+      height: calc(100% + 720px);
       background-image:
         radial-gradient(2.4px 2.4px at 26px 32px, #ffffff 0%, color-mix(in srgb, var(--wall-col) 78%, transparent) 60%, transparent 100%),
         radial-gradient(2px 2px at 112px 96px, color-mix(in srgb, var(--wall-col) 70%, #ffffff), transparent 80%),
@@ -365,22 +378,13 @@
         120px 120px, 120px 120px,
         90px 90px, 90px 90px;
       background-repeat: repeat;
+      will-change: transform;
       animation: snowFallLive 18s linear infinite;
     }
 
     @keyframes snowFallLive {
-      0% {
-        background-position:
-          0px 0px, 0px 0px, 0px 0px,
-          0px 0px, 0px 0px,
-          0px 0px, 0px 0px;
-      }
-      100% {
-        background-position:
-          180px 360px, 180px 360px, 180px 360px,
-          -120px 240px, -120px 240px,
-          90px 180px, 90px 180px;
-      }
+      0% { transform: translate3d(0px, 0px, 0); }
+      100% { transform: translate3d(180px, 360px, 0); }
     }
 
     /* Обои: Дождь */
@@ -548,19 +552,25 @@
     }
     #settingsToggle svg { width: 21px; height: 21px; fill: currentColor; }
 
-    /* Модальное окно глобальных настроек — непрозрачный фон, чтобы плеер не просвечивал */
+    /* Модальное окно глобальных настроек — плавная GPU-анимация без лагов и без blur внутри */
     #settingsBackdrop {
       position: fixed;
       inset: 0;
-      background: rgba(10, 12, 18, 0.92) !important;
+      background: rgba(10, 12, 18, 0.88) !important;
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
       z-index: 99998;
-      display: none;
-      opacity: 1 !important;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease, visibility 0s linear 0.18s;
+      will-change: opacity;
     }
     #settingsBackdrop.show {
-      display: block !important;
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+      transition: opacity 0.18s ease, visibility 0s linear 0s;
     }
 
     body.global-settings-open #playerContainer {
@@ -572,13 +582,13 @@
       position: fixed;
       top: 50%;
       left: 50%;
-      transform: translate(-50%, -50%);
+      transform: translate3d(-50%, calc(-50% + 10px), 0) scale(0.97);
       width: 92%;
       max-width: 410px;
       isolation: isolate;
-      background-image: linear-gradient(#181b24, #181b24) !important;
       max-height: 86vh;
       overflow-y: auto;
+      overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
       background: #181b24 !important;
       background-color: #181b24 !important;
@@ -588,15 +598,61 @@
       border-radius: 22px;
       padding: 18px;
       z-index: 99999;
-      display: none;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.72);
-      opacity: 1 !important;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.52);
+      contain: layout style paint;
+      will-change: transform, opacity;
+      transition: opacity 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.18s;
     }
     #globalSettings.show {
-      display: block !important;
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate3d(-50%, -50%, 0) scale(1);
+      transition: opacity 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0s;
+    }
+    #globalSettings *,
+    #globalSettings .close-btn,
+    #globalSettings .cp-toggle,
+    #globalSettings .cp-preset,
+    #globalSettings .color-picker,
+    #globalSettings input,
+    #globalSettings select {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    #globalSettings .cp-toggle,
+    #globalSettings .close-btn,
+    #globalSettings select,
+    #globalSettings input:not([type="color"]):not([type="range"]):not([type="checkbox"]) {
+      background-color: #232836;
+      box-shadow: none;
+    }
+    #globalSettings .color-picker {
+      background: #1f2430;
     }
     #globalSettings > * + * {
       margin-top: 8px;
+    }
+    .global-row.api-key-row {
+      flex-wrap: nowrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 0;
+    }
+    .global-row.api-key-row > span:first-child {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding-right: 4px;
+    }
+    .api-row-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
     }
 
     #globalSettings::-webkit-scrollbar { width: 4px; }
@@ -2069,10 +2125,10 @@
         <span class="cp-toggle-chevron">▾</span>
       </button>
       <div class="color-picker" id="accentPicker" data-picker="accent">
-        <input type="color" id="accentColor" class="cp-native" value="#38bdf8">
+        <input type="color" id="accentColor" class="cp-native" value="#1b8ef2">
         <div class="cp-head">
           <span class="cp-swatch"></span>
-          <input type="text" class="cp-hex" value="#38bdf8" maxlength="7" spellcheck="false" autocomplete="off">
+          <input type="text" class="cp-hex" value="#1b8ef2" maxlength="7" spellcheck="false" autocomplete="off">
         </div>
         <div class="cp-row"><span class="cp-lbl">H</span><input type="range" class="cp-h" min="0" max="360" step="1"><b class="cp-val cp-h-val">0</b></div>
         <div class="cp-row"><span class="cp-lbl">S</span><input type="range" class="cp-s" min="0" max="100" step="1"><b class="cp-val cp-s-val">0</b></div>
@@ -2140,10 +2196,10 @@
         <span class="cp-toggle-chevron">▾</span>
       </button>
       <div class="color-picker" id="wallpaperPicker" data-picker="wallpaper">
-        <input type="color" id="wallpaperColor" class="cp-native" value="#38bdf8">
+        <input type="color" id="wallpaperColor" class="cp-native" value="#1b8ef2">
         <div class="cp-head">
           <span class="cp-swatch"></span>
-          <input type="text" class="cp-hex" value="#38bdf8" maxlength="7" spellcheck="false" autocomplete="off">
+          <input type="text" class="cp-hex" value="#1b8ef2" maxlength="7" spellcheck="false" autocomplete="off">
         </div>
         <div class="cp-row"><span class="cp-lbl">H</span><input type="range" class="cp-h" min="0" max="360" step="1"><b class="cp-val cp-h-val">0</b></div>
         <div class="cp-row"><span class="cp-lbl">S</span><input type="range" class="cp-s" min="0" max="100" step="1"><b class="cp-val cp-s-val">0</b></div>
@@ -2187,29 +2243,16 @@
       </select>
     </div>
     <div class="global-row">
-      <span>Subtitle background opacity</span>
-      <input type="range" id="bgOpacity" min="0" max="100" value="62" style="width: 100px;">
-    </div>
-    <div class="global-row">
       <span>Autoplay</span>
       <label class="switch">
         <input type="checkbox" id="autoPlayToggle" checked>
         <span class="slider"></span>
       </label>
     </div>
-    <div class="global-row">
-      <span>Smoothness (Hz)</span>
-      <select id="smoothHz">
-        <option value="60">60 Hz</option>
-        <option value="90" selected>90 Hz</option>
-        <option value="120">120 Hz</option>
-        <option value="30">30 Hz</option>
-      </select>
-    </div>
 
-    <div class="global-row" style="margin-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 8px;">
+    <div class="global-row api-key-row" style="margin-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 8px;">
       <span>Groq API Keys</span>
-      <div style="display:flex; align-items:center; gap:8px;">
+      <div class="api-row-actions">
         <span id="keysCountBadge" style="font-size: 11.5px; color: var(--accent); font-weight: 700;">0 keys</span>
         <a class="api-get-link" href="https://console.groq.com/keys" onclick="if(!window.Android){window.open(this.href,'_blank','noopener');return false;}">
           Get API
@@ -2221,18 +2264,21 @@
     <input type="hidden" id="apiKey" />
     <input type="hidden" id="apiKey2" />
 
-    <div class="global-row" style="margin-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 8px;">
+    <div class="global-row api-key-row" style="margin-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 8px;">
       <span>Gemini API Key</span>
-      <a class="api-get-link" href="https://aistudio.google.com/apikey" onclick="if(!window.Android){window.open(this.href,'_blank','noopener');return false;}">
-        Get API
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-      </a>
+      <div class="api-row-actions">
+        <a class="api-get-link" href="https://aistudio.google.com/apikey" onclick="if(!window.Android){window.open(this.href,'_blank','noopener');return false;}">
+          Get API
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
     </div>
-    <input type="password" id="geminiApiKey" autocomplete="off" spellcheck="false" placeholder="Enter Gemini key" style="margin:0 0 6px 0;" />
+    <input type="password" id="geminiApiKey" autocomplete="off" spellcheck="false" placeholder="Enter Gemini key" style="margin:2px 0 6px 0;" />
 
     <div class="global-row">
       <span>Gemini model</span>
       <select id="geminiModel">
+        <option value="gemini-4-hydrogen" selected>Gemini 4 Hydrogen</option>
         <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
         <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
         <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
@@ -2318,7 +2364,6 @@
     function openSettings() {
       document.body.classList.add('global-settings-open');
       if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
-      syncColorPickers();
       globalSettings.classList.add('show');
       settingsBackdrop.classList.add('show');
       settingsToggle.classList.add('open');
@@ -2346,7 +2391,7 @@
     const COLOR_PRESETS = [
       '#ffffff', '#000000', '#9ca3af', '#ef4444', '#f97316', '#f59e0b',
       '#eab308', '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4',
-      '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#ec4899', '#f43f5e'
+      '#0ea5e9', '#1b8ef2', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#ec4899', '#f43f5e'
     ];
 
     function cpClamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
@@ -2486,6 +2531,7 @@
         toggle.addEventListener('click', () => {
           const open = root.classList.toggle('open');
           toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (open) syncFromNative(false);
         });
       }
 
@@ -2505,8 +2551,8 @@
       });
     }
 
-    /* ---------------- Акцентный цвет (#38bdf8) и Сланцевые темы ---------------- */
-    const DEFAULT_ACCENT = '#38bdf8';
+    /* ---------------- Акцентный цвет (#1b8ef2) и Сланцевые темы ---------------- */
+    const DEFAULT_ACCENT = '#1b8ef2';
     const accentColorEl = $('accentColor');
     const savedAccent = safeGetStorage('sublater_accent', DEFAULT_ACCENT);
     accentColorEl.value = savedAccent;
@@ -2752,11 +2798,12 @@
       saveGeminiKeyToKeystore(geminiKeyInput.value);
     });
 
-    const savedGeminiModel = safeGetStorage('gemini_model', 'gemini-3.8-flash');
-    if (savedGeminiModel) geminiModelSelect.value = savedGeminiModel;
+    const savedGeminiModel = safeGetStorage('gemini_model', 'gemini-4-hydrogen');
+    const hasGeminiOpt = savedGeminiModel && Array.from(geminiModelSelect.options).some(o => o.value === savedGeminiModel);
+    geminiModelSelect.value = hasGeminiOpt ? savedGeminiModel : 'gemini-4-hydrogen';
     function syncModelBadge() {
       const opt = geminiModelSelect.options[geminiModelSelect.selectedIndex];
-      aiActiveModelBadge.textContent = opt ? opt.textContent : 'Gemini 3.8 Flash';
+      aiActiveModelBadge.textContent = opt ? opt.textContent : 'Gemini 4 Hydrogen';
       safeSetStorage('gemini_model', geminiModelSelect.value);
     }
     geminiModelSelect.addEventListener('change', syncModelBadge);
@@ -3055,8 +3102,8 @@
       const fitMode = fitModeSelect.value || 'contain';
       const textColor = subTextColorEl.value;
       const fontFamily = subFontFamilyEl.value;
-      const bgOpacity = bgOpacityEl.value;
-      const smoothHz = Math.min(144, Math.max(15, parseInt(smoothHzEl.value, 10) || 60));
+      const bgOpacity = bgOpacityEl ? bgOpacityEl.value : '62';
+      const smoothHz = smoothHzEl ? Math.min(144, Math.max(15, parseInt(smoothHzEl.value, 10) || 90)) : 90;
       const boost = Math.min(200, Math.max(100, parseInt(boostSlider.value, 10) || 100));
       audioBoost = boost;
       window.__nativeSyncHz = smoothHz;
@@ -3134,8 +3181,8 @@
         if (s.fitMode) fitModeSelect.value = s.fitMode;
         if (s.textColor) subTextColorEl.value = s.textColor;
         if (s.fontFamily) subFontFamilyEl.value = s.fontFamily;
-        if (s.bgOpacity !== undefined) bgOpacityEl.value = s.bgOpacity;
-        if (s.smoothHz) smoothHzEl.value = s.smoothHz;
+        if (bgOpacityEl && s.bgOpacity !== undefined) bgOpacityEl.value = s.bgOpacity;
+        if (smoothHzEl && s.smoothHz) smoothHzEl.value = s.smoothHz;
         if (s.boost !== undefined) boostSlider.value = s.boost;
         
         if (s.subOffset !== undefined) subOffsetEl.value = s.subOffset;
@@ -3156,11 +3203,12 @@
     [
       sizeEl, widthEl, bottomEl, bgToggle, wordModeSelect,
       fitModeSelect,
-      subTextColorEl, subFontFamilyEl, bgOpacityEl,
+      subTextColorEl, subFontFamilyEl,
       subOffsetEl, subHoldEl, // <-- добавили в массив слушателей
-      autoPlayToggle, smoothHzEl, llmModelEl, hallucinationFilterEl,
+      autoPlayToggle, llmModelEl, hallucinationFilterEl,
       fastAudioCompressEl, whisperPromptEl
     ].forEach((el) => {
+      if (!el) return;
       el.addEventListener('input', applySettings);
       el.addEventListener('change', applySettings);
     });
@@ -3770,7 +3818,7 @@
       const marginV = Math.round((parseInt(bottomEl.value, 10) || 12) * 10.8);
       const primaryCol = hexToASS(subTextColorEl.value, '00');
       const secondaryCol = hexToASS(accentColorEl.value, '55');
-      const opacityVal = parseInt(bgOpacityEl.value, 10) || 62;
+      const opacityVal = bgOpacityEl ? (parseInt(bgOpacityEl.value, 10) || 62) : 62;
       const backAlpha = bgToggle.checked
         ? Math.round(((100 - opacityVal) / 100) * 255).toString(16).padStart(2, '0').toUpperCase()
         : 'FF';
@@ -4059,10 +4107,10 @@
         const transcript = buildTranscriptContext();
         const curTimeStr = formatTime(videoEl.currentTime || 0);
         const frameB64 = captureCurrentVideoFrameBase64();
-        const selectedModel = geminiModelSelect.value || 'gemini-3.8-flash';
+        const selectedModel = geminiModelSelect.value || 'gemini-4-hydrogen';
 
         const candidateModels = [selectedModel];
-        ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'].forEach(m => {
+        ['gemini-4-hydrogen', 'gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'].forEach(m => {
           if (!candidateModels.includes(m)) candidateModels.push(m);
         });
 
