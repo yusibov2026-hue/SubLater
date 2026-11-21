@@ -596,7 +596,18 @@ fun HybridVideoApp(
                                 view: WebView?,
                                 request: WebResourceRequest?
                             ): Boolean {
-                                return !(request?.url?.toString()?.startsWith("file:///android_asset/") ?: true)
+                                val uri = request?.url ?: return true
+                                val urlStr = uri.toString()
+                                if (urlStr.startsWith("file:///android_asset/")) return false
+                                if (urlStr.startsWith("https://") || urlStr.startsWith("http://")) {
+                                    try {
+                                        ctx.startActivity(Intent(Intent.ACTION_VIEW, uri).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        })
+                                    } catch (_: Exception) {
+                                    }
+                                }
+                                return true
                             }
 
                             override fun onPageFinished(view: WebView?, url: String?) {

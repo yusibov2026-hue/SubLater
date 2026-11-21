@@ -12,7 +12,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Roboto:wght@500;700&family=Montserrat:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Roboto:wght@500;700&family=Montserrat:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --sub-color: #ffffff;
@@ -77,10 +77,10 @@
       margin-bottom: 18px;
     }
     .app-header h2.brand-title {
-      font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Plus Jakarta Sans', 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       font-weight: 500;
-      font-size: 25px;
-      letter-spacing: -0.03em;
+      font-size: 26px;
+      letter-spacing: -0.035em;
       line-height: 1;
       color: #f3f4f6;
       margin: 0;
@@ -96,6 +96,35 @@
       font-weight: 700;
       color: var(--accent);
       transition: color 0.3s ease;
+    }
+    .api-get-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+      padding: 4px 9px;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      flex-shrink: 0;
+    }
+    .api-get-link:active {
+      opacity: 0.75;
+      transform: scale(0.96);
+    }
+    .api-get-link svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
     
     /* Кнопка настроек в правом верхнем углу с акцентной рамкой и пружиной */
@@ -1337,11 +1366,19 @@
 
     <div class="global-row" style="margin-top: 10px; border-top: 1px solid var(--border-soft); padding-top: 14px;">
       <span>Groq API Keys (Subtitles)</span>
+      <a class="api-get-link" href="https://console.groq.com/keys" onclick="if(!window.Android){window.open(this.href,'_blank','noopener');return false;}">
+        Get API
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>
     </div>
     <input type="password" id="apiKey" placeholder="Groq key(s) (gsk_1..., gsk_2...)" style="margin:0 0 6px 0;" />
 
     <div class="global-row" style="margin-top: 6px; border-top: 1px solid var(--border-soft); padding-top: 12px;">
       <span>Gemini API Key (AI Video)</span>
+      <a class="api-get-link" href="https://aistudio.google.com/apikey" onclick="if(!window.Android){window.open(this.href,'_blank','noopener');return false;}">
+        Get API
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>
     </div>
     <input type="password" id="geminiApiKey" placeholder="Gemini key (AIzaSy...)" style="margin:0 0 6px 0;" />
 
