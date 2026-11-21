@@ -55,10 +55,15 @@ import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.security.KeyStore
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import kotlin.math.ceil
 
 data class VideoBounds(
     val leftRatio: Float = 0f,
@@ -1045,21 +1050,21 @@ class ExoPlayerManager(
             currentVideoUri ?: return false
         }
 
-        // Механизм 1.0.24 ("All at once"): 12 кГц моно, нарезка по 5 минут (300 с) с перекрытием 6 с
-        val targetSampleRate = if (batchMode) 12000 else 16000
-        val chunkDurationSec = if (batchMode) 300 else 60
-        val overlapSec = if (batchMode) 6 else 1
+        // Максимально быстрое извлечение аудио: динамические чанки (16 кГц во всех режимах) + до 4 параллельных потоков декодирования
+        val targetSampleRate = 16000
+        val streamChunkDurationSec = if (batchMode) 180 else 60
+        val streamOverlapSec = if (batchMode) 4 else 1
 
         // Сетевой поток (HLS/DASH/прогрессивный HTTP) нельзя открыть через
         // MediaExtractor как файл. Его разбирает отдельный ExoPlayer, а
         // StreamAudioCaptureSink получает уже декодированный PCM.
         if (targetUri.scheme == "http" || targetUri.scheme == "https") {
-            return startStreamAudioCapture(targetUri, startSec, targetSampleRate, chunkDurationSec, overlapSec)
+            return startStreamAudioCapture(targetUri, startSec, targetSampleRate, streamChunkDurationSec, streamOverlapSec)
         }
 
         Thread({
             try {
-                extractFixedWavChunksAsync(targetUri, startSec, targetSampleRate, chunkDurationSec, overlapSec)
+                extractParallelOrSequentialWavChunksAsync(targetUri, startSec, targetSampleRate, batchMode)
             } catch (e: Exception) {
                 val errorMsg = JSONObject.quote(e.message ?: "Audio extraction error")
                 postJs("if (window.__onNativeChunkError) { window.__onNativeChunkError($errorMsg); }")
@@ -1195,6 +1200,359 @@ class ExoPlayerManager(
                 }
             }
         } catch (_: Exception) {}
+    }
+
+    private fun probeAudioDurationSec(uri: Uri): Double {
+        val extractor = MediaExtractor()
+        return try {
+            extractor.setDataSource(context, uri, null)
+            val candidates = mutableListOf<MediaFormat>()
+            for (i in 0 until extractor.trackCount) {
+                val fmt = extractor.getTrackFormat(i)
+                val mime = fmt.getString(MediaFormat.KEY_MIME) ?: continue
+                if (mime.startsWith("audio/")) candidates.add(fmt)
+            }
+            val chosen = if (candidates.isNotEmpty()) {
+                candidates.getOrElse(selectedAudioOrderIndex.coerceIn(0, candidates.lastIndex)) { candidates.first() }
+            } else null
+            val durUs = if (chosen != null && chosen.containsKey(MediaFormat.KEY_DURATION)) {
+                chosen.getLong(MediaFormat.KEY_DURATION)
+            } else 0L
+            if (durUs > 0L) durUs.toDouble() / 1_000_000.0 else 0.0
+        } catch (_: Exception) {
+            0.0
+        } finally {
+            try { extractor.release() } catch (_: Exception) {}
+        }
+    }
+
+    private fun extractParallelOrSequentialWavChunksAsync(
+        uri: Uri,
+        startSec: Double,
+        targetSampleRate: Int,
+        batchMode: Boolean
+    ) {
+        val safeStartSec = if (startSec >= 30.0) startSec else 0.0
+        val totalDurSec = probeAudioDurationSec(uri)
+        val remainingSec = (totalDurSec - safeStartSec).coerceAtLeast(0.0)
+        val fallbackChunkDur = if (batchMode) 180 else 60
+        val overlapSec = if (batchMode) 2 else 1
+
+        if (totalDurSec <= 0.0 || remainingSec <= (if (batchMode) 50.0 else 70.0)) {
+            extractFixedWavChunksAsync(uri, startSec, targetSampleRate, fallbackChunkDur, overlapSec)
+            return
+        }
+
+        val chunkDurationSec = if (batchMode) {
+            if (remainingSec <= 720.0) {
+                ceil(remainingSec / 4.0).toInt().coerceIn(45, 180)
+            } else {
+                180
+            }
+        } else {
+            60
+        }
+
+        val windows = mutableListOf<Triple<Int, Double, Double>>()
+        var curStart = safeStartSec
+        var wIdx = 0
+        while (curStart < totalDurSec - 0.25) {
+            val nominalEnd = (curStart + chunkDurationSec).coerceAtMost(totalDurSec)
+            windows.add(Triple(wIdx, curStart, nominalEnd))
+            curStart = nominalEnd
+            wIdx++
+        }
+
+        if (windows.size <= 1) {
+            extractFixedWavChunksAsync(uri, startSec, targetSampleRate, fallbackChunkDur, overlapSec)
+            return
+        }
+
+        val chunkDir = File(context.cacheDir, "sublater_chunks")
+        if (!chunkDir.exists()) chunkDir.mkdirs()
+        chunkDir.listFiles()?.forEach { it.delete() }
+
+        val threadCount = windows.size.coerceIn(1, 4)
+        val executor = Executors.newFixedThreadPool(threadCount)
+        val emittedCount = AtomicInteger(0)
+        val fatalError = AtomicReference<String?>(null)
+
+        try {
+            windows.forEachIndexed { idx, (winIdx, winNomStart, winNomEnd) ->
+                val isLastWin = idx == windows.lastIndex
+                executor.execute {
+                    if (cancelAudioExtraction) return@execute
+                    try {
+                        val chunkJson = decodeSingleWindowToWav(
+                            uri = uri,
+                            chunkDir = chunkDir,
+                            winIndex = winIdx,
+                            winNomStartSec = winNomStart,
+                            winNomEndSec = winNomEnd,
+                            isLastWindow = isLastWin,
+                            baseStartFloorSec = safeStartSec,
+                            targetSampleRate = targetSampleRate,
+                            overlapSec = overlapSec
+                        )
+                        if (chunkJson != null && !cancelAudioExtraction) {
+                            emittedCount.incrementAndGet()
+                            val jsonStr = chunkJson.toString()
+                            postJs("if (window.__onNativeChunkReady) { window.__onNativeChunkReady($jsonStr, false); }")
+                        }
+                    } catch (t: Throwable) {
+                        fatalError.compareAndSet(null, t.message ?: "Parallel audio decode failed")
+                    }
+                }
+            }
+            executor.shutdown()
+            while (!executor.awaitTermination(1, TimeUnit.SECONDS)) {
+                if (cancelAudioExtraction) {
+                    executor.shutdownNow()
+                    break
+                }
+            }
+        } finally {
+            if (!executor.isTerminated) executor.shutdownNow()
+        }
+
+        if (cancelAudioExtraction) return
+
+        val totalEmitted = emittedCount.get()
+        if (totalEmitted == 0) {
+            extractFixedWavChunksAsync(uri, startSec, targetSampleRate, fallbackChunkDur, overlapSec)
+            return
+        }
+        postJs("if (window.__onNativeChunkDone) { window.__onNativeChunkDone($totalEmitted); }")
+    }
+
+    private fun decodeSingleWindowToWav(
+        uri: Uri,
+        chunkDir: File,
+        winIndex: Int,
+        winNomStartSec: Double,
+        winNomEndSec: Double,
+        isLastWindow: Boolean,
+        baseStartFloorSec: Double,
+        targetSampleRate: Int,
+        overlapSec: Int
+    ): JSONObject? {
+        val extractor = MediaExtractor()
+        var codec: MediaCodec? = null
+        val outFile = File(chunkDir, "chunk_${winIndex}.wav")
+        var outStream: BufferedOutputStream? = null
+
+        try {
+            extractor.setDataSource(context, uri, null)
+            val audioCandidates = mutableListOf<Triple<Int, MediaFormat, String>>()
+            for (i in 0 until extractor.trackCount) {
+                val format = extractor.getTrackFormat(i)
+                val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
+                if (mime.startsWith("audio/")) {
+                    audioCandidates.add(Triple(i, format, mime))
+                }
+            }
+            if (audioCandidates.isEmpty()) return null
+
+            val chosen = audioCandidates.getOrElse(selectedAudioOrderIndex.coerceIn(0, audioCandidates.lastIndex)) {
+                audioCandidates.first()
+            }
+            val audioTrackIndex = chosen.first
+            val audioFormat = chosen.second
+            val mimeType = chosen.third
+
+            extractor.selectTrack(audioTrackIndex)
+            val skipUntilSec = if (winIndex == 0) winNomStartSec else (winNomStartSec - overlapSec).coerceAtLeast(baseStartFloorSec)
+            if (skipUntilSec > 0.0) {
+                extractor.seekTo((skipUntilSec * 1_000_000.0).toLong(), MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+            }
+            val firstSampleUs = extractor.sampleTime
+            if (firstSampleUs < 0L && winIndex > 0) return null
+            val seekLandedSec = if (firstSampleUs >= 0L) firstSampleUs.toDouble() / 1_000_000.0 else skipUntilSec
+            val stopAtSec = if (isLastWindow) Double.MAX_VALUE else (winNomEndSec + overlapSec.toDouble() * 0.5 + 0.5)
+            val extractorStopUs = if (isLastWindow) Long.MAX_VALUE else ((stopAtSec + 1.0) * 1_000_000.0).toLong()
+
+            val localCodec = MediaCodec.createDecoderByType(mimeType)
+            codec = localCodec
+            localCodec.configure(audioFormat, null, null, 0)
+            localCodec.start()
+
+            val stream = BufferedOutputStream(FileOutputStream(outFile), 131072)
+            outStream = stream
+            stream.write(ByteArray(44))
+
+            val ioBuf = ByteArray(65536)
+            var ioUsed = 0
+            var pcmBytes = 0
+            var writtenSamples = 0L
+            var droppedPreSamples = 0L
+            var actualChunkStartSec = seekLandedSec
+            var reachedWindowEnd = false
+
+            fun flushIo() {
+                if (ioUsed > 0) {
+                    stream.write(ioBuf, 0, ioUsed)
+                    pcmBytes += ioUsed
+                    ioUsed = 0
+                }
+            }
+
+            fun pushWindowSample(sample: Short) {
+                if (reachedWindowEnd) return
+                val sampleTimeSec = seekLandedSec + (droppedPreSamples + writtenSamples).toDouble() / targetSampleRate.toDouble()
+                if (winIndex > 0 && sampleTimeSec < skipUntilSec) {
+                    droppedPreSamples++
+                    return
+                }
+                if (writtenSamples == 0L) {
+                    actualChunkStartSec = sampleTimeSec
+                }
+                if (!isLastWindow && sampleTimeSec > stopAtSec) {
+                    reachedWindowEnd = true
+                    return
+                }
+                val lo = (sample.toInt() and 0xFF).toByte()
+                val hi = ((sample.toInt() ushr 8) and 0xFF).toByte()
+                ioBuf[ioUsed++] = lo
+                ioBuf[ioUsed++] = hi
+                if (ioUsed >= ioBuf.size - 2) {
+                    flushIo()
+                }
+                writtenSamples++
+            }
+
+            var srcSampleRate = if (audioFormat.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
+                audioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE).coerceAtLeast(8000)
+            } else 44100
+            var srcChannels = if (audioFormat.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
+                audioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
+            } else 2
+            var pcmEncoding = AudioFormat.ENCODING_PCM_16BIT
+            var resamplePos = 0.0
+            var resampleStep = srcSampleRate.toDouble() / targetSampleRate.toDouble()
+
+            val bufferInfo = MediaCodec.BufferInfo()
+            var inputDone = false
+            var outputDone = false
+
+            while (!outputDone && !reachedWindowEnd && !cancelAudioExtraction) {
+                if (!inputDone) {
+                    val inIndex = localCodec.dequeueInputBuffer(2000L)
+                    if (inIndex >= 0) {
+                        val inBuf = localCodec.getInputBuffer(inIndex)
+                        if (inBuf != null) {
+                            val sampleSize = extractor.readSampleData(inBuf, 0)
+                            val sampleTimeUs = extractor.sampleTime
+                            if (sampleSize < 0 || (!isLastWindow && sampleTimeUs >= 0L && sampleTimeUs > extractorStopUs)) {
+                                localCodec.queueInputBuffer(inIndex, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                                inputDone = true
+                            } else {
+                                localCodec.queueInputBuffer(inIndex, 0, sampleSize, sampleTimeUs, 0)
+                                extractor.advance()
+                            }
+                        }
+                    }
+                }
+
+                var outIndex = localCodec.dequeueOutputBuffer(bufferInfo, 2000L)
+                while (outIndex >= 0 || outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                    if (outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                        val newFmt = localCodec.outputFormat
+                        if (newFmt.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
+                            srcSampleRate = newFmt.getInteger(MediaFormat.KEY_SAMPLE_RATE).coerceAtLeast(8000)
+                        }
+                        if (newFmt.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
+                            srcChannels = newFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && newFmt.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+                            pcmEncoding = newFmt.getInteger(MediaFormat.KEY_PCM_ENCODING)
+                        }
+                        resampleStep = srcSampleRate.toDouble() / targetSampleRate.toDouble()
+                    } else if (outIndex >= 0) {
+                        val outBuf = localCodec.getOutputBuffer(outIndex)
+                        if (outBuf != null && bufferInfo.size > 0 && !reachedWindowEnd) {
+                            outBuf.position(bufferInfo.offset)
+                            outBuf.limit(bufferInfo.offset + bufferInfo.size)
+                            outBuf.order(ByteOrder.LITTLE_ENDIAN)
+
+                            if (pcmEncoding == AudioFormat.ENCODING_PCM_FLOAT) {
+                                val floatBuf = outBuf.asFloatBuffer()
+                                val totalFrames = floatBuf.remaining() / srcChannels
+                                while (resamplePos < totalFrames && !reachedWindowEnd) {
+                                    val baseIdx = resamplePos.toInt() * srcChannels
+                                    var sum = 0f
+                                    for (ch in 0 until srcChannels) sum += floatBuf.get(baseIdx + ch)
+                                    val monoShort = ((sum / srcChannels).coerceIn(-1f, 1f) * 32767f).toInt().toShort()
+                                    pushWindowSample(monoShort)
+                                    resamplePos += resampleStep
+                                }
+                                resamplePos = (resamplePos - totalFrames.toDouble()).coerceAtLeast(0.0)
+                            } else {
+                                val shortBuf = outBuf.asShortBuffer()
+                                val totalFrames = shortBuf.remaining() / srcChannels
+                                while (resamplePos < totalFrames && !reachedWindowEnd) {
+                                    val baseIdx = resamplePos.toInt() * srcChannels
+                                    var sum = 0
+                                    for (ch in 0 until srcChannels) sum += shortBuf.get(baseIdx + ch).toInt()
+                                    val monoShort = (sum / srcChannels).coerceIn(-32768, 32767).toShort()
+                                    pushWindowSample(monoShort)
+                                    resamplePos += resampleStep
+                                }
+                                resamplePos = (resamplePos - totalFrames.toDouble()).coerceAtLeast(0.0)
+                            }
+                        }
+                        localCodec.releaseOutputBuffer(outIndex, false)
+                        if ((bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                            outputDone = true
+                            break
+                        }
+                    }
+                    if (reachedWindowEnd || cancelAudioExtraction) break
+                    outIndex = localCodec.dequeueOutputBuffer(bufferInfo, 0L)
+                }
+            }
+
+            flushIo()
+            stream.flush()
+            stream.close()
+            outStream = null
+
+            if (cancelAudioExtraction || pcmBytes <= 0) {
+                try { outFile.delete() } catch (_: Exception) {}
+                return null
+            }
+
+            RandomAccessFile(outFile, "rw").use { raf ->
+                writeWavHeader(raf, pcmBytes, targetSampleRate, 1)
+            }
+            val durationSec = (pcmBytes / 2).toDouble() / targetSampleRate.toDouble()
+            val endSec = actualChunkStartSec + durationSec
+            val cutoffSec = if (winIndex == 0) actualChunkStartSec else winNomStartSec
+            val nextCutoffSec = if (isLastWindow) (endSec + 100.0) else winNomEndSec
+
+            return JSONObject().apply {
+                put("index", winIndex)
+                put("path", outFile.absolutePath)
+                put("fileUrl", "file://${outFile.absolutePath}")
+                put("fileName", outFile.name)
+                put("pos", actualChunkStartSec)
+                put("startSec", actualChunkStartSec)
+                put("chunkEnd", endSec)
+                put("endSec", endSec)
+                put("cutoff", cutoffSec)
+                put("cutoffSec", cutoffSec)
+                put("nextCutoff", nextCutoffSec)
+                put("nextCutoffSec", nextCutoffSec)
+                put("isLast", false)
+            }
+        } catch (e: Throwable) {
+            try { outFile.delete() } catch (_: Exception) {}
+            throw e
+        } finally {
+            try { outStream?.close() } catch (_: Exception) {}
+            try { codec?.stop() } catch (_: Exception) {}
+            try { codec?.release() } catch (_: Exception) {}
+            try { extractor.release() } catch (_: Exception) {}
+        }
     }
 
     private fun extractFixedWavChunksAsync(
@@ -1400,7 +1758,7 @@ class ExoPlayerManager(
         try {
             while (!outputDone && !cancelAudioExtraction) {
                 if (!inputDone) {
-                    val inIndex = codec.dequeueInputBuffer(10000L)
+                    val inIndex = codec.dequeueInputBuffer(2000L)
                     if (inIndex >= 0) {
                         val inBuf = codec.getInputBuffer(inIndex)
                         if (inBuf != null) {
@@ -1416,7 +1774,7 @@ class ExoPlayerManager(
                     }
                 }
 
-                var outIndex = codec.dequeueOutputBuffer(bufferInfo, 10000L)
+                var outIndex = codec.dequeueOutputBuffer(bufferInfo, 2000L)
                 while (outIndex >= 0 || outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                     if (outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                         val newFmt = codec.outputFormat

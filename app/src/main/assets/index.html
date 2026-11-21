@@ -13,25 +13,7 @@
   <link rel="manifest" href='data:application/manifest+json,{"name":"SubLyter","short_name":"SubLyter","start_url":".","display":"standalone","background_color":"#161922","theme_color":"#1b8ef2","icons":[{"src":"data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" rx=\"26\" fill=\"%23161922\"/><text x=\"50\" y=\"64\" font-family=\"sans-serif\" font-weight=\"900\" font-size=\"38\" fill=\"%231b8ef2\" text-anchor=\"middle\">SUB</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
 
   <style>
-/* plus-jakarta-sans latin */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('fonts/plus-jakarta-sans-latin-600.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* plus-jakarta-sans latin */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/plus-jakarta-sans-latin-700.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* inter cyrillic */
+/* Inter (cyrillic 400) */
 @font-face {
   font-family: 'Inter';
   font-style: normal;
@@ -40,7 +22,7 @@
   src: url('fonts/inter-cyrillic-400.woff2') format('woff2');
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
-/* inter latin */
+/* Inter (latin 400) */
 @font-face {
   font-family: 'Inter';
   font-style: normal;
@@ -49,7 +31,7 @@
   src: url('fonts/inter-latin-400.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
-/* inter cyrillic */
+/* Inter (cyrillic 500) */
 @font-face {
   font-family: 'Inter';
   font-style: normal;
@@ -58,7 +40,7 @@
   src: url('fonts/inter-cyrillic-500.woff2') format('woff2');
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
-/* inter latin */
+/* Inter (latin 500) */
 @font-face {
   font-family: 'Inter';
   font-style: normal;
@@ -67,7 +49,7 @@
   src: url('fonts/inter-latin-500.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
-/* inter cyrillic */
+/* Inter (cyrillic 600) */
 @font-face {
   font-family: 'Inter';
   font-style: normal;
@@ -76,7 +58,7 @@
   src: url('fonts/inter-cyrillic-600.woff2') format('woff2');
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
-/* inter latin */
+/* Inter (latin 600) */
 @font-face {
   font-family: 'Inter';
   font-style: normal;
@@ -85,7 +67,7 @@
   src: url('fonts/inter-latin-600.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
-/* inter cyrillic */
+/* Inter (cyrillic 700) */
 @font-face {
   font-family: 'Inter';
   font-style: normal;
@@ -94,7 +76,7 @@
   src: url('fonts/inter-cyrillic-700.woff2') format('woff2');
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
-/* inter latin */
+/* Inter (latin 700) */
 @font-face {
   font-family: 'Inter';
   font-style: normal;
@@ -103,12 +85,302 @@
   src: url('fonts/inter-latin-700.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
+/* Plus Jakarta Sans (latin 700) */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/plus-jakarta-sans-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Outfit (latin 700) */
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/outfit-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* DM Sans (latin 700) */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/dm-sans-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Sora (latin 700) */
+@font-face {
+  font-family: 'Sora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/sora-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Space Grotesk (latin 700) */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/space-grotesk-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Poppins (latin 700) */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/poppins-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Montserrat (cyrillic 700) */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/montserrat-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* Montserrat (latin 700) */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/montserrat-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Raleway (cyrillic 700) */
+@font-face {
+  font-family: 'Raleway';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/raleway-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* Raleway (latin 700) */
+@font-face {
+  font-family: 'Raleway';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/raleway-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Manrope (cyrillic 700) */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/manrope-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* Manrope (latin 700) */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/manrope-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Urbanist (latin 700) */
+@font-face {
+  font-family: 'Urbanist';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/urbanist-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Quicksand (latin 700) */
+@font-face {
+  font-family: 'Quicksand';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/quicksand-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Comfortaa (cyrillic 700) */
+@font-face {
+  font-family: 'Comfortaa';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/comfortaa-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* Comfortaa (latin 700) */
+@font-face {
+  font-family: 'Comfortaa';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/comfortaa-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Syne (latin 800) */
+@font-face {
+  font-family: 'Syne';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('fonts/syne-latin-800.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Unbounded (cyrillic 700) */
+@font-face {
+  font-family: 'Unbounded';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/unbounded-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* Unbounded (latin 700) */
+@font-face {
+  font-family: 'Unbounded';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/unbounded-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Orbitron (latin 700) */
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/orbitron-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Audiowide (latin 400) */
+@font-face {
+  font-family: 'Audiowide';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/audiowide-latin-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Bebas Neue (latin 400) */
+@font-face {
+  font-family: 'Bebas Neue';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/bebas-neue-latin-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Oswald (cyrillic 700) */
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/oswald-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* Oswald (latin 700) */
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/oswald-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Playfair Display (cyrillic 700) */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/playfair-display-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* Playfair Display (latin 700) */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/playfair-display-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Cinzel (latin 700) */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/cinzel-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* JetBrains Mono (cyrillic 700) */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/jetbrains-mono-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* JetBrains Mono (latin 700) */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/jetbrains-mono-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Pacifico (cyrillic 400) */
+@font-face {
+  font-family: 'Pacifico';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/pacifico-cyrillic-400.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* Pacifico (latin 400) */
+@font-face {
+  font-family: 'Pacifico';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/pacifico-latin-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Righteous (latin 400) */
+@font-face {
+  font-family: 'Righteous';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/righteous-latin-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
     :root {
       --sub-color: #ffffff;
       --sub-size: 18px;
       --sub-width: 85%;
       --sub-bottom: 12%;
       --sub-font: 'Inter', -apple-system, sans-serif;
+      --title-font: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      --title-size: 24px;
       --bg-opacity: 62;
       --accent: #1b8ef2;
       --bg-main: #161922;
@@ -570,18 +842,21 @@
       margin-bottom: 16px;
     }
     .app-header h2 {
-      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      font-family: var(--title-font, 'Plus Jakarta Sans', 'Inter', sans-serif);
       font-weight: 700;
-      font-size: 24px;
+      font-size: var(--title-size, 24px);
+      font-synthesis: none;
       letter-spacing: -0.025em;
       line-height: 1.1;
       color: var(--accent);
       text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 26%, transparent);
       margin: 0;
-      transition: color 0.3s, text-shadow 0.3s;
+      flex: 1 1 auto;
+      min-width: 0;
+      transition: color 0.3s, text-shadow 0.3s, font-size 0.15s ease;
     }
     
-    /* Кнопка настроек (скруглённый квадрат, плавно крутится на 360° при открытии/закрытии) */
+    /* Кнопка настроек (весь скруглённый квадрат плавно крутится на 360° при открытии/закрытии) */
     #settingsToggle {
       width: 42px; height: 42px;
       border-radius: 13px;
@@ -599,7 +874,7 @@
       transform: rotate(0deg);
       will-change: transform;
       transition:
-        transform 0.55s cubic-bezier(0.22, 1, 0.36, 1) !important,
+        transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
         background 0.25s ease,
         box-shadow 0.25s ease;
     }
@@ -651,7 +926,7 @@
     #settingsBtn {
       transform: rotate(0deg);
       will-change: transform;
-      transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1) !important, color 0.2s, background 0.2s;
+      transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), color 0.2s, background 0.2s;
     }
     #settingsBtn:active {
       transform: none;
@@ -680,7 +955,7 @@
       visibility: visible;
       opacity: 1;
       pointer-events: auto;
-      transition: opacity 0.22s ease, visibility 0s linear 0s;
+      transition: opacity 0.22s ease 0.06s, visibility 0s linear 0s;
     }
 
     body.global-settings-open #playerContainer {
@@ -817,6 +1092,7 @@
     .global-row select {
       flex: 0 0 auto;
       width: auto;
+      max-width: 185px;
       margin: 0;
       padding: 7px 10px;
       font-size: 12.5px;
@@ -824,6 +1100,29 @@
       background: #2a2a2a;
       border: 1px solid #444444;
       color: #ffffff;
+    }
+    .title-font-preview-row {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #171b24;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    #titleFontPreview {
+      font-family: var(--title-font, 'Plus Jakarta Sans', 'Inter', sans-serif);
+      font-size: var(--title-size, 24px);
+      font-weight: 700;
+      font-synthesis: none;
+      color: var(--accent);
+      line-height: 1.15;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
     }
     .gen-mode-group {
       display: inline-flex;
@@ -874,18 +1173,12 @@
 
     /* Стеклянное размытие серых кнопок */
     .close-btn,
-    .ai-clear-btn,
-    .ai-prompt-chip,
-    .chapter-time,
     .dl-fmt-item,
     .yt-acc-header {
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
     }
     .close-btn { background: rgba(44, 44, 44, 0.55); }
-    .ai-clear-btn { background: rgba(36, 36, 36, 0.55); }
-    .ai-prompt-chip { background: rgba(50, 55, 65, 0.55); }
-    .chapter-time { background: rgba(50, 55, 65, 0.55); }
     .dl-fmt-item { background: rgba(30, 30, 30, 0.62); }
 
     /* Расширенный выбор цвета */
@@ -1289,9 +1582,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: color-mix(in srgb, var(--accent) 16%, var(--bg-elevated));
-      color: #f8fafc;
-      border: 1px solid color-mix(in srgb, var(--accent) 44%, rgba(255, 255, 255, 0.14));
+      background: var(--bg-elevated);
+      color: #e2e8f0;
+      border: 1px solid color-mix(in srgb, var(--accent) 38%, rgba(255, 255, 255, 0.12));
       box-shadow: none;
       transition: 
         transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
@@ -1300,10 +1593,14 @@
         box-shadow 0.2s ease;
     }
     #openBtn:hover {
-      background: color-mix(in srgb, var(--accent) 24%, var(--bg-surface));
+      background: color-mix(in srgb, var(--accent) 16%, var(--bg-surface));
       border-color: var(--accent);
+      color: #ffffff;
     }
-    #openBtn:active { transform: scale(0.96); }
+    #openBtn:active {
+      transform: scale(0.96);
+      background: color-mix(in srgb, var(--accent) 24%, var(--bg-surface));
+    }
 
     #status { color: #dbe2ef; font-size: 13.5px; line-height: 1.5; font-weight: 500; margin: 10px 4px 2px; text-align: center; }
     #status:empty { display: none; }
@@ -1319,9 +1616,20 @@
       flex-direction: column;
       gap: 12px;
       box-shadow: none;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
       animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     #aiSummaryBox.show { display: flex; }
+    #aiSummaryBox *,
+    #aiSummaryBox .close-btn,
+    #aiSummaryBox .ai-clear-btn,
+    #aiSummaryBox .ai-prompt-chip,
+    #aiSummaryBox .chapter-time,
+    #aiSummaryBox input {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
     @keyframes popIn {
       from { opacity: 0; transform: translateY(-6px) scale(0.97); }
       to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -1335,7 +1643,7 @@
       align-items: center;
       gap: 8px;
       padding-bottom: 8px;
-      border-bottom: 1px solid #262626;
+      border-bottom: 1px solid var(--border-soft);
     }
     .ai-title-left {
       display: flex;
@@ -1355,19 +1663,22 @@
       font-weight: 600;
       padding: 2px 8px;
       border-radius: 999px;
-      background: #242424;
-      color: #aaa;
-      border: 1px solid #333;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border-soft);
     }
     .ai-header-actions {
       display: flex;
       align-items: center;
       gap: 6px;
     }
+    .ai-clear-btn,
+    #aiSummaryBox .close-btn {
+      background: transparent;
+      border: 1px solid var(--border-soft);
+      color: var(--text-muted);
+    }
     .ai-clear-btn {
-      background: #242424;
-      border: 1px solid #333;
-      color: #bbb;
       font-size: 11.5px;
       font-weight: 600;
       padding: 4px 10px;
@@ -1375,7 +1686,7 @@
       cursor: pointer;
       transition: background 0.2s, color 0.2s, transform 0.2s;
     }
-    .ai-clear-btn:hover { background: #2f2f2f; color: #fff; }
+    .ai-clear-btn:hover { background: var(--bg-surface); color: #fff; }
     .ai-clear-btn:active { transform: scale(0.93); }
 
     .ai-Prompts-row {
@@ -1387,9 +1698,9 @@
     }
     .ai-Prompts-row::-webkit-scrollbar { display: none; }
     .ai-prompt-chip {
-      background: #323741;
-      border: 1px solid #333;
-      color: #e4e4e4;
+      background: transparent;
+      border: 1px solid var(--border-soft);
+      color: #e2e8f0;
       padding: 7px 12px;
       border-radius: 999px;
       font-size: 12px;
@@ -1400,8 +1711,8 @@
       transition: background 0.2s, border-color 0.2s, transform 0.2s;
     }
     .ai-prompt-chip:hover {
-      background: color-mix(in srgb, var(--accent) 12%, #222);
-      border-color: color-mix(in srgb, var(--accent) 50%, #333);
+      background: color-mix(in srgb, var(--accent) 12%, var(--bg-surface));
+      border-color: color-mix(in srgb, var(--accent) 50%, var(--border-soft));
       color: #fff;
     }
     .ai-prompt-chip:active { transform: scale(0.95); }
@@ -1415,7 +1726,7 @@
       padding: 4px 2px;
     }
     #aiChatList::-webkit-scrollbar { width: 4px; }
-    #aiChatList::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+    #aiChatList::-webkit-scrollbar-thumb { background: var(--border-soft); border-radius: 4px; }
 
     .ai-msg {
       max-width: 90%;
@@ -1425,18 +1736,19 @@
       line-height: 1.5;
       word-break: break-word;
     }
+    .ai-msg:empty { display: none !important; }
     .ai-msg.user {
       align-self: flex-end;
-      background: color-mix(in srgb, var(--accent) 18%, #222);
-      border: 1px solid color-mix(in srgb, var(--accent) 40%, #333);
+      background: color-mix(in srgb, var(--accent) 18%, var(--bg-surface));
+      border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border-soft));
       color: #fff;
       border-bottom-right-radius: 4px;
     }
     .ai-msg.bot {
       align-self: flex-start;
-      background: #323741;
-      border: 1px solid #2e2e2e;
-      color: #e8e8e8;
+      background: transparent;
+      border: 1px solid var(--border-soft);
+      color: #e8edf5;
       border-bottom-left-radius: 4px;
     }
     .ai-msg p { margin: 0 0 6px 0; }
@@ -1467,8 +1779,8 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      background: #323741;
-      border: 1px solid #333;
+      background: transparent;
+      border: 1px solid var(--border-soft);
       border-radius: 999px;
       padding: 4px 6px 4px 14px;
       transition: border-color 0.2s ease;
@@ -1476,10 +1788,16 @@
     .ai-input-row:focus-within {
       border-color: var(--accent);
     }
-    #aiQuestionInput {
+    #aiQuestionInput,
+    #aiQuestionInput:focus {
       flex: 1;
       border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
       background: transparent !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      transform: none !important;
       color: #fff;
       font-size: 13.5px;
       padding: 7px 0 !important;
@@ -2272,6 +2590,45 @@
     </div>
 
     <div class="global-row">
+      <span>Title font</span>
+      <select id="titleFontFamily">
+        <option value="'Plus Jakarta Sans', 'Inter', sans-serif">Plus Jakarta Sans</option>
+        <option value="'Inter', sans-serif">Inter</option>
+        <option value="'Outfit', 'Inter', sans-serif">Outfit</option>
+        <option value="'DM Sans', 'Inter', sans-serif">DM Sans</option>
+        <option value="'Sora', 'Inter', sans-serif">Sora</option>
+        <option value="'Space Grotesk', 'Inter', sans-serif">Space Grotesk</option>
+        <option value="'Poppins', 'Inter', sans-serif">Poppins</option>
+        <option value="'Montserrat', 'Inter', sans-serif">Montserrat</option>
+        <option value="'Raleway', 'Inter', sans-serif">Raleway</option>
+        <option value="'Manrope', 'Inter', sans-serif">Manrope</option>
+        <option value="'Urbanist', 'Inter', sans-serif">Urbanist</option>
+        <option value="'Quicksand', 'Inter', sans-serif">Quicksand</option>
+        <option value="'Comfortaa', 'Inter', sans-serif">Comfortaa</option>
+        <option value="'Syne', 'Inter', sans-serif">Syne</option>
+        <option value="'Unbounded', 'Inter', sans-serif">Unbounded</option>
+        <option value="'Orbitron', 'Inter', sans-serif">Orbitron</option>
+        <option value="'Audiowide', 'Inter', sans-serif">Audiowide</option>
+        <option value="'Bebas Neue', 'Inter', sans-serif">Bebas Neue</option>
+        <option value="'Oswald', 'Inter', sans-serif">Oswald</option>
+        <option value="'Playfair Display', 'Inter', serif">Playfair Display</option>
+        <option value="'Cinzel', 'Inter', serif">Cinzel</option>
+        <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+        <option value="'Pacifico', cursive">Pacifico</option>
+        <option value="'Righteous', 'Inter', sans-serif">Righteous</option>
+      </select>
+    </div>
+
+    <div class="global-row">
+      <span>Title size <small id="titleFontSizeVal" style="color:var(--text-muted);font-weight:600;margin-left:4px;">24px</small></span>
+      <input type="range" id="titleFontSize" min="18" max="38" step="1" value="24" style="width: 110px;">
+    </div>
+    <div class="title-font-preview-row">
+      <span style="font-size:11px;color:var(--text-muted);flex-shrink:0;">Preview</span>
+      <span id="titleFontPreview">SubLyter</span>
+    </div>
+
+    <div class="global-row">
       <span>Accent wallpaper</span>
       <select id="accentWallpaper">
         <option value="aurora">Aurora (Glow)</option>
@@ -2698,6 +3055,36 @@
       appThemeBgEl.addEventListener('change', () => applyGrayTheme(appThemeBgEl.value));
     }
 
+    /* ---------------- Шрифт и размер заголовка SubLyter ---------------- */
+    const titleFontFamilyEl = $('titleFontFamily');
+    const titleFontSizeEl = $('titleFontSize');
+    const titleFontSizeValEl = $('titleFontSizeVal');
+    function applyTitleTypography(fontCss, sizePx) {
+      const font = fontCss || "'Plus Jakarta Sans', 'Inter', sans-serif";
+      const size = Math.min(38, Math.max(18, parseInt(sizePx, 10) || 24));
+      document.documentElement.style.setProperty('--title-font', font);
+      document.documentElement.style.setProperty('--title-size', size + 'px');
+      if (titleFontSizeValEl) titleFontSizeValEl.textContent = size + 'px';
+      safeSetStorage('sublater_title_font', font);
+      safeSetStorage('sublater_title_size', String(size));
+    }
+    const savedTitleFont = safeGetStorage('sublater_title_font', "'Plus Jakarta Sans', 'Inter', sans-serif");
+    const savedTitleSize = parseInt(safeGetStorage('sublater_title_size', '24'), 10) || 24;
+    if (titleFontFamilyEl) {
+      const hasFontOpt = Array.from(titleFontFamilyEl.options).some(o => o.value === savedTitleFont);
+      titleFontFamilyEl.value = hasFontOpt ? savedTitleFont : titleFontFamilyEl.options[0].value;
+      titleFontFamilyEl.addEventListener('change', () => {
+        applyTitleTypography(titleFontFamilyEl.value, titleFontSizeEl ? titleFontSizeEl.value : savedTitleSize);
+      });
+    }
+    if (titleFontSizeEl) {
+      titleFontSizeEl.value = Math.min(38, Math.max(18, savedTitleSize));
+      titleFontSizeEl.addEventListener('input', () => {
+        applyTitleTypography(titleFontFamilyEl ? titleFontFamilyEl.value : savedTitleFont, titleFontSizeEl.value);
+      });
+    }
+    applyTitleTypography(titleFontFamilyEl ? titleFontFamilyEl.value : savedTitleFont, titleFontSizeEl ? titleFontSizeEl.value : savedTitleSize);
+
     /* ---------------- Обои с акцентом ---------------- */
     const appWallpaperEl = $('appWallpaper');
     const accentWallpaperSelect = $('accentWallpaper');
@@ -2739,7 +3126,7 @@
       }
       if (appWallpaperEl.querySelector('.sf')) return;
       const frag = document.createDocumentFragment();
-      const total = 22;
+      const total = 52;
       for (let i = 0; i < total; i++) {
         const outer = document.createElement('span');
         outer.className = 'sf';
@@ -4530,17 +4917,23 @@
         const aligned = (dataOff % 2) === 0;
         const pcm16 = aligned ? new Int16Array(buf, dataOff, sampleCount) : null;
         if (pcm16) {
-          for (let i = 0; i < sampleCount; i++) {
+          for (let i = 0; i < sampleCount; i += 8) {
             const v = pcm16[i] < 0 ? -pcm16[i] : pcm16[i];
-            if (v > peak) peak = v;
+            if (v > peak) {
+              peak = v;
+              if (peak >= 3500) break;
+            }
           }
         } else {
-          for (let i = 0; i < sampleCount; i++) {
+          for (let i = 0; i < sampleCount; i += 8) {
             const v = Math.abs(dv.getInt16(dataOff + i * 2, true));
-            if (v > peak) peak = v;
+            if (v > peak) {
+              peak = v;
+              if (peak >= 3500) break;
+            }
           }
         }
-        if (peak < 8) return blob;
+        if (peak < 8 || peak >= 3500) return blob;
         const target = 0.9 * 32767;
         let gain = target / peak;
         if (gain <= 1.05) return blob;
@@ -4739,6 +5132,7 @@
         },
         body: JSON.stringify({
           model: modelName,
+          ...(String(modelName).startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
           temperature: 0.1,
           response_format: { type: 'json_object' },
           messages: [
@@ -5164,9 +5558,9 @@
       }
     });
 
-    /* ---------------- Ультрабыстрое извлечение аудио (WAV 16кГц, Int16Array) + нарезка по 60 с + 10 параллельных потоков в Groq + пайплайн перевода ---------------- */
+    /* ---------------- Ультрабыстрое извлечение аудио + динамические параллельные потоки в Groq + пайплайн перевода ---------------- */
     const PARALLEL_CHUNK_CONCURRENCY = 10;
-    const BATCH_1024_CONCURRENCY = 4;
+    const getBatchConcurrency = () => Math.min(8, Math.max(4, getApiKeys().length * 4));
 
     function extractMonoChannelData(audioBuffer) {
       const numChannels = audioBuffer.numberOfChannels || 1;
@@ -5308,7 +5702,13 @@
           durationSec = Number(bridge.getDuration()) || 0;
         }
         if (durationSec > startFromSec) {
-          estimatedTotalChunks = Math.max(1, Math.ceil((durationSec - startFromSec) / (isBatchMode ? 294 : 59)));
+          const remSec = durationSec - startFromSec;
+          if (isBatchMode) {
+            const dynDur = remSec <= 720 ? Math.min(180, Math.max(45, Math.ceil(remSec / 4))) : 180;
+            estimatedTotalChunks = Math.max(1, Math.ceil(remSec / Math.max(1, dynDur)));
+          } else {
+            estimatedTotalChunks = Math.max(1, Math.ceil(remSec / 60));
+          }
         }
       } catch (_) {}
 
@@ -5372,23 +5772,26 @@
                 if (startFromSec > 0) {
                   const fromLabel = formatTime(startFromSec);
                   statusEl.innerText = file.isStream
-                    ? `📡 1.0.24 mode from ${fromLabel}: 5-min chunks (12 kHz), 4 streams...`
-                    : `⚡ 1.0.24 mode from ${fromLabel}: 5-min chunks (12 kHz), 4 streams...`;
+                    ? `📡 Fast mode from ${fromLabel}: 16 kHz multi-stream...`
+                    : `⚡ Fast mode from ${fromLabel}: 16 kHz parallel streams...`;
                 } else {
-                  statusEl.innerText = '⚡ 1.0.24 mode: extracting 5-min chunks (12 kHz) & uploading in 4 streams...';
+                  statusEl.innerText = file.isStream
+                    ? '📡 Fast mode: streaming 16 kHz audio chunks...'
+                    : '⚡ Fast mode: parallel 16 kHz audio extraction & upload...';
                 }
               } else if (startFromSec > 0) {
                 const fromLabel = formatTime(startFromSec);
                 statusEl.innerText = file.isStream
                   ? `📡 Stream (from ${fromLabel}): decoding audio via player (16 kHz, 60s)...`
-                  : `⚡ Native audio extraction from ${fromLabel} (16 kHz, 60s chunks)...`;
+                  : `⚡ Parallel audio extraction from ${fromLabel} (16 kHz, 60s chunks)...`;
               } else {
                 statusEl.innerText = file.isStream
                   ? '📡 Stream: decoding audio via player (16 kHz, 60s chunks)...'
-                  : '⚡ Async native audio extraction (16 kHz, 60s chunks)...';
+                  : '⚡ Parallel native audio extraction (16 kHz, 60s chunks)...';
               }
 
-            const streamingTranslate = !isBatchMode && Boolean(targetLang && !cachedWhisper.translations?.[targetLang]);
+            // Потоковый конвейер перевода в обоих режимах (в All at once плеер открывается в конце)
+            const streamingTranslate = Boolean(targetLang && !cachedWhisper.translations?.[targetLang]);
             const completedChunkMap = new Map();
             let nextChunkToStream = 0;
             let streamContextLines = [];
@@ -5429,7 +5832,7 @@
             }
 
             function flushLiveCues() {
-              if (signal.aborted) return;
+              if (isBatchMode || signal.aborted) return;
               if (targetLang && !streamingTranslate) return;
               while (liveChunkCuesMap.has(nextLiveChunk)) {
                 const arr = liveChunkCuesMap.get(nextLiveChunk);
@@ -5515,6 +5918,9 @@
 
             window.__onNativeChunkReady = (chunkObj, isLast) => {
               incomingQueue.push({ chunkObj, isLast });
+              if (incomingQueue.length > 1) {
+                incomingQueue.sort((a, b) => a.chunkObj.index - b.chunkObj.index);
+              }
               totalChunksSeen = Math.max(totalChunksSeen, chunkObj.index + 1);
               totalChunks = totalChunksSeen;
               if (isLast) {
@@ -5649,41 +6055,19 @@
             };
 
             try {
-              if (isBatchMode) {
-                // Механизм 1.0.24: чанки по 5 мин (12 кГц) сразу идут в 4 параллельных потока Groq
-                const workerCount = BATCH_1024_CONCURRENCY;
-                const workers = Array.from({ length: workerCount }, async (_, workerSlot) => {
-                  if (workerSlot > 0) {
-                    await abortableDelay(workerSlot * 60, signal);
-                  }
-                  while (true) {
-                    const item = await getNextIncomingChunk();
-                    if (!item) break;
-                    await processSingleChunk(item);
-                  }
-                });
-                await Promise.all(workers);
-              } else {
-                // 1. Первый чанк обрабатываем отдельно для моментального старта плеера
-                const firstItem = await getNextIncomingChunk();
-                if (firstItem) {
-                  await processSingleChunk(firstItem);
+              const workerCount = isBatchMode ? getBatchConcurrency() : Math.min(PARALLEL_CHUNK_CONCURRENCY, 10);
+              const staggerMs = isBatchMode ? 35 : 25;
+              const workers = Array.from({ length: workerCount }, async (_, workerSlot) => {
+                if (workerSlot > 0) {
+                  await abortableDelay(workerSlot * staggerMs, signal);
                 }
-
-                // 2. Все последующие чанки обрабатываем параллельным пулом (PARALLEL_CHUNK_CONCURRENCY)
-                const workerCount = Math.min(PARALLEL_CHUNK_CONCURRENCY, 10);
-                const workers = Array.from({ length: workerCount }, async (_, workerSlot) => {
-                  if (workerSlot > 0) {
-                    await abortableDelay(workerSlot * 30, signal);
-                  }
-                  while (true) {
-                    const item = await getNextIncomingChunk();
-                    if (!item) break;
-                    await processSingleChunk(item);
-                  }
-                });
-                await Promise.all(workers);
-              }
+                while (true) {
+                  const item = await getNextIncomingChunk();
+                  if (!item) break;
+                  await processSingleChunk(item);
+                }
+              });
+              await Promise.all(workers);
 
               if (signal.aborted) throw new Error('Cancelled by user.');
               checkAndTriggerStreamTranslations();
@@ -5729,12 +6113,12 @@
             let audioBuffer = null;
             if (shouldCompress) {
               statusEl.innerText = isBatchMode
-                ? '⚡ 1.0.24 mode: extracting audio at 12 kHz...'
+                ? '⚡ Fast mode: extracting audio at 16 kHz...'
                 : '⚡ Fast audio track extraction & compression (16 kHz)...';
               setProgress(10);
               try {
                 const ab = await file.arrayBuffer();
-                const targetRate = isBatchMode ? 12000 : 16000;
+                const targetRate = 16000;
                 const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: targetRate });
                 audioBuffer = await decodeCtx.decodeAudioData(ab);
                 if (decodeCtx.close) decodeCtx.close();
@@ -5755,13 +6139,16 @@
               if (signal.aborted) throw new Error('Cancelled by user.');
               const channelData = extractMonoChannelData(audioBuffer);
             const sampleRate = audioBuffer.sampleRate;
-            const chunkDuration = isBatchMode ? 300 : 60;
-            const overlap = isBatchMode ? 6 : 1;
-            const advance = chunkDuration - overlap;
             const totalDuration = channelData.length / sampleRate;
+            const effectiveStart = (startFromSec > 0 && startFromSec < totalDuration - 1) ? startFromSec : 0;
+            const effectiveRem = Math.max(0, totalDuration - effectiveStart);
+            const chunkDuration = isBatchMode
+              ? (effectiveRem <= 720 ? Math.min(180, Math.max(45, Math.ceil(effectiveRem / 4))) : 180)
+              : 60;
+            const overlap = isBatchMode ? 2 : 1;
+            const advance = chunkDuration - overlap;
 
             const chunkTasks = [];
-            const effectiveStart = (startFromSec > 0 && startFromSec < totalDuration - 1) ? startFromSec : 0;
             let pos = effectiveStart;
             let cutoff = effectiveStart;
             let c = 0;
@@ -5794,12 +6181,12 @@
             let completedChunks = 0;
 
             statusEl.innerText = isBatchMode
-              ? `🚀 1.0.24 mode: parallel Groq upload (${Math.min(BATCH_1024_CONCURRENCY, Math.max(1, totalChunks))} streams, ${totalChunks} parts)...`
-              : `🚀 First chunk first, then ${Math.min(PARALLEL_CHUNK_CONCURRENCY, Math.max(0, totalChunks - 1))} streams (${totalChunks} parts)...`;
+              ? `🚀 Fast mode: parallel Groq upload (${Math.min(getBatchConcurrency(), Math.max(1, totalChunks))} streams, ${totalChunks} parts)...`
+              : `🚀 Parallel Groq upload (${Math.min(PARALLEL_CHUNK_CONCURRENCY, Math.max(1, totalChunks))} streams, ${totalChunks} parts)...`;
             setProgress(10);
 
-            // Потоковый пайплайн: если выбран перевод, переводим чанки сразу по мере их возврата от Groq
-            const streamingTranslate = !isBatchMode && Boolean(targetLang && !cachedWhisper.translations?.[targetLang]);
+            // Потоковый конвейер перевода в обоих режимах (в All at once плеер открывается в конце)
+            const streamingTranslate = Boolean(targetLang && !cachedWhisper.translations?.[targetLang]);
             const completedChunkMap = new Map();
             let nextChunkToStream = 0;
             let streamContextLines = [];
@@ -5840,7 +6227,7 @@
             }
 
             function flushLiveCues() {
-              if (signal.aborted) return;
+              if (isBatchMode || signal.aborted) return;
               if (targetLang && !streamingTranslate) return;
               while (liveChunkCuesMap.has(nextLiveChunk)) {
                 const arr = liveChunkCuesMap.get(nextLiveChunk);
@@ -5907,7 +6294,7 @@
               if (signal.aborted) throw new Error('Cancelled by user.');
               // Небольшой сдвиг старта воркеров пула (30 мс), чтобы равномерно распределить ключи и сетевой буфер
               if (isFirstForWorker && workerSlot > 0) {
-                await abortableDelay(workerSlot * (isBatchMode ? 60 : 30), signal);
+                await abortableDelay(workerSlot * (isBatchMode ? 35 : 25), signal);
               }
               if (signal.aborted) throw new Error('Cancelled by user.');
 
@@ -5978,30 +6365,14 @@
               };
             };
 
-            if (isBatchMode) {
-              const batchResults = await runWithConcurrency(
-                chunkTasks,
-                BATCH_1024_CONCURRENCY,
-                (task, taskIdx, workerSlot, isFirstForWorker) => processChunkTask(task, taskIdx, workerSlot, isFirstForWorker)
-              );
-              for (let i = 0; i < batchResults.length; i++) {
-                orderedResults[i] = batchResults[i];
-              }
-            } else {
-              if (chunkTasks.length > 0) {
-                orderedResults[0] = await processChunkTask(chunkTasks[0], 0, 0, false);
-              }
-
-              if (chunkTasks.length > 1) {
-                const restResults = await runWithConcurrency(
-                  chunkTasks.slice(1),
-                  PARALLEL_CHUNK_CONCURRENCY,
-                  (task, taskIdx, workerSlot, isFirstForWorker) => processChunkTask(task, taskIdx, workerSlot, isFirstForWorker)
-                );
-                for (let i = 0; i < restResults.length; i++) {
-                  orderedResults[i + 1] = restResults[i];
-                }
-              }
+            const webConcurrency = isBatchMode ? getBatchConcurrency() : PARALLEL_CHUNK_CONCURRENCY;
+            const webResults = await runWithConcurrency(
+              chunkTasks,
+              webConcurrency,
+              (task, taskIdx, workerSlot, isFirstForWorker) => processChunkTask(task, taskIdx, workerSlot, isFirstForWorker)
+            );
+            for (let i = 0; i < webResults.length; i++) {
+              orderedResults[i] = webResults[i];
             }
 
             if (signal.aborted) throw new Error('Cancelled by user.');
@@ -6069,7 +6440,7 @@
             const chCues = pipelineTranslatedCuesMap.get(i);
             if (chCues && chCues.length) streamedCues.push(...chCues);
           }
-          const translateConcurrency = isBatchMode ? BATCH_1024_CONCURRENCY : 10;
+          const translateConcurrency = isBatchMode ? getBatchConcurrency() : 10;
           if (streamedCues.length > 0) {
             cues = streamedCues;
             cachedWhisper.translations[targetLang] = cloneCues(cues);
@@ -6081,7 +6452,7 @@
             cues = freshCues;
           }
         } else {
-          const translateConcurrency = isBatchMode ? BATCH_1024_CONCURRENCY : 10;
+          const translateConcurrency = isBatchMode ? getBatchConcurrency() : 10;
           const freshCues = buildCues(cachedWhisper.rawSegments, cachedWhisper.rawWords);
           const failed = await translateSegments(freshCues, targetLang, statusEl, signal, translateConcurrency);
           if (failed > 0) {
