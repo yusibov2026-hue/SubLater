@@ -13,22 +13,22 @@
   <link rel="manifest" href='data:application/manifest+json,{"name":"SubLyter","short_name":"SubLyter","start_url":".","display":"standalone","background_color":"#161922","theme_color":"#1b8ef2","icons":[{"src":"data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" rx=\"26\" fill=\"%23161922\"/><text x=\"50\" y=\"64\" font-family=\"sans-serif\" font-weight=\"900\" font-size=\"38\" fill=\"%231b8ef2\" text-anchor=\"middle\">SUB</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
 
   <style>
-/* syne latin */
+/* plus-jakarta-sans latin */
 @font-face {
-  font-family: 'Syne';
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/plus-jakarta-sans-latin-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* plus-jakarta-sans latin */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('fonts/syne-latin-700.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* syne latin */
-@font-face {
-  font-family: 'Syne';
-  font-style: normal;
-  font-weight: 800;
-  font-display: swap;
-  src: url('fonts/syne-latin-800.woff2') format('woff2');
+  src: url('fonts/plus-jakarta-sans-latin-700.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 /* inter cyrillic */
@@ -101,330 +101,6 @@
   font-weight: 700;
   font-display: swap;
   src: url('fonts/inter-latin-700.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* montserrat cyrillic */
-@font-face {
-  font-family: 'Montserrat';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('fonts/montserrat-cyrillic-600.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* montserrat latin */
-@font-face {
-  font-family: 'Montserrat';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('fonts/montserrat-latin-600.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* montserrat cyrillic */
-@font-face {
-  font-family: 'Montserrat';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/montserrat-cyrillic-700.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* montserrat latin */
-@font-face {
-  font-family: 'Montserrat';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/montserrat-latin-700.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* oswald cyrillic */
-@font-face {
-  font-family: 'Oswald';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('fonts/oswald-cyrillic-500.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* oswald latin */
-@font-face {
-  font-family: 'Oswald';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('fonts/oswald-latin-500.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* oswald cyrillic */
-@font-face {
-  font-family: 'Oswald';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('fonts/oswald-cyrillic-600.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* oswald latin */
-@font-face {
-  font-family: 'Oswald';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('fonts/oswald-latin-600.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* playfair-display cyrillic */
-@font-face {
-  font-family: 'Playfair Display';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('fonts/playfair-display-cyrillic-600.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* playfair-display latin */
-@font-face {
-  font-family: 'Playfair Display';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('fonts/playfair-display-latin-600.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* playfair-display cyrillic */
-@font-face {
-  font-family: 'Playfair Display';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/playfair-display-cyrillic-700.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* playfair-display latin */
-@font-face {
-  font-family: 'Playfair Display';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/playfair-display-latin-700.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* cormorant-garamond cyrillic */
-@font-face {
-  font-family: 'Cormorant Garamond';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/cormorant-garamond-cyrillic-700.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* cormorant-garamond latin */
-@font-face {
-  font-family: 'Cormorant Garamond';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/cormorant-garamond-latin-700.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* russo-one cyrillic */
-@font-face {
-  font-family: 'Russo One';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('fonts/russo-one-cyrillic-400.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* russo-one latin */
-@font-face {
-  font-family: 'Russo One';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('fonts/russo-one-latin-400.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* unbounded cyrillic */
-@font-face {
-  font-family: 'Unbounded';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('fonts/unbounded-cyrillic-600.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* unbounded latin */
-@font-face {
-  font-family: 'Unbounded';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('fonts/unbounded-latin-600.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* unbounded cyrillic */
-@font-face {
-  font-family: 'Unbounded';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/unbounded-cyrillic-700.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* unbounded latin */
-@font-face {
-  font-family: 'Unbounded';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/unbounded-latin-700.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* comfortaa cyrillic */
-@font-face {
-  font-family: 'Comfortaa';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('fonts/comfortaa-cyrillic-600.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* comfortaa latin */
-@font-face {
-  font-family: 'Comfortaa';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('fonts/comfortaa-latin-600.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* comfortaa cyrillic */
-@font-face {
-  font-family: 'Comfortaa';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/comfortaa-cyrillic-700.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* comfortaa latin */
-@font-face {
-  font-family: 'Comfortaa';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/comfortaa-latin-700.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* jetbrains-mono cyrillic */
-@font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('fonts/jetbrains-mono-cyrillic-600.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* jetbrains-mono latin */
-@font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('fonts/jetbrains-mono-latin-600.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* caveat cyrillic */
-@font-face {
-  font-family: 'Caveat';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/caveat-cyrillic-700.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* caveat latin */
-@font-face {
-  font-family: 'Caveat';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/caveat-latin-700.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* pacifico cyrillic */
-@font-face {
-  font-family: 'Pacifico';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('fonts/pacifico-cyrillic-400.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* pacifico latin */
-@font-face {
-  font-family: 'Pacifico';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('fonts/pacifico-latin-400.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* lobster cyrillic */
-@font-face {
-  font-family: 'Lobster';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('fonts/lobster-cyrillic-400.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* lobster latin */
-@font-face {
-  font-family: 'Lobster';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('fonts/lobster-latin-400.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* balsamiq-sans cyrillic */
-@font-face {
-  font-family: 'Balsamiq Sans';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/balsamiq-sans-cyrillic-700.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* balsamiq-sans latin */
-@font-face {
-  font-family: 'Balsamiq Sans';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/balsamiq-sans-latin-700.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* press-start-2p cyrillic */
-@font-face {
-  font-family: 'Press Start 2P';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('fonts/press-start-2p-cyrillic-400.woff2') format('woff2');
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-/* press-start-2p latin */
-@font-face {
-  font-family: 'Press Start 2P';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('fonts/press-start-2p-latin-400.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
     :root {
@@ -505,19 +181,11 @@
       visibility: hidden !important;
       animation-play-state: paused !important;
     }
-    body.player-fullscreen-open #appWallpaper::before,
-    body.player-fullscreen-open #appWallpaper::after,
-    body.player-fullscreen-open #appWallpaper .snow-drift,
-    body.global-settings-open #appWallpaper::before,
-    body.global-settings-open #appWallpaper::after,
-    body.global-settings-open #appWallpaper .snow-drift {
+    body.player-fullscreen-open #appWallpaper .sf,
+    body.player-fullscreen-open #appWallpaper .sfi,
+    body.global-settings-open #appWallpaper .sf,
+    body.global-settings-open #appWallpaper .sfi {
       animation-play-state: paused !important;
-    }
-    #appWallpaper .snow-drift {
-      display: none;
-    }
-    #appWallpaper[data-wallpaper="snow"] .snow-drift {
-      display: block;
     }
 
     /* Обои: Аврора (Мягкое свечение) */
@@ -778,70 +446,35 @@
         radial-gradient(ellipse 80% 60% at 50% 50%, color-mix(in srgb, var(--wall-col) 14%, transparent), transparent 80%);
     }
 
-    /* Обои: Хаотичный 3-слойный снегопад на GPU-композиторе без перерисовок CPU */
-    #appWallpaper[data-wallpaper="snow"]::before,
-    #appWallpaper[data-wallpaper="snow"]::after,
-    #appWallpaper[data-wallpaper="snow"] .snow-drift {
-      content: "";
+    /* Обои: Снегопад — отдельные плавные снежинки со своей траекторией на GPU */
+    #appWallpaper .sf {
       position: absolute;
-      top: -440px;
-      left: -60px;
-      width: calc(100% + 120px);
-      height: calc(100% + 880px);
-      background-repeat: repeat;
+      top: 0;
+      left: var(--x);
+      width: var(--sz);
+      height: var(--sz);
       pointer-events: none;
+      contain: layout style;
       will-change: transform;
+      animation: sfFall var(--dur) linear var(--delay) infinite;
     }
-    #appWallpaper[data-wallpaper="snow"]::before {
-      background-image:
-        radial-gradient(2.5px 2.5px at 26px 32px, #ffffff 0%, color-mix(in srgb, var(--wall-col) 78%, transparent) 60%, transparent 100%),
-        radial-gradient(2.1px 2.1px at 112px 96px, color-mix(in srgb, var(--wall-col) 70%, #ffffff), transparent 80%),
-        radial-gradient(2.3px 2.3px at 154px 148px, #ffffff 0%, color-mix(in srgb, var(--wall-col) 65%, transparent) 55%, transparent 100%),
-        radial-gradient(1.8px 1.8px at 66px 14px, rgba(255, 255, 255, 0.92), transparent 85%),
-        radial-gradient(2px 2px at 42px 84px, color-mix(in srgb, var(--wall-col) 80%, #ffffff), transparent 80%);
-      background-size: 180px 180px, 180px 180px, 180px 180px, 120px 120px, 120px 120px;
-      animation: snowDriftA 17s linear infinite;
+    #appWallpaper .sfi {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ffffff 0%, color-mix(in srgb, var(--wall-col) 76%, transparent) 62%, transparent 100%);
+      opacity: var(--op);
+      will-change: transform;
+      animation: sfSway var(--sway-dur) ease-in-out var(--sway-delay) infinite alternate;
     }
-    #appWallpaper[data-wallpaper="snow"]::after {
-      background-image:
-        radial-gradient(1.9px 1.9px at 18px 46px, color-mix(in srgb, var(--wall-col) 72%, #ffffff), transparent 85%),
-        radial-gradient(1.7px 1.7px at 94px 20px, #ffffff, transparent 85%),
-        radial-gradient(2px 2px at 128px 108px, color-mix(in srgb, var(--wall-col) 85%, #ffffff), transparent 80%),
-        radial-gradient(1.6px 1.6px at 56px 76px, rgba(255, 255, 255, 0.88), transparent 85%),
-        radial-gradient(1.5px 1.5px at 84px 38px, color-mix(in srgb, var(--wall-col) 65%, #ffffff), transparent 85%);
-      background-size: 140px 140px, 140px 140px, 140px 140px, 105px 105px, 105px 105px;
-      animation: snowDriftB 23s linear infinite;
+    @keyframes sfFall {
+      0%   { transform: translate3d(0, -16px, 0); }
+      100% { transform: translate3d(var(--drift), calc(100vh + 24px), 0); }
     }
-    #appWallpaper[data-wallpaper="snow"] .snow-drift {
-      background-image:
-        radial-gradient(1.4px 1.4px at 34px 74px, color-mix(in srgb, var(--wall-col) 85%, #ffffff), transparent 85%),
-        radial-gradient(1.5px 1.5px at 88px 28px, #ffffff, transparent 80%),
-        radial-gradient(1.2px 1.2px at 18px 66px, color-mix(in srgb, var(--wall-col) 65%, #ffffff), transparent 85%),
-        radial-gradient(1.1px 1.1px at 68px 22px, rgba(255, 255, 255, 0.85), transparent 85%),
-        radial-gradient(1.3px 1.3px at 136px 124px, rgba(255, 255, 255, 0.78), transparent 85%);
-      background-size: 160px 160px, 160px 160px, 80px 80px, 80px 80px, 160px 160px;
-      animation: snowDriftC 29s linear infinite;
-    }
-
-    @keyframes snowDriftA {
-      0%   { transform: translate3d(0px, 0px, 0); }
-      25%  { transform: translate3d(34px, 90px, 0); }
-      52%  { transform: translate3d(-26px, 187px, 0); }
-      78%  { transform: translate3d(22px, 281px, 0); }
-      100% { transform: translate3d(0px, 360px, 0); }
-    }
-    @keyframes snowDriftB {
-      0%   { transform: translate3d(0px, 0px, 0); }
-      28%  { transform: translate3d(-40px, 118px, 0); }
-      56%  { transform: translate3d(20px, 235px, 0); }
-      82%  { transform: translate3d(-24px, 344px, 0); }
-      100% { transform: translate3d(0px, 420px, 0); }
-    }
-    @keyframes snowDriftC {
-      0%   { transform: translate3d(0px, 0px, 0); }
-      34%  { transform: translate3d(28px, 109px, 0); }
-      68%  { transform: translate3d(-32px, 218px, 0); }
-      100% { transform: translate3d(0px, 320px, 0); }
+    @keyframes sfSway {
+      0%   { transform: translate3d(calc(var(--sway) * -1), 0, 0); }
+      100% { transform: translate3d(var(--sway), 0, 0); }
     }
 
     /* Обои: Дождь */
@@ -937,21 +570,21 @@
       margin-bottom: 16px;
     }
     .app-header h2 {
-      font-family: 'Syne', 'Inter', sans-serif;
-      font-weight: 800;
-      font-size: 29px;
-      letter-spacing: -0.02em;
-      line-height: 1.05;
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 24px;
+      letter-spacing: -0.025em;
+      line-height: 1.1;
       color: var(--accent);
       text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 26%, transparent);
       margin: 0;
       transition: color 0.3s, text-shadow 0.3s;
     }
     
-    /* Круглая кнопка настроек в правом верхнем углу */
+    /* Кнопка настроек (скруглённый квадрат, плавно крутится на 360° при открытии/закрытии) */
     #settingsToggle {
       width: 42px; height: 42px;
-      border-radius: 50%;
+      border-radius: 13px;
       background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
@@ -963,8 +596,10 @@
       justify-content: center;
       cursor: pointer;
       flex-shrink: 0;
+      transform: rotate(0deg);
+      will-change: transform;
       transition:
-        transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.55s cubic-bezier(0.22, 1, 0.36, 1) !important,
         background 0.25s ease,
         box-shadow 0.25s ease;
     }
@@ -972,7 +607,7 @@
       background: color-mix(in srgb, var(--accent) 16%, var(--bg-surface));
     }
     #settingsToggle:active {
-      transform: scale(0.92);
+      background: color-mix(in srgb, var(--accent) 22%, var(--bg-surface));
     }
     .api-get-link {
       display: inline-flex;
@@ -1004,6 +639,7 @@
       stroke-linejoin: round;
     }
     #settingsToggle.open {
+      transform: rotate(360deg);
       background: color-mix(in srgb, var(--accent) 20%, var(--bg-surface));
       box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 24%, transparent);
     }
@@ -1011,19 +647,18 @@
       width: 21px;
       height: 21px;
       fill: currentColor;
+    }
+    #settingsBtn {
       transform: rotate(0deg);
-      transition: transform 0.52s cubic-bezier(0.22, 1, 0.36, 1) !important;
       will-change: transform;
+      transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1) !important, color 0.2s, background 0.2s;
     }
-    #settingsToggle.open svg {
-      transform: rotate(360deg);
+    #settingsBtn:active {
+      transform: none;
+      background: rgba(255, 255, 255, 0.2);
     }
-    #settingsBtn svg {
-      transform: rotate(0deg);
-      transition: transform 0.48s cubic-bezier(0.22, 1, 0.36, 1) !important;
-      will-change: transform;
-    }
-    #settingsBtn.open svg {
+    #settingsBtn.open,
+    #settingsBtn.open:active {
       transform: rotate(360deg);
     }
 
@@ -1038,14 +673,14 @@
       visibility: hidden;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.18s ease, visibility 0s linear 0.18s;
+      transition: opacity 0.22s ease, visibility 0s linear 0.22s;
       will-change: opacity;
     }
     #settingsBackdrop.show {
       visibility: visible;
       opacity: 1;
       pointer-events: auto;
-      transition: opacity 0.18s ease, visibility 0s linear 0s;
+      transition: opacity 0.22s ease, visibility 0s linear 0s;
     }
 
     body.global-settings-open #playerContainer {
@@ -1116,11 +751,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      padding: 1px 2px 2px;
-    }
-    .global-row.api-key-row .api-get-link {
-      position: relative;
-      top: -4px;
+      padding: 4px 2px 2px;
     }
     .global-row.api-key-row > span:first-child {
       flex: 1 1 auto;
@@ -2358,7 +1989,7 @@
   </style>
 </head>
 <body>
-  <div id="appWallpaper" aria-hidden="true" data-wallpaper="snow"><span class="snow-drift" aria-hidden="true"></span></div>
+  <div id="appWallpaper" aria-hidden="true" data-wallpaper="snow"></div>
   <div id="appTopSection">
   <header class="app-header">
     <h2>SubLyter</h2>
@@ -2558,31 +2189,6 @@
 
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
-          <span class="yt-acc-label">Font</span>
-          <span class="yt-acc-val" id="playerFontVal">Inter</span>
-        </button>
-        <div class="yt-acc-body">
-          <select id="playerFontSelect">
-          <option value="'Inter', sans-serif">Inter — Clean</option>
-          <option value="'Montserrat', sans-serif">Montserrat — Modern</option>
-          <option value="'Oswald', sans-serif">Oswald — Cinema</option>
-          <option value="'Playfair Display', serif">Playfair — Serif</option>
-          <option value="'Cormorant Garamond', serif">Cormorant — Classic</option>
-          <option value="'Russo One', sans-serif">Russo One — Action</option>
-          <option value="'Unbounded', sans-serif">Unbounded — Wide</option>
-          <option value="'Comfortaa', sans-serif">Comfortaa — Rounded</option>
-          <option value="'JetBrains Mono', monospace">JetBrains Mono — Tech</option>
-          <option value="'Caveat', cursive">Caveat — Handwritten</option>
-          <option value="'Pacifico', cursive">Pacifico — Brush</option>
-          <option value="'Lobster', cursive">Lobster — Vintage</option>
-          <option value="'Balsamiq Sans', cursive">Balsamiq — Comic</option>
-          <option value="'Press Start 2P', monospace">Press Start 2P — Pixel</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="yt-acc-item">
-        <button type="button" class="yt-acc-header">
           <span class="yt-acc-label">Volume boost</span>
           <span class="yt-acc-val" id="boostVal">100%</span>
         </button>
@@ -2750,26 +2356,6 @@
       </div>
     </div>
     <div class="global-row">
-      <span>Subtitle font</span>
-      <select id="subFontFamily">
-        <option value="'Inter', sans-serif">Inter — Clean</option>
-        <option value="'Montserrat', sans-serif">Montserrat — Modern</option>
-        <option value="'Oswald', sans-serif">Oswald — Cinema</option>
-        <option value="'Playfair Display', serif">Playfair — Serif</option>
-        <option value="'Cormorant Garamond', serif">Cormorant — Classic</option>
-        <option value="'Russo One', sans-serif">Russo One — Action</option>
-        <option value="'Unbounded', sans-serif">Unbounded — Wide</option>
-        <option value="'Comfortaa', sans-serif">Comfortaa — Rounded</option>
-        <option value="'JetBrains Mono', monospace">JetBrains Mono — Tech</option>
-        <option value="'Caveat', cursive">Caveat — Handwritten</option>
-        <option value="'Pacifico', cursive">Pacifico — Brush</option>
-        <option value="'Lobster', cursive">Lobster — Vintage</option>
-        <option value="'Balsamiq Sans', cursive">Balsamiq — Comic</option>
-        <option value="'Press Start 2P', monospace">Press Start 2P — Pixel</option>
-      </select>
-    </div>
-    <div id="subFontPreview" style="background:#13161f; border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:8px 12px; text-align:center; font-size:15px; font-weight:600; line-height:1.35; color:#ffffff; letter-spacing:0.1px;">SubLyter — Живой пример шрифта</div>
-    <div class="global-row">
       <span>Autoplay</span>
       <label class="switch">
         <input type="checkbox" id="autoPlayToggle" checked>
@@ -2777,7 +2363,7 @@
       </label>
     </div>
 
-    <div class="global-row api-key-row" style="margin-top: 4px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 4px;">
+    <div class="global-row api-key-row" style="margin-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 8px;">
       <span>Groq API Keys</span>
       <div class="api-row-actions">
         <span id="keysCountBadge" style="font-size: 11.5px; color: var(--accent); font-weight: 700;">0 keys</span>
@@ -2791,7 +2377,7 @@
     <input type="hidden" id="apiKey" />
     <input type="hidden" id="apiKey2" />
 
-    <div class="global-row api-key-row" style="margin-top: 4px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 4px;">
+    <div class="global-row api-key-row" style="margin-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 8px;">
       <span>Gemini API Key</span>
       <div class="api-row-actions">
         <a class="api-get-link" href="https://aistudio.google.com/apikey" onclick="if(!window.Android){window.open(this.href,'_blank','noopener');return false;}">
@@ -3145,6 +2731,44 @@
       safeSetStorage('sublater_wallpaper_color', customColor);
     }
 
+    function syncSnowflakes(isSnow) {
+      if (!appWallpaperEl) return;
+      if (!isSnow) {
+        if (appWallpaperEl.firstChild) appWallpaperEl.innerHTML = '';
+        return;
+      }
+      if (appWallpaperEl.querySelector('.sf')) return;
+      const frag = document.createDocumentFragment();
+      const total = 22;
+      for (let i = 0; i < total; i++) {
+        const outer = document.createElement('span');
+        outer.className = 'sf';
+        const x = (4 + ((i * 37.7) % 92)).toFixed(1);
+        const sz = (2.6 + ((i * 1.13) % 2.2)).toFixed(1);
+        const dur = (15 + ((i * 3.7) % 13)).toFixed(2);
+        const delay = (-((i * 4.3) % 28)).toFixed(2);
+        const drift = Math.round(-42 + ((i * 29.3) % 86));
+        const sway = (8 + ((i * 5.9) % 14)).toFixed(1);
+        const swayDur = (4.4 + ((i * 1.9) % 4.2)).toFixed(2);
+        const swayDelay = (-((i * 2.1) % 8.6)).toFixed(2);
+        const op = (0.42 + ((i * 0.19) % 0.5)).toFixed(2);
+        outer.style.setProperty('--x', x + '%');
+        outer.style.setProperty('--sz', sz + 'px');
+        outer.style.setProperty('--dur', dur + 's');
+        outer.style.setProperty('--delay', delay + 's');
+        outer.style.setProperty('--drift', drift + 'px');
+        outer.style.setProperty('--sway', sway + 'px');
+        outer.style.setProperty('--sway-dur', swayDur + 's');
+        outer.style.setProperty('--sway-delay', swayDelay + 's');
+        outer.style.setProperty('--op', op);
+        const inner = document.createElement('i');
+        inner.className = 'sfi';
+        outer.appendChild(inner);
+        frag.appendChild(outer);
+      }
+      appWallpaperEl.appendChild(frag);
+    }
+
     function applyAccentWallpaper(wallpaperKey, opacityVal) {
       const key = wallpaperKey || 'snow';
       const op = opacityVal !== undefined ? opacityVal : 45;
@@ -3152,6 +2776,7 @@
       if (appWallpaperEl) {
         appWallpaperEl.setAttribute('data-wallpaper', key);
         appWallpaperEl.style.setProperty('--wallpaper-opacity', (op / 100).toString());
+        syncSnowflakes(key === 'snow');
       }
       if (wallpaperOpacityRow) {
         wallpaperOpacityRow.style.display = key === 'none' ? 'none' : 'flex';
@@ -3481,10 +3106,6 @@
     const volVal = $('volVal');
 
     const subTextColorEl = $('subTextColor');
-    const subFontFamilyEl = $('subFontFamily');
-    const subFontPreviewEl = $('subFontPreview');
-    const playerFontSelect = $('playerFontSelect');
-    const playerFontValEl = $('playerFontVal');
     const bgOpacityEl = $('bgOpacity');
     const autoPlayToggle = $('autoPlayToggle');
     const smoothHzEl = $('smoothHz');
@@ -3631,7 +3252,7 @@
       const wordMode = wordModeSelect.value || 'hidden';
       const fitMode = fitModeSelect.value || 'contain';
       const textColor = subTextColorEl.value;
-      const fontFamily = subFontFamilyEl.value;
+      const fontFamily = "'Inter', -apple-system, sans-serif";
       const bgOpacity = bgOpacityEl ? bgOpacityEl.value : '62';
       const smoothHz = smoothHzEl ? Math.min(144, Math.max(15, parseInt(smoothHzEl.value, 10) || 90)) : 90;
       const boost = Math.min(200, Math.max(100, parseInt(boostSlider.value, 10) || 100));
@@ -3647,22 +3268,10 @@
       root.setProperty('--sub-size', size + 'px');
       root.setProperty('--sub-width', width + '%');
       root.setProperty('--sub-bottom', bottom + '%');
-      const cleanFontName = (fontFamily || 'Inter').split(',')[0].replace(/['"]/g, '').trim() || 'Inter';
       root.setProperty('--sub-color', textColor);
       root.setProperty('--sub-font', fontFamily);
       root.setProperty('--bg-opacity', bgOpacity);
       if (subtitleEl) subtitleEl.style.fontFamily = fontFamily;
-      if (subFontFamilyEl) subFontFamilyEl.style.fontFamily = fontFamily;
-      if (subFontPreviewEl) {
-        subFontPreviewEl.style.fontFamily = fontFamily;
-        subFontPreviewEl.style.color = textColor;
-        const lowerFont = cleanFontName.toLowerCase();
-        subFontPreviewEl.style.fontSize = lowerFont.includes('press start') ? '12px' : (lowerFont === 'caveat' ? '18px' : '15px');
-      }
-      if (playerFontSelect && playerFontSelect.value !== fontFamily) {
-        playerFontSelect.value = fontFamily;
-      }
-      if (playerFontValEl) playerFontValEl.textContent = cleanFontName;
 
       sizeVal.textContent = size + 'px';
       widthVal.textContent = width + '%';
@@ -3723,10 +3332,6 @@
         if (s.wordMode) wordModeSelect.value = s.wordMode;
         if (s.fitMode) fitModeSelect.value = s.fitMode;
         if (s.textColor) subTextColorEl.value = s.textColor;
-        if (s.fontFamily && subFontFamilyEl) {
-          const hasFontOpt = Array.from(subFontFamilyEl.options).some(o => o.value === s.fontFamily);
-          subFontFamilyEl.value = hasFontOpt ? s.fontFamily : "'Inter', sans-serif";
-        }
         if (bgOpacityEl && s.bgOpacity !== undefined) bgOpacityEl.value = s.bgOpacity;
         if (smoothHzEl && s.smoothHz) smoothHzEl.value = s.smoothHz;
         if (s.boost !== undefined) boostSlider.value = s.boost;
@@ -3749,7 +3354,7 @@
     [
       sizeEl, widthEl, bottomEl, bgToggle, wordModeSelect,
       fitModeSelect,
-      subTextColorEl, subFontFamilyEl,
+      subTextColorEl,
       subOffsetEl, subHoldEl, // <-- добавили в массив слушателей
       autoPlayToggle, llmModelEl, hallucinationFilterEl,
       fastAudioCompressEl, whisperPromptEl
@@ -3758,15 +3363,6 @@
       el.addEventListener('input', applySettings);
       el.addEventListener('change', applySettings);
     });
-
-    if (playerFontSelect) {
-      const syncFromPlayerFont = () => {
-        if (subFontFamilyEl) subFontFamilyEl.value = playerFontSelect.value;
-        applySettings();
-      };
-      playerFontSelect.addEventListener('input', syncFromPlayerFont);
-      playerFontSelect.addEventListener('change', syncFromPlayerFont);
-    }
 
     accentColorEl.addEventListener('input', (e) => {
       const color = e.target.value;
@@ -4370,7 +3966,7 @@
       return cueArr.map((c, i) => `${i + 1}\n${timeSRT(c.start)} --> ${timeSRT(c.end)}\n${c.text.replace(/-->/g, '—>')}\n`).join('\n');
     }
     function generateASS(cueArr) {
-      const cleanFont = (subFontFamilyEl.value || 'Inter').split(',')[0].replace(/['"]/g, '').trim() || 'Inter';
+      const cleanFont = 'Inter';
       const fontSize = Math.round((parseInt(sizeEl.value, 10) || 18) * 3.2);
       const marginV = Math.round((parseInt(bottomEl.value, 10) || 12) * 10.8);
       const primaryCol = hexToASS(subTextColorEl.value, '00');
