@@ -88,9 +88,9 @@ class MainActivity : ComponentActivity() {
                     out.write(content.toByteArray(Charsets.UTF_8))
                     out.flush()
                 }
-                Toast.makeText(this, "Сохранено: $fileName", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Saved: $fileName", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
-                Toast.makeText(this, "Ошибка сохранения: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Save error: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }

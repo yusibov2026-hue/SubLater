@@ -583,7 +583,7 @@ class ExoPlayerManager(
     }
 
     @JavascriptInterface
-    fun startForegroundService(statusText: String = "Генерация субтитров...") {
+    fun startForegroundService(statusText: String = "Generating subtitles...") {
         try {
             val intent = Intent(context, SubtitleForegroundService::class.java).apply {
                 action = SubtitleForegroundService.ACTION_START_OR_UPDATE
@@ -626,7 +626,7 @@ class ExoPlayerManager(
                 isVideoReady.value = true
                 syncStateOnMainThread()
             } catch (e: Exception) {
-                Toast.makeText(context, "Ошибка загрузки видео: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Video load error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -985,12 +985,12 @@ class ExoPlayerManager(
                     setDataAndType(uri, context.contentResolver.getType(uri) ?: "video/*")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
-                val chooser = Intent.createChooser(viewIntent, "Открыть с помощью...").apply {
+                val chooser = Intent.createChooser(viewIntent, "Open with...").apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 context.startActivity(chooser)
             } catch (e: Exception) {
-                Toast.makeText(context, "Не удалось открыть меню: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Could not open menu: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -1026,7 +1026,7 @@ class ExoPlayerManager(
                 values.put(MediaStore.Downloads.IS_PENDING, 0)
                 resolver.update(uri, values, null, null)
                 mainHandler.post {
-                    Toast.makeText(context, "Сохранено в Загрузки: $safeName", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Saved to Downloads: $safeName", Toast.LENGTH_LONG).show()
                 }
                 true
             } else {
@@ -1040,7 +1040,7 @@ class ExoPlayerManager(
             }
         } catch (e: Exception) {
             mainHandler.post {
-                Toast.makeText(context, "Ошибка сохранения: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Save error: ${e.message}", Toast.LENGTH_LONG).show()
             }
             false
         }
@@ -1147,20 +1147,20 @@ class ExoPlayerManager(
         configureGroqSession(apiKey, audioLanguage)
         val keys = parseApiKeys(sessionGroqApiKey.ifBlank { getApiKey() })
         if (keys.isEmpty()) {
-            evalJsOnWebView("window.__onNativeSubtitlesError && window.__onNativeSubtitlesError('Укажите API ключ Groq в настройках (⚙️)!');")
+            evalJsOnWebView("window.__onNativeSubtitlesError && window.__onNativeSubtitlesError('Enter your Groq API key in Settings (⚙️)!');")
             return
         }
 
         val targetUri = currentVideoUri
         if (targetUri == null) {
-            evalJsOnWebView("window.__onNativeSubtitlesError && window.__onNativeSubtitlesError('Видеофайл не выбран!');")
+            evalJsOnWebView("window.__onNativeSubtitlesError && window.__onNativeSubtitlesError('No video file selected!');")
             return
         }
 
         activeSubtitleJob?.cancel()
         cancelAudioExtraction = false
         groqThrottledUntilMs.set(0L)
-        startForegroundService("Декодирование аудио 16 кГц (WAV)...")
+        startForegroundService("Decoding audio 16 kHz (WAV)...")
 
         activeSubtitleJob = ioScope.launch {
             try {
@@ -1225,7 +1225,7 @@ class ExoPlayerManager(
                                     val estNow = maxOf(chunk.index + 1, totalChunksEstimate.get())
                                     reportProgress(
                                         (26 + completedCounter.get() * 68 / estNow).coerceIn(26, 94),
-                                        "🚀 Отправка в Groq: ${minOf(completedCounter.get() + 1, estNow)} из $estNow ($activeStreams потока)..."
+                                        "🚀 Sending to Groq: ${minOf(completedCounter.get() + 1, estNow)} of $estNow ($activeStreams streams)..."
                                     )
                                     val prevTail = if (chunk.index > 0) chunkTails[chunk.index - 1].orEmpty() else ""
                                     val res = sendChunkToGroqWithRetry(
@@ -1258,7 +1258,7 @@ class ExoPlayerManager(
                                     }
                                     reportProgress(
                                         (26 + done * 68 / est).coerceIn(26, 95),
-                                        "🚀 Отправка в Groq: $done из $est ($curStreams потока)..."
+                                        "🚀 Sending to Groq: $done of $est ($curStreams streams)..."
                                     )
                                 } finally {
                                     try { chunk.file.delete() } catch (_: Exception) {}
@@ -1270,7 +1270,7 @@ class ExoPlayerManager(
 
                 ensureActive()
                 if (results.isEmpty()) {
-                    throw IllegalStateException("Не удалось извлечь аудиодорожку из медиафайла.")
+                    throw IllegalStateException("Failed to extract audio track from media file.")
                 }
 
                 val mergedSegments = JSONArray()
@@ -1303,7 +1303,7 @@ class ExoPlayerManager(
                 }
 
                 if (mergedSegments.length() == 0) {
-                    throw IllegalStateException("В аудиодорожке не удалось распознать речь.")
+                    throw IllegalStateException("Could not recognize speech in the audio track.")
                 }
 
                 val finalPayload = JSONObject().apply {
@@ -1316,11 +1316,11 @@ class ExoPlayerManager(
                 val escapedPayload = JSONObject.quote(finalPayload)
                 evalJsOnWebView("window.__onNativeSubtitlesDone && window.__onNativeSubtitlesDone($escapedPayload);")
             } catch (e: CancellationException) {
-                evalJsOnWebView("window.__onNativeSubtitlesError && window.__onNativeSubtitlesError('Отменено пользователем.');")
+                evalJsOnWebView("window.__onNativeSubtitlesError && window.__onNativeSubtitlesError('Cancelled by user.');")
             } catch (e: InterruptedException) {
-                evalJsOnWebView("window.__onNativeSubtitlesError && window.__onNativeSubtitlesError('Отменено пользователем.');")
+                evalJsOnWebView("window.__onNativeSubtitlesError && window.__onNativeSubtitlesError('Cancelled by user.');")
             } catch (e: Throwable) {
-                val safeErr = JSONObject.quote(e.message ?: "Ошибка генерации субтитров")
+                val safeErr = JSONObject.quote(e.message ?: "Subtitle generation error")
                 evalJsOnWebView("window.__onNativeSubtitlesError && window.__onNativeSubtitlesError($safeErr);")
             } finally {
                 clearAudioCache()
@@ -1349,14 +1349,14 @@ class ExoPlayerManager(
         }
         val keys = parseApiKeys(sessionGroqApiKey.ifBlank { getApiKey() })
         if (keys.isEmpty()) {
-            evalJsOnWebView("window.__onNativeTranslateError && window.__onNativeTranslateError('Укажите API ключ Groq в настройках!');")
+            evalJsOnWebView("window.__onNativeTranslateError && window.__onNativeTranslateError('Enter your Groq API key in Settings!');")
             return
         }
 
         val inputArray = try {
             JSONArray(itemsJson)
         } catch (_: Exception) {
-            evalJsOnWebView("window.__onNativeTranslateError && window.__onNativeTranslateError('Некорректные данные для перевода.');")
+            evalJsOnWebView("window.__onNativeTranslateError && window.__onNativeTranslateError('Invalid translation payload.');")
             return
         }
 
@@ -1371,7 +1371,7 @@ class ExoPlayerManager(
 
         activeTranslateJob?.cancel()
         cancelTranslationFlag = false
-        startForegroundService("Перевод субтитров ($targetLang)...")
+        startForegroundService("Translating subtitles ($targetLang)...")
 
         activeTranslateJob = ioScope.launch {
             try {
@@ -1395,7 +1395,7 @@ class ExoPlayerManager(
                         launch(Dispatchers.IO) {
                             while (true) {
                                 ensureActive()
-                                if (cancelTranslationFlag) throw CancellationException("Отменено пользователем.")
+                                if (cancelTranslationFlag) throw CancellationException("Cancelled by user.")
                                 val bIdx = nextBatchIdx.getAndIncrement()
                                 if (bIdx >= batchStarts.size) break
 
@@ -1461,7 +1461,7 @@ class ExoPlayerManager(
                                 } catch (e: CancellationException) {
                                     throw e
                                 } catch (t: Throwable) {
-                                    lastErrorRef.compareAndSet(null, t.message ?: "Ошибка перевода")
+                                    lastErrorRef.compareAndSet(null, t.message ?: "Translation error")
                                     failedLines.addAndGet(batchCount)
                                 } finally {
                                     val doneBatches = completedBatches.incrementAndGet()
@@ -1469,7 +1469,7 @@ class ExoPlayerManager(
                                     val pct = (55 + (doneBatches * 42) / maxOf(1, batchStarts.size)).coerceIn(55, 97)
                                     reportTranslateProgress(
                                         pct,
-                                        "Перевод: $doneLines из $total строк ($TRANSLATE_CONCURRENCY потока)..."
+                                        "Translating: $doneLines of $total lines ($TRANSLATE_CONCURRENCY streams)..."
                                     )
                                 }
                             }
@@ -1490,9 +1490,9 @@ class ExoPlayerManager(
                 val escaped = JSONObject.quote(payload)
                 evalJsOnWebView("window.__onNativeTranslateDone && window.__onNativeTranslateDone($escaped);")
             } catch (_: CancellationException) {
-                evalJsOnWebView("window.__onNativeTranslateError && window.__onNativeTranslateError('Отменено пользователем.');")
+                evalJsOnWebView("window.__onNativeTranslateError && window.__onNativeTranslateError('Cancelled by user.');")
             } catch (e: Throwable) {
-                val safeErr = JSONObject.quote(e.message ?: "Ошибка перевода")
+                val safeErr = JSONObject.quote(e.message ?: "Translation error")
                 evalJsOnWebView("window.__onNativeTranslateError && window.__onNativeTranslateError($safeErr);")
             } finally {
                 if (activeSubtitleJob?.isActive != true) {
@@ -1531,7 +1531,7 @@ class ExoPlayerManager(
         }.toString()
 
         for (attempt in 0..3) {
-            if (cancelTranslationFlag) throw CancellationException("Отменено пользователем.")
+            if (cancelTranslationFlag) throw CancellationException("Cancelled by user.")
             val apiKey = getNextApiKey(keys)
             try {
                 val url = URL("https://api.groq.com/openai/v1/chat/completions")
@@ -1563,7 +1563,7 @@ class ExoPlayerManager(
                     return JSONObject(content)
                 } else if (code == 401) {
                     try { conn.errorStream?.close() } catch (_: Exception) {}
-                    throw AuthException("Неверный API-ключ Groq (HTTP 401).")
+                    throw AuthException("Invalid Groq API key (HTTP 401).")
                 } else if (code == 429 || code == 502 || code == 503) {
                     try { conn.errorStream?.close() } catch (_: Exception) {}
                     val ra = conn.getHeaderField("retry-after")?.toLongOrNull()?.coerceIn(1L, 20L) ?: (2L * (attempt + 1))
@@ -1589,13 +1589,13 @@ class ExoPlayerManager(
                 throw e
             } catch (t: Throwable) {
                 if (attempt == 3) {
-                    lastErrorRef.compareAndSet(null, t.message ?: "Сбой сети при переводе")
+                    lastErrorRef.compareAndSet(null, t.message ?: "Network error during translation")
                     return null
                 }
                 delay(1500L)
             }
         }
-        lastErrorRef.compareAndSet(null, "Превышен лимит запросов Groq (429/5xx) при переводе")
+        lastErrorRef.compareAndSet(null, "Groq rate limit exceeded (429/5xx) during translation")
         return null
     }
 
@@ -1688,34 +1688,34 @@ class ExoPlayerManager(
             } catch (e: AuthException) {
                 throw e
             } catch (e: RateLimitException) {
-                if (cancelAudioExtraction) throw CancellationException("Отменено пользователем.")
+                if (cancelAudioExtraction) throw CancellationException("Cancelled by user.")
                 rateLimitAttempts++
                 if (rateLimitAttempts > MAX_RATE_LIMIT_RETRIES) {
                     throw IllegalStateException(
-                        "Превышен лимит запросов Groq (HTTP 429). Подождите минуту или добавьте второй ключ.",
+                        "Groq rate limit exceeded (HTTP 429). Wait a minute or add a second key.",
                         e
                     )
                 }
                 lastError = e
             } catch (e: TimeoutCancellationException) {
-                if (cancelAudioExtraction) throw CancellationException("Отменено пользователем.")
-                lastError = IllegalStateException("Таймаут чанка ${chunk.file.name} (>${timeoutMs / 1000} сек)", e)
+                if (cancelAudioExtraction) throw CancellationException("Cancelled by user.")
+                lastError = IllegalStateException("Chunk timeout ${chunk.file.name} (>${timeoutMs / 1000}s)", e)
                 if (errorAttempts >= MAX_CHUNK_RETRIES) break
                 errorAttempts++
-                onStatus("⏱ Таймаут ${chunk.file.name}. Повтор ($errorAttempts/$MAX_CHUNK_RETRIES)...")
+                onStatus("⏱ Timeout ${chunk.file.name}. Retrying ($errorAttempts/$MAX_CHUNK_RETRIES)...")
                 delay(800L)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
-                if (cancelAudioExtraction) throw CancellationException("Отменено пользователем.")
+                if (cancelAudioExtraction) throw CancellationException("Cancelled by user.")
                 lastError = e
                 if (errorAttempts >= MAX_CHUNK_RETRIES) break
                 errorAttempts++
-                onStatus("🔄 Повтор отправки ${chunk.file.name} ($errorAttempts/$MAX_CHUNK_RETRIES)...")
+                onStatus("🔄 Retrying upload ${chunk.file.name} ($errorAttempts/$MAX_CHUNK_RETRIES)...")
                 delay(1200L * errorAttempts)
             }
         }
-        throw lastError ?: IllegalStateException("Не удалось отправить ${chunk.file.name} в Groq")
+        throw lastError ?: IllegalStateException("Failed to send ${chunk.file.name} to Groq")
     }
 
     private suspend fun executeGroqMultipartRequest(
@@ -1772,7 +1772,7 @@ class ExoPlayerManager(
                 val buffer = ByteArray(65536)
                 var read: Int
                 while (fileIn.read(buffer).also { read = it } != -1) {
-                    if (cancelAudioExtraction) throw CancellationException("Отменено пользователем.")
+                    if (cancelAudioExtraction) throw CancellationException("Cancelled by user.")
                     out.write(buffer, 0, read)
                 }
             }
@@ -1786,7 +1786,7 @@ class ExoPlayerManager(
             try { conn.errorStream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } } catch (_: Exception) {}
             groqThrottledUntilMs.set(System.currentTimeMillis() + GROQ_BACKOFF_RECOVERY_MS)
             val retryAfterSec = conn.getHeaderField("retry-after")?.toLongOrNull()?.coerceIn(1L, 25L) ?: 4L
-            onStatus("⏳ Лимит 429: снижение до 2 потоков на 30 с (пауза ${retryAfterSec} с)...")
+            onStatus("⏳ Rate limit 429: throttling to 2 streams for 30s (wait ${retryAfterSec}s)...")
             delay(retryAfterSec * 1000L)
             throw RateLimitException(retryAfterSec)
         }
@@ -1798,9 +1798,9 @@ class ExoPlayerManager(
                 ""
             }
             if (statusCode == 401) {
-                throw AuthException("Неверный API-ключ Groq (HTTP 401).")
+                throw AuthException("Invalid Groq API key (HTTP 401).")
             }
-            throw IllegalStateException("Ошибка Groq HTTP $statusCode: ${errText.take(160)}")
+            throw IllegalStateException("Groq HTTP $statusCode error: ${errText.take(160)}")
         }
 
         val responseBody = conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
@@ -1932,14 +1932,14 @@ class ExoPlayerManager(
                 }
 
                 if (!dataSourceSet) {
-                    onProgress(2, "Открытие медиапотока...")
+                    onProgress(2, "Opening media stream...")
                     val tmp = File(chunkDir, "temp_input_media.bin")
                     context.contentResolver.openInputStream(uri)?.use { input ->
                         FileOutputStream(tmp).use { output ->
                             val buf = ByteArray(131072)
                             var r: Int
                             while (input.read(buf).also { r = it } != -1) {
-                                if (cancelAudioExtraction) throw InterruptedException("Отменено пользователем.")
+                                if (cancelAudioExtraction) throw InterruptedException("Cancelled by user.")
                                 output.write(buf, 0, r)
                             }
                         }
@@ -1953,7 +1953,7 @@ class ExoPlayerManager(
             }
 
             if (!dataSourceSet) {
-                throw IllegalStateException("Не удалось открыть медиафайл для извлечения аудио")
+                throw IllegalStateException("Failed to open media file for audio extraction")
             }
 
             val codecList = MediaCodecList(MediaCodecList.ALL_CODECS)
@@ -1979,7 +1979,7 @@ class ExoPlayerManager(
             }
 
             if (chosenTrack == null) {
-                throw IllegalStateException("В медиафайле не найдена аудиодорожка")
+                throw IllegalStateException("No audio track found in media file")
             }
 
             val selectedTrackIndex = chosenTrack.index
@@ -2039,7 +2039,7 @@ class ExoPlayerManager(
                 writer.finishAndClose()
                 writer.writeError?.let { err ->
                     throw IllegalStateException(
-                        "Ошибка записи аудио на диск (проверьте свободное место): ${err.message}",
+                        "Error writing audio to disk (check free space): ${err.message}",
                         err
                     )
                 }
@@ -2179,7 +2179,7 @@ class ExoPlayerManager(
             fun decodeWithMedia3FfmpegSoftwareDecoder(): Boolean {
                 var ffmpegDecoderObj: Any? = null
                 return try {
-                    onProgress(4, "⚡ Декодирование аудио (FFmpeg Media3): $selectedMime...")
+                    onProgress(4, "⚡ Decoding audio (FFmpeg Media3): $selectedMime...")
                     extractor.seekTo(0L, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
 
                     val initData = mutableListOf<ByteArray>()
@@ -2241,7 +2241,7 @@ class ExoPlayerManager(
                     var lastPct = -1
 
                     while (!eosReceived) {
-                        if (cancelAudioExtraction) throw InterruptedException("Отменено пользователем.")
+                        if (cancelAudioExtraction) throw InterruptedException("Cancelled by user.")
 
                         var queuedAny = false
                         if (!eosQueued) {
@@ -2270,7 +2270,7 @@ class ExoPlayerManager(
                                             val pct = ((ptsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
                                             if (pct >= lastPct + 4) {
                                                 lastPct = pct
-                                                onProgress(pct, "⚡ Декодирование WAV (16 кГц): чанк ${chunkIndex + 1} из ${maxOf(chunkIndex + 1, totalChunksEstimate.get())}...")
+                                                onProgress(pct, "⚡ Decoding WAV (16 kHz): chunk ${chunkIndex + 1} of ${maxOf(chunkIndex + 1, totalChunksEstimate.get())}...")
                                             }
                                         }
                                     }
@@ -2363,7 +2363,7 @@ class ExoPlayerManager(
                     mediaDecoder.setCallback(object : MediaCodec.Callback() {
                         override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
                             if (cancelAudioExtraction) {
-                                asyncErrorRef.compareAndSet(null, InterruptedException("Отменено пользователем."))
+                                asyncErrorRef.compareAndSet(null, InterruptedException("Cancelled by user."))
                                 decodeDoneLatch.countDown()
                                 return
                             }
@@ -2384,7 +2384,7 @@ class ExoPlayerManager(
                                         val pct = ((ptsUs.toDouble() / durationUs.toDouble()) * 100.0).toInt().coerceIn(0, 99)
                                         if (pct >= lastPct + 4) {
                                             lastPct = pct
-                                            onProgress(pct, "⚡ Декодирование WAV (16 кГц): чанк ${chunkIndex + 1} из ${maxOf(chunkIndex + 1, totalChunksEstimate.get())}...")
+                                            onProgress(pct, "⚡ Decoding WAV (16 kHz): chunk ${chunkIndex + 1} of ${maxOf(chunkIndex + 1, totalChunksEstimate.get())}...")
                                         }
                                     }
                                 }
@@ -2396,7 +2396,7 @@ class ExoPlayerManager(
 
                         override fun onOutputBufferAvailable(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {
                             if (cancelAudioExtraction) {
-                                asyncErrorRef.compareAndSet(null, InterruptedException("Отменено пользователем."))
+                                asyncErrorRef.compareAndSet(null, InterruptedException("Cancelled by user."))
                                 decodeDoneLatch.countDown()
                                 return
                             }
@@ -2495,7 +2495,7 @@ class ExoPlayerManager(
 
                     while (!decodeDoneLatch.await(250, TimeUnit.MILLISECONDS)) {
                         if (cancelAudioExtraction) {
-                            throw InterruptedException("Отменено пользователем.")
+                            throw InterruptedException("Cancelled by user.")
                         }
                     }
 

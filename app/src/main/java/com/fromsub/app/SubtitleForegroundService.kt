@@ -33,7 +33,7 @@ class SubtitleForegroundService : Service() {
 
         val statusText = intent?.getStringExtra(EXTRA_STATUS_TEXT)
             ?.takeIf { it.isNotBlank() }
-            ?: "Генерация субтитров..."
+            ?: "Generating subtitles..."
 
         val notification = buildNotification(statusText)
         try {
@@ -101,10 +101,10 @@ class SubtitleForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Генерация субтитров SubLyter",
+                "SubLyter Subtitle Generation",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Фоновая обработка аудио и генерация субтитров"
+                description = "Background audio processing and subtitle generation"
                 setShowBadge(false)
             }
             val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager

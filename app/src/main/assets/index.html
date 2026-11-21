@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1264,7 +1264,7 @@
   <div id="appTopSection">
   <header class="app-header">
     <h2 class="brand-title"><span class="brand-sub">Sub</span><span class="brand-later">Lyter</span></h2>
-    <button id="settingsToggle" aria-label="Настройки">
+    <button id="settingsToggle" aria-label="Settings">
       <svg viewBox="0 0 24 24">
         <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
       </svg>
@@ -1275,46 +1275,46 @@
 
   <div id="globalSettings">
     <div class="settings-header">
-      <span>Настройки</span>
+      <span>Settings</span>
       <button class="close-btn" id="closeSettingsBtn">✕</button>
     </div>
     
     <div class="global-row">
-      <span>Цвет акцента</span>
+      <span>Accent color</span>
       <input type="color" id="accentColor" value="#0099ff">
     </div>
 
     <div class="global-row">
-      <span>Тема оформления (18 тем)</span>
+      <span>Theme (18 themes)</span>
       <select id="appThemeBg">
-        <option value="dark-gray">Тёмно-серая (По умолчанию)</option>
-        <option value="ocean-drop">Капля океана (SubLyter)</option>
-        <option value="amoled-black">AMOLED Чёрная</option>
-        <option value="midnight-indigo">Полночный индиго</option>
-        <option value="tokyo-night">Токийская ночь</option>
-        <option value="cyberpunk-neon">Киберпанк Неон</option>
-        <option value="dracula">Дракула</option>
-        <option value="catppuccin-mocha">Капучино Мокка</option>
-        <option value="nord-arctic">Северный Норд</option>
-        <option value="emerald-forest">Изумрудный лес</option>
-        <option value="matrix-terminal">Матрица</option>
-        <option value="ruby-velvet">Рубиновый бархат</option>
-        <option value="sunset-amber">Янтарный закат</option>
-        <option value="royal-plum">Королевская слива</option>
-        <option value="graphite">Графитовый</option>
-        <option value="gray">Стальной серый</option>
-        <option value="warm-gray">Тёплый серый</option>
-        <option value="light-slate">Светло-серый</option>
+        <option value="dark-gray">Dark Gray (Default)</option>
+        <option value="ocean-drop">Ocean Drop (SubLyter)</option>
+        <option value="amoled-black">AMOLED Black</option>
+        <option value="midnight-indigo">Midnight Indigo</option>
+        <option value="tokyo-night">Tokyo Night</option>
+        <option value="cyberpunk-neon">Cyberpunk Neon</option>
+        <option value="dracula">Dracula</option>
+        <option value="catppuccin-mocha">Catppuccin Mocha</option>
+        <option value="nord-arctic">Nord Arctic</option>
+        <option value="emerald-forest">Emerald Forest</option>
+        <option value="matrix-terminal">Matrix</option>
+        <option value="ruby-velvet">Ruby Velvet</option>
+        <option value="sunset-amber">Sunset Amber</option>
+        <option value="royal-plum">Royal Plum</option>
+        <option value="graphite">Graphite</option>
+        <option value="gray">Steel Gray</option>
+        <option value="warm-gray">Warm Gray</option>
+        <option value="light-slate">Light Slate</option>
       </select>
     </div>
     <div class="theme-swatches-grid" id="themeSwatchesGrid"></div>
     
     <div class="global-row">
-      <span>Цвет текста субтитров</span>
+      <span>Subtitle text color</span>
       <input type="color" id="subTextColor" value="#ffffff">
     </div>
     <div class="global-row">
-      <span>Шрифт субтитров</span>
+      <span>Subtitle font</span>
       <select id="subFontFamily">
         <option value="'Inter', sans-serif">Inter</option>
         <option value="'Roboto', sans-serif">Roboto</option>
@@ -1324,11 +1324,11 @@
       </select>
     </div>
     <div class="global-row">
-      <span>Прозрачность фона субтитров</span>
+      <span>Subtitle background opacity</span>
       <input type="range" id="bgOpacity" min="0" max="100" value="62" style="width: 100px;">
     </div>
     <div class="global-row">
-      <span>Автовоспроизведение</span>
+      <span>Autoplay</span>
       <label class="switch">
         <input type="checkbox" id="autoPlayToggle" checked>
         <span class="slider"></span>
@@ -1336,17 +1336,17 @@
     </div>
 
     <div class="global-row" style="margin-top: 10px; border-top: 1px solid var(--border-soft); padding-top: 14px;">
-      <span>API Ключи Groq (Субтитры)</span>
+      <span>Groq API Keys (Subtitles)</span>
     </div>
-    <input type="password" id="apiKey" placeholder="Ключ(и) Groq (gsk_1..., gsk_2...)" style="margin:0 0 6px 0;" />
+    <input type="password" id="apiKey" placeholder="Groq key(s) (gsk_1..., gsk_2...)" style="margin:0 0 6px 0;" />
 
     <div class="global-row" style="margin-top: 6px; border-top: 1px solid var(--border-soft); padding-top: 12px;">
-      <span>API Ключ Gemini (ИИ-видео)</span>
+      <span>Gemini API Key (AI Video)</span>
     </div>
-    <input type="password" id="geminiApiKey" placeholder="Ключ Gemini (AIzaSy...)" style="margin:0 0 6px 0;" />
+    <input type="password" id="geminiApiKey" placeholder="Gemini key (AIzaSy...)" style="margin:0 0 6px 0;" />
 
     <div class="global-row">
-      <span>Модель Gemini</span>
+      <span>Gemini model</span>
       <select id="geminiModel">
         <option value="gemini-4-hydrogen">Gemini 4 Hydrogen</option>
         <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
@@ -1356,87 +1356,87 @@
     </div>
 
     <div class="global-row">
-      <span>Модель перевода</span>
+      <span>Translation model</span>
       <select id="llmModel">
-        <option value="openai/gpt-oss-120b">GPT-OSS 120B (Точная)</option>
-        <option value="openai/gpt-oss-20b">GPT-OSS 20B (Быстрая)</option>
-        <option value="qwen/qwen3.6-27b">Qwen 3.6 27B (Резервная)</option>
+        <option value="openai/gpt-oss-120b">GPT-OSS 120B (Accurate)</option>
+        <option value="openai/gpt-oss-20b">GPT-OSS 20B (Fast)</option>
+        <option value="qwen/qwen3.6-27b">Qwen 3.6 27B (Fallback)</option>
       </select>
     </div>
     <div class="global-row">
-      <span>Фильтр галлюцинаций</span>
+      <span>Hallucination filter</span>
       <label class="switch">
         <input type="checkbox" id="hallucinationFilter" checked>
         <span class="slider"></span>
       </label>
     </div>
     <div class="global-row">
-      <span>Авто-разбивка длинных фраз</span>
+      <span>Auto-split long phrases</span>
       <label class="switch">
         <input type="checkbox" id="smartSplitToggle" checked>
         <span class="slider"></span>
       </label>
     </div>
     <div class="global-row">
-      <span>Быстрое сжатие аудио (&gt;10 МБ)</span>
+      <span>Fast audio compression (&gt;10 MB)</span>
       <label class="switch">
         <input type="checkbox" id="fastAudioCompress" checked>
         <span class="slider"></span>
       </label>
     </div>
-    <input type="text" id="whisperPrompt" placeholder="Словарь / сложные имена (необязательно)" style="margin:2px 0; padding:10px 12px; font-size:12px;" />
+    <input type="text" id="whisperPrompt" placeholder="Glossary / custom names (optional)" style="margin:2px 0; padding:10px 12px; font-size:12px;" />
     <div class="global-row">
-      <span>Загрузить готовые (.vtt / .srt)</span>
-      <label for="subFile" class="file-pill" style="padding: 6px 14px; font-size: 12px;">Выбрать</label>
+      <span>Load existing (.vtt / .srt)</span>
+      <label for="subFile" class="file-pill" style="padding: 6px 14px; font-size: 12px;">Choose</label>
       <input type="file" id="subFile" accept=".vtt,.srt" style="display:none" />
     </div>
   </div>
 
   <select id="model">
-    <option value="whisper-large-v3-turbo">whisper-large-v3-turbo (Быстрая)</option>
-    <option value="whisper-large-v3">whisper-large-v3 (Точная)</option>
+    <option value="whisper-large-v3-turbo">whisper-large-v3-turbo (Fast)</option>
+    <option value="whisper-large-v3">whisper-large-v3 (Accurate)</option>
   </select>
 
   <select id="sourceAudioLang">
-    <option value="auto">Язык речи: Автоопределение</option>
-    <option value="ru">Язык речи: Русский</option>
-    <option value="en">Язык речи: Английский</option>
-    <option value="tr">Язык речи: Турецкий</option>
-    <option value="az">Язык речи: Азербайджанский</option>
-    <option value="uk">Язык речи: Украинский</option>
-    <option value="de">Язык речи: Немецкий</option>
-    <option value="fr">Язык речи: Французский</option>
-    <option value="es">Язык речи: Испанский</option>
-    <option value="ja">Язык речи: Японский</option>
-    <option value="ko">Язык речи: Корейский</option>
+    <option value="auto">Speech language: Auto-detect</option>
+    <option value="ru">Speech language: Russian</option>
+    <option value="en">Speech language: English</option>
+    <option value="tr">Speech language: Turkish</option>
+    <option value="az">Speech language: Azerbaijani</option>
+    <option value="uk">Speech language: Ukrainian</option>
+    <option value="de">Speech language: German</option>
+    <option value="fr">Speech language: French</option>
+    <option value="es">Speech language: Spanish</option>
+    <option value="ja">Speech language: Japanese</option>
+    <option value="ko">Speech language: Korean</option>
   </select>
 
   <select id="translateLang">
-    <option value="">Без перевода</option>
-    <option value="Russian">Перевести на русский</option>
-    <option value="English">Перевести на английский</option>
-    <option value="Turkish">Перевести на турецкий</option>
-    <option value="Azerbaijani">Перевести на азербайджанский</option>
+    <option value="">No translation</option>
+    <option value="Russian">Translate to Russian</option>
+    <option value="English">Translate to English</option>
+    <option value="Turkish">Translate to Turkish</option>
+    <option value="Azerbaijani">Translate to Azerbaijani</option>
   </select>
 
   <label class="file-box" for="mediaFile">
-    <span class="file-pill">Файл</span>
-    <span id="fileName">Не выбран</span>
+    <span class="file-pill">File</span>
+    <span id="fileName">Not selected</span>
     <input type="file" id="mediaFile" accept="video/*,audio/*,.mkv,.avi,.ts,.m2ts,.mts,.mov,.webm,.flv,.wmv,.m4v,.3gp,.ac3,.eac3,.dts,.flac,.opus,.ogg,.wav,.mp3,.m4a" style="display:none" />
   </label>
 
-  <button id="btn">Создать субтитры</button>
+  <button id="btn">Generate subtitles</button>
   <div id="progressWrap"><div id="progressBar"></div></div>
   
   <div class="action-row" id="actionRow">
-    <button type="button" id="retryBtn">↻ Ещё раз</button>
+    <button type="button" id="retryBtn">↻ Retry</button>
     <div class="dl-wrap">
-      <button type="button" id="dlBtn">Скачать ▾</button>
+      <button type="button" id="dlBtn">Download ▾</button>
       <div id="dlFormatMenu">
-        <button type="button" class="dl-fmt-item" data-fmt="vtt"><span>Стандарт</span><span class="fmt-ext">.VTT</span></button>
-        <button type="button" class="dl-fmt-item" data-fmt="ass"><span>Караоке</span><span class="fmt-ext">.ASS</span></button>
-        <button type="button" class="dl-fmt-item" data-fmt="srt"><span>Универсальный</span><span class="fmt-ext">.SRT</span></button>
-        <button type="button" class="dl-fmt-item" data-fmt="txt"><span>Только текст</span><span class="fmt-ext">.TXT</span></button>
+        <button type="button" class="dl-fmt-item" data-fmt="vtt"><span>Standard</span><span class="fmt-ext">.VTT</span></button>
+        <button type="button" class="dl-fmt-item" data-fmt="ass"><span>Karaoke</span><span class="fmt-ext">.ASS</span></button>
+        <button type="button" class="dl-fmt-item" data-fmt="srt"><span>Universal</span><span class="fmt-ext">.SRT</span></button>
+        <button type="button" class="dl-fmt-item" data-fmt="txt"><span>Plain text</span><span class="fmt-ext">.TXT</span></button>
       </div>
     </div>
     <select id="exportFormat" style="display:none;">
@@ -1445,7 +1445,7 @@
       <option value="srt">.SRT</option>
       <option value="txt">.TXT</option>
     </select>
-    <button id="openBtn">Текст</button>
+    <button id="openBtn">Text</button>
   </div>
 
   <p id="status"></p>
@@ -1458,9 +1458,9 @@
           <span class="ai-sparkle-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M12 2l2.1 6.3L20.4 10l-6.3 2.1L12 18.4l-2.1-6.3L3.6 10l6.3-1.7L12 2zm7.2 13.2l1.1 3.1 3.1 1.1-3.1 1.1-1.1 3.1-1.1-3.1-3.1-1.1 3.1-1.1 1.1-3.1z"/></svg>
           </span>
-          <span>ИИ-видео</span>
+          <span>AI Video</span>
         </span>
-        <select id="aiModelQuickSelect" class="ai-model-select" aria-label="Модель ИИ">
+        <select id="aiModelQuickSelect" class="ai-model-select" aria-label="AI Model">
           <option value="gemini-4-hydrogen">Gemini 4 Hydrogen</option>
           <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
           <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
@@ -1468,27 +1468,27 @@
         </select>
       </div>
       <div class="ai-header-actions">
-        <button type="button" class="ai-icon-btn" id="clearAiChatBtn" title="Очистить чат" aria-label="Очистить чат">
+        <button type="button" class="ai-icon-btn" id="clearAiChatBtn" title="Clear chat" aria-label="Clear chat">
           <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
         </button>
-        <button type="button" class="close-btn" id="closeAiBox" style="width:28px;height:28px;font-size:13px;" aria-label="Закрыть чат">✕</button>
+        <button type="button" class="close-btn" id="closeAiBox" style="width:28px;height:28px;font-size:13px;" aria-label="Close chat">✕</button>
       </div>
     </div>
 
     <div class="ai-Prompts-row" id="aiQuickPrompts">
-      <button type="button" class="ai-prompt-chip" data-q="О чём это видео? Расскажи кратко и понятно.">О чём это видео?</button>
-      <button type="button" class="ai-prompt-chip" data-q="Выдели ключевые моменты видео с точными таймкодами в формате [ММ:СС].">Ключевые таймкоды</button>
-      <button type="button" class="ai-prompt-chip" data-q="Какие главные выводы и полезные мысли можно вынести из этого видео?">Главные выводы</button>
-      <button type="button" class="ai-prompt-chip" data-q="Что сейчас происходит в видео и о чём говорится на этом моменте?">Что сейчас в кадре?</button>
+      <button type="button" class="ai-prompt-chip" data-q="What is this video about? Give a short, clear summary.">What is this video about?</button>
+      <button type="button" class="ai-prompt-chip" data-q="List key moments in the video with exact timestamps in [MM:SS] format.">Key timestamps</button>
+      <button type="button" class="ai-prompt-chip" data-q="What are the main takeaways and useful insights from this video?">Main takeaways</button>
+      <button type="button" class="ai-prompt-chip" data-q="What is happening in the video right now and what is being said at this moment?">What is in frame now?</button>
     </div>
 
     <div id="aiChatList">
-      <div class="ai-msg bot" id="aiSummaryText">Привет! Задайте любой вопрос по видео или выберите быструю подсказку выше — ответы учитывают субтитры и текущий кадр, а на таймкоды можно нажимать для перемотки.</div>
+      <div class="ai-msg bot" id="aiSummaryText">Hi! Ask anything about the video or pick a quick prompt above — answers use the subtitles and current frame, and you can tap timestamps to seek.</div>
     </div>
 
     <div class="ai-input-row">
-      <input type="text" id="aiQuestionInput" placeholder="Спросите что угодно по видео..." autocomplete="off" />
-      <button type="button" id="aiSendBtn" aria-label="Отправить вопрос">
+      <input type="text" id="aiQuestionInput" placeholder="Ask anything about the video..." autocomplete="off" />
+      <button type="button" id="aiSendBtn" aria-label="Send question">
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
       </button>
     </div>
@@ -1496,11 +1496,11 @@
   
   <div id="vttPanelWrapper" class="hidden">
     <div class="sub-panel-toolbar">
-      <input type="search" id="subSearchInput" placeholder="Поиск по субтитрам..." autocomplete="off" />
-      <button type="button" id="copySubsBtn">Копировать</button>
+      <input type="search" id="subSearchInput" placeholder="Search subtitles..." autocomplete="off" />
+      <button type="button" id="copySubsBtn">Copy</button>
     </div>
     <div id="subCueList"></div>
-    <pre id="vttPanel" class="hidden" title="Нажмите, чтобы скопировать текст"></pre>
+    <pre id="vttPanel" class="hidden" title="Tap to copy text"></pre>
   </div>
   </div><!-- /#appTopSection -->
 
@@ -1514,7 +1514,7 @@
     <div id="settingsMenu">
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
-          <span>Громкость (Буст 200% HQ)</span>
+          <span>Volume (200% HQ Boost)</span>
           <span class="yt-acc-val" id="volVal">100%</span>
         </button>
         <div class="yt-acc-body">
@@ -1531,7 +1531,7 @@
 
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
-          <span>Скорость видео</span>
+          <span>Playback speed</span>
           <span class="yt-acc-val" id="speedVal">1.0x</span>
         </button>
         <div class="yt-acc-body">
@@ -1541,7 +1541,7 @@
 
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
-          <span>Размер</span>
+          <span>Size</span>
           <span class="yt-acc-val" id="subSizeVal">18px</span>
         </button>
         <div class="yt-acc-body">
@@ -1551,7 +1551,7 @@
 
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
-          <span>Ширина</span>
+          <span>Width</span>
           <span class="yt-acc-val" id="subWidthVal">85%</span>
         </button>
         <div class="yt-acc-body">
@@ -1561,7 +1561,7 @@
 
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
-          <span>Высота</span>
+          <span>Height</span>
           <span class="yt-acc-val" id="subBottomVal">12%</span>
         </button>
         <div class="yt-acc-body">
@@ -1571,8 +1571,8 @@
 
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
-          <span>Сдвиг (появление)</span>
-          <span class="yt-acc-val" id="subOffsetVal">0 мс</span>
+          <span>Offset (appear)</span>
+          <span class="yt-acc-val" id="subOffsetVal">0 ms</span>
         </button>
         <div class="yt-acc-body">
           <input type="range" id="subOffset" min="-1000" max="1000" step="50" value="0">
@@ -1581,8 +1581,8 @@
 
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
-          <span>Задержка (исчезновение)</span>
-          <span class="yt-acc-val" id="subHoldVal">400 мс</span>
+          <span>Hold (disappear)</span>
+          <span class="yt-acc-val" id="subHoldVal">400 ms</span>
         </button>
         <div class="yt-acc-body">
           <input type="range" id="subHold" min="0" max="1500" step="50" value="400">
@@ -1591,8 +1591,8 @@
 
       <div class="yt-acc-item hidden" id="audioTrackAccItem">
         <button type="button" class="yt-acc-header">
-          <span>Аудиодорожка</span>
-          <span class="yt-acc-val" id="audioTrackVal">Авто</span>
+          <span>Audio track</span>
+          <span class="yt-acc-val" id="audioTrackVal">Auto</span>
         </button>
         <div class="yt-acc-body">
           <select id="audioTrackSelect"></select>
@@ -1601,34 +1601,34 @@
 
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
-          <span>Экран</span>
-          <span class="yt-acc-val" id="fitModeVal">Вписать</span>
+          <span>Screen</span>
+          <span class="yt-acc-val" id="fitModeVal">Fit</span>
         </button>
         <div class="yt-acc-body">
           <select id="fitModeSelect">
-            <option value="contain">Вписать</option>
-            <option value="cover">Заполнить</option>
-            <option value="fill">Растянуть</option>
+            <option value="contain">Fit</option>
+            <option value="cover">Fill</option>
+            <option value="fill">Stretch</option>
           </select>
         </div>
       </div>
 
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
-          <span>Режим слов</span>
-          <span class="yt-acc-val" id="wordModeVal">Пословно</span>
+          <span>Word mode</span>
+          <span class="yt-acc-val" id="wordModeVal">Word-by-word</span>
         </button>
         <div class="yt-acc-body">
           <select id="wordModeSelect">
-            <option value="hidden">Пословно</option>
-            <option value="karaoke">Караоке</option>
-            <option value="full">Целиком</option>
+            <option value="hidden">Word-by-word</option>
+            <option value="karaoke">Karaoke</option>
+            <option value="full">Full line</option>
           </select>
         </div>
       </div>
 
       <div class="yt-inline-row">
-        <span>Фон</span>
+        <span>Background</span>
         <label class="switch">
           <input type="checkbox" id="bgToggle" checked>
           <span class="slider"></span>
@@ -1715,24 +1715,24 @@
     document.documentElement.style.setProperty('--accent', savedAccent);
 
     const GRAY_THEMES = {
-      'dark-gray':        { label: 'Тёмно-серая',       main: '#24272d', surface: '#2f333b', elevated: '#2a2e36', border: '#3e434f', accent: '#0099ff' },
-      'ocean-drop':       { label: 'Капля океана',      main: '#132d48', surface: '#1b3d60', elevated: '#163554', border: '#295785', accent: '#31b8f0' },
-      'amoled-black':     { label: 'AMOLED Чёрная',     main: '#090a0d', surface: '#14171f', elevated: '#101218', border: '#262b38', accent: '#38bdf8' },
-      'midnight-indigo':  { label: 'Полночный индиго',  main: '#141829', surface: '#1e243d', elevated: '#191e33', border: '#2f385c', accent: '#60a5fa' },
-      'tokyo-night':      { label: 'Токийская ночь',    main: '#1a1b26', surface: '#24283b', elevated: '#1f2335', border: '#3b4261', accent: '#7aa2f7' },
-      'cyberpunk-neon':   { label: 'Киберпанк Неон',    main: '#161124', surface: '#231b38', elevated: '#1c152e', border: '#3c2d5e', accent: '#00f0ff' },
-      'dracula':          { label: 'Дракула',           main: '#1e1f29', surface: '#282a36', elevated: '#232530', border: '#44475a', accent: '#bd93f9' },
-      'catppuccin-mocha': { label: 'Капучино Мокка',    main: '#1e1e2e', surface: '#2a2b3d', elevated: '#242535', border: '#45475a', accent: '#89b4fa' },
-      'nord-arctic':      { label: 'Северный Норд',     main: '#242933', surface: '#2e3440', elevated: '#292e39', border: '#434c5e', accent: '#88c0d0' },
-      'emerald-forest':   { label: 'Изумрудный лес',    main: '#10221c', surface: '#18332a', elevated: '#142b23', border: '#275244', accent: '#10b981' },
-      'matrix-terminal':  { label: 'Матрица',           main: '#0c1710', surface: '#14261b', elevated: '#101f15', border: '#234730', accent: '#22c55e' },
-      'ruby-velvet':      { label: 'Рубиновый бархат',  main: '#241218', surface: '#361b24', elevated: '#2d161e', border: '#542b39', accent: '#f43f5e' },
-      'sunset-amber':     { label: 'Янтарный закат',    main: '#241811', surface: '#36241a', elevated: '#2d1e15', border: '#543929', accent: '#f59e0b' },
-      'royal-plum':       { label: 'Королевская слива', main: '#1d1429', surface: '#2b1e3d', elevated: '#241933', border: '#463263', accent: '#c084fc' },
-      'graphite':         { label: 'Графитовый',        main: '#1c1f24', surface: '#262a31', elevated: '#21252b', border: '#353a44', accent: '#0099ff' },
-      'gray':             { label: 'Стальной серый',    main: '#2e323a', surface: '#393e48', elevated: '#333842', border: '#4b515f', accent: '#38bdf8' },
-      'warm-gray':        { label: 'Тёплый серый',      main: '#2b2a2e', surface: '#36353a', elevated: '#313035', border: '#48464e', accent: '#f59e0b' },
-      'light-slate':      { label: 'Светло-серый',      main: '#373c46', surface: '#434956', elevated: '#3d424e', border: '#565d6e', accent: '#38bdf8' }
+      'dark-gray':        { label: 'Dark Gray',       main: '#24272d', surface: '#2f333b', elevated: '#2a2e36', border: '#3e434f', accent: '#0099ff' },
+      'ocean-drop':       { label: 'Ocean Drop',      main: '#132d48', surface: '#1b3d60', elevated: '#163554', border: '#295785', accent: '#31b8f0' },
+      'amoled-black':     { label: 'AMOLED Black',     main: '#090a0d', surface: '#14171f', elevated: '#101218', border: '#262b38', accent: '#38bdf8' },
+      'midnight-indigo':  { label: 'Midnight Indigo',  main: '#141829', surface: '#1e243d', elevated: '#191e33', border: '#2f385c', accent: '#60a5fa' },
+      'tokyo-night':      { label: 'Tokyo Night',    main: '#1a1b26', surface: '#24283b', elevated: '#1f2335', border: '#3b4261', accent: '#7aa2f7' },
+      'cyberpunk-neon':   { label: 'Cyberpunk Neon',    main: '#161124', surface: '#231b38', elevated: '#1c152e', border: '#3c2d5e', accent: '#00f0ff' },
+      'dracula':          { label: 'Dracula',           main: '#1e1f29', surface: '#282a36', elevated: '#232530', border: '#44475a', accent: '#bd93f9' },
+      'catppuccin-mocha': { label: 'Catppuccin Mocha',    main: '#1e1e2e', surface: '#2a2b3d', elevated: '#242535', border: '#45475a', accent: '#89b4fa' },
+      'nord-arctic':      { label: 'Nord Arctic',     main: '#242933', surface: '#2e3440', elevated: '#292e39', border: '#434c5e', accent: '#88c0d0' },
+      'emerald-forest':   { label: 'Emerald Forest',    main: '#10221c', surface: '#18332a', elevated: '#142b23', border: '#275244', accent: '#10b981' },
+      'matrix-terminal':  { label: 'Matrix',           main: '#0c1710', surface: '#14261b', elevated: '#101f15', border: '#234730', accent: '#22c55e' },
+      'ruby-velvet':      { label: 'Ruby Velvet',  main: '#241218', surface: '#361b24', elevated: '#2d161e', border: '#542b39', accent: '#f43f5e' },
+      'sunset-amber':     { label: 'Sunset Amber',    main: '#241811', surface: '#36241a', elevated: '#2d1e15', border: '#543929', accent: '#f59e0b' },
+      'royal-plum':       { label: 'Royal Plum', main: '#1d1429', surface: '#2b1e3d', elevated: '#241933', border: '#463263', accent: '#c084fc' },
+      'graphite':         { label: 'Graphite',        main: '#1c1f24', surface: '#262a31', elevated: '#21252b', border: '#353a44', accent: '#0099ff' },
+      'gray':             { label: 'Steel Gray',    main: '#2e323a', surface: '#393e48', elevated: '#333842', border: '#4b515f', accent: '#38bdf8' },
+      'warm-gray':        { label: 'Warm Gray',      main: '#2b2a2e', surface: '#36353a', elevated: '#313035', border: '#48464e', accent: '#f59e0b' },
+      'light-slate':      { label: 'Light Slate',      main: '#373c46', surface: '#434956', elevated: '#3d424e', border: '#565d6e', accent: '#38bdf8' }
     };
     const appThemeBgEl = $('appThemeBg');
     const themeSwatchesGridEl = $('themeSwatchesGrid');
@@ -1993,8 +1993,8 @@
       sizeVal.textContent = size + 'px';
       widthVal.textContent = width + '%';
       bottomVal.textContent = bottom + '%';
-      subOffsetVal.textContent = subOffset + ' мс';
-      subHoldVal.textContent = subHold + ' мс';
+      subOffsetVal.textContent = subOffset + ' ms';
+      subHoldVal.textContent = subHold + ' ms';
       const fitModeValEl = $('fitModeVal');
       if (fitModeValEl && fitModeSelect.selectedIndex >= 0) {
         fitModeValEl.textContent = fitModeSelect.options[fitModeSelect.selectedIndex].textContent;
@@ -2155,7 +2155,7 @@
           const parsedVolInit = parseInt(volSlider.value, 10);
           gainNode.gain.value = (Number.isNaN(parsedVolInit) ? 100 : Math.min(200, Math.max(0, parsedVolInit))) / 100;
         } catch (e) {
-          console.warn('Web Audio API не поддерживается', e);
+          console.warn('Web Audio API not supported', e);
         }
       }
       if (audioCtx && audioCtx.state === 'suspended') {
@@ -2408,7 +2408,7 @@
       const svg = direction === 'left'
         ? '<svg viewBox="0 0 24 24"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>'
         : '<svg viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>';
-      const label = totalDelta < 0 ? `−${Math.abs(totalDelta)}с` : `+${totalDelta}с`;
+      const label = totalDelta < 0 ? `−${Math.abs(totalDelta)}s` : `+${totalDelta}s`;
       el.innerHTML = svg + `<span>${label}</span>`;
       playerBox.appendChild(el);
       setTimeout(() => el.remove(), 650);
@@ -2537,7 +2537,7 @@
           if (cues.length) {
             refreshAllExports();
             actionRow.style.display = 'flex';
-            statusEl.innerText = 'Восстановлены сохранённые субтитры из кэша.';
+            statusEl.innerText = 'Restored saved subtitles from cache.';
             return true;
           }
         }
@@ -2564,17 +2564,17 @@
       if (media && cachedWhisper.fileSig === sig && cachedWhisper.model === model && cachedWhisper.rawSegments.length) {
         if (!tLang) {
           btn.innerText = cachedWhisper.activeLang === ''
-            ? '✨ ИИ-видео (вопросы по видео)'
-            : 'Вернуть оригинал из кэша';
+            ? '✨ AI Video (ask about video)'
+            : 'Restore original from cache';
         } else if (cachedWhisper.activeLang === tLang) {
-          btn.innerText = '✨ ИИ-видео (вопросы по видео)';
+          btn.innerText = '✨ AI Video (ask about video)';
         } else if (cachedWhisper.translations[tLang]) {
-          btn.innerText = 'Открыть готовый перевод из кэша';
+          btn.innerText = 'Open cached translation';
         } else {
-          btn.innerText = 'Быстро перевести из кэша';
+          btn.innerText = 'Quick translate from cache';
         }
       } else {
-        btn.innerText = 'Создать субтитры';
+        btn.innerText = 'Generate subtitles';
       }
     }
 
@@ -2584,7 +2584,7 @@
         externalMediaInfo = null;
       }
       const media = getActiveMediaInfo();
-      $('fileName').innerText = media ? media.name : 'Не выбран';
+      $('fileName').innerText = media ? media.name : 'Not selected';
       if (media) {
         currentFileName = media.name.replace(/\.[^/.]+$/, '');
         applySettings();
@@ -2592,7 +2592,7 @@
           cues = [];
           actionRow.style.display = 'none';
           vttPanelWrapper.classList.add('hidden');
-          openBtn.innerText = 'Текст';
+          openBtn.innerText = 'Text';
           if (subSearchInput) subSearchInput.value = '';
           renderInteractiveCueList();
           statusEl.innerText = '';
@@ -2761,7 +2761,7 @@
       if (shown === 0) {
         const empty = document.createElement('div');
         empty.style.cssText = 'padding: 12px; text-align: center; color: #9ca3af; font-size: 12.5px;';
-        empty.textContent = 'Совпадений не найдено.';
+        empty.textContent = 'No matches found.';
         frag.appendChild(empty);
       }
       subCueList.appendChild(frag);
@@ -2777,7 +2777,7 @@
       if (bridge && typeof bridge.saveSubtitleFile === 'function') {
         const ok = bridge.saveSubtitleFile(`${currentFileName}.${fmt}`, content, fmt);
         if (ok) {
-          statusEl.innerText = `✅ Файл ${currentFileName}.${fmt} сохранён в папку «Загрузки»!`;
+          statusEl.innerText = `✅ File ${currentFileName}.${fmt} saved to Downloads!`;
           return;
         }
       }
@@ -2827,7 +2827,7 @@
     
     openBtn.addEventListener('click', () => {
       const isHidden = vttPanelWrapper.classList.toggle('hidden');
-      openBtn.innerText = isHidden ? 'Текст' : 'Скрыть';
+      openBtn.innerText = isHidden ? 'Text' : 'Hide';
       if (!isHidden) {
         renderInteractiveCueList();
         updateActiveCueHighlight(currentCueIdx);
@@ -2859,8 +2859,8 @@
         const fmt = exportFormat.value || 'vtt';
         const text = exportData[fmt] || vttPanel.innerText || '';
         copyTextToClipboard(text).then(() => {
-          copySubsBtn.textContent = '✓ Скопировано';
-          setTimeout(() => { copySubsBtn.textContent = 'Копировать'; }, 1600);
+          copySubsBtn.textContent = '✓ Copied';
+          setTimeout(() => { copySubsBtn.textContent = 'Copy'; }, 1600);
         }).catch(() => {});
       });
     }
@@ -2869,7 +2869,7 @@
       if (!vttPanel.innerText) return;
       copyTextToClipboard(vttPanel.innerText).then(() => {
         const prev = statusEl.innerText;
-        statusEl.innerText = 'Текст субтитров скопирован в буфер обмена!';
+        statusEl.innerText = 'Subtitle text copied to clipboard!';
         setTimeout(() => { statusEl.innerText = prev; }, 2000);
       }).catch(() => {});
     });
@@ -2934,7 +2934,7 @@
     }
 
     function buildTranscriptContext() {
-      if (!cues.length) return 'Субтитры ещё не созданы или видео без субтитров.';
+      if (!cues.length) return 'Subtitles have not been generated yet or the video has no subtitles.';
       const lines = cues.map(c => `[${formatTime(c.start)}] ${c.text}`);
       const full = lines.join('\n');
       if (full.length <= 120000) return full;
@@ -3035,7 +3035,7 @@
       }
       if (withCopy && role === 'bot') {
         msg.dataset.rawText = text;
-        msg.insertAdjacentHTML('beforeend', '<div class="ai-msg-actions"><button type="button" class="ai-copy-btn">Копировать</button></div>');
+        msg.insertAdjacentHTML('beforeend', '<div class="ai-msg-actions"><button type="button" class="ai-copy-btn">Copy</button></div>');
       }
       aiChatList.appendChild(msg);
       aiChatList.scrollTop = aiChatList.scrollHeight;
@@ -3048,8 +3048,8 @@
         const msgEl = copyBtn.closest('.ai-msg');
         const raw = msgEl?.dataset?.rawText || msgEl?.innerText || '';
         copyTextToClipboard(raw).then(() => {
-          copyBtn.textContent = '✓ Скопировано';
-          setTimeout(() => { copyBtn.textContent = 'Копировать'; }, 1600);
+          copyBtn.textContent = '✓ Copied';
+          setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1600);
         }).catch(() => {});
         return;
       }
@@ -3072,7 +3072,7 @@
 
     clearAiChatBtn.addEventListener('click', () => {
       aiChatHistory = [];
-      aiChatList.innerHTML = '<div class="ai-msg bot">Чат очищен. Задайте новый вопрос по видео!</div>';
+      aiChatList.innerHTML = '<div class="ai-msg bot">Chat cleared. Ask a new question about the video!</div>';
     });
 
     async function callGeminiVideoQA(questionText) {
@@ -3080,7 +3080,7 @@
       if (!geminiKeys.length) {
         appendAiMessage(
           'bot',
-          'Для работы <strong>ИИ-видео</strong> укажите ваш API ключ Gemini в настройках.<br><button type="button" class="ai-clear-btn open-gemini-settings-btn" style="margin-top:8px;color:var(--accent);border-color:var(--accent);">⚙️ Открыть настройки и вставить ключ Gemini</button>',
+          'To use <strong>AI Video</strong>, enter your Gemini API key in Settings.<br><button type="button" class="ai-clear-btn open-gemini-settings-btn" style="margin-top:8px;color:var(--accent);border-color:var(--accent);">⚙️ Open Settings and paste Gemini key</button>',
           true
         );
         return;
@@ -3091,7 +3091,7 @@
       appendAiMessage('user', questionText);
       const loadingBubble = appendAiMessage(
         'bot',
-        '<div class="ai-typing"><span class="ai-typing-dots"><span></span><span></span><span></span></span><span>ИИ анализирует видео...</span></div>',
+        '<div class="ai-typing"><span class="ai-typing-dots"><span></span><span></span><span></span></span><span>AI is analyzing the video...</span></div>',
         true
       );
 
@@ -3107,10 +3107,10 @@
         });
 
         const systemPrompt =
-          'Ты умный видео-ассистент внутри плеера (как функция «Спросить о видео» в YouTube). ' +
-          'Отвечай на русском языке чётко, дружелюбно и по делу. ' +
-          'Когда ссылаешься на моменты из видео, обязательно указывай таймкоды в формате [ММ:СС], чтобы пользователь мог нажать на них для перемотки. ' +
-          `Текущий момент плеера: [${curTimeStr}].\n\nСубтитры видео с таймкодами:\n${transcript}`;
+          'You are a smart in-player video assistant (like YouTube "Ask about this video"). ' +
+          'Reply clearly, concisely, and helpfully in the user\'s language (default English). ' +
+          'When referencing moments from the video, always include timestamps in [MM:SS] format so the user can tap them to seek. ' +
+          `Current player timestamp: [${curTimeStr}].\n\nVideo subtitles with timestamps:\n${transcript}`;
 
         const contents = [];
         aiChatHistory.slice(-8).forEach(turn => {
@@ -3132,7 +3132,7 @@
         contents.push({ role: 'user', parts: userParts });
 
         let answerText = null;
-        let lastErr = 'Не удалось получить ответ от Gemini API.';
+        let lastErr = 'Failed to get response from Gemini API.';
 
         for (const apiKey of geminiKeys) {
           for (const modelId of candidateModels) {
@@ -3174,10 +3174,10 @@
         aiChatHistory.push({ role: 'model', text: answerText });
         loadingBubble.dataset.rawText = answerText;
         loadingBubble.innerHTML = formatBotMessageHTML(answerText) +
-          '<div class="ai-msg-actions"><button type="button" class="ai-copy-btn">Копировать</button></div>';
+          '<div class="ai-msg-actions"><button type="button" class="ai-copy-btn">Copy</button></div>';
         aiChatList.scrollTop = aiChatList.scrollHeight;
       } catch (e) {
-        loadingBubble.innerHTML = formatBotMessageHTML('Ошибка Gemini API: ' + (e.message || e));
+        loadingBubble.innerHTML = formatBotMessageHTML('Gemini API error: ' + (e.message || e));
       } finally {
         aiBusy = false;
         aiSendBtn.disabled = false;
@@ -3243,7 +3243,7 @@
         }
       }
 
-      if (!parsedCues.length) { statusEl.innerText = 'Не удалось прочитать субтитры из файла.'; return; }
+      if (!parsedCues.length) { statusEl.innerText = 'Could not read subtitles from file.'; return; }
       cues = parsedCues;
       refreshAllExports();
       actionRow.style.display = 'flex';
@@ -3252,9 +3252,9 @@
       const media = getActiveMediaInfo();
       if (media) {
         setupPlayer(media);
-        statusEl.innerText = `Готовые субтитры (${cues.length} строк) загружены в плеер!`;
+        statusEl.innerText = `Loaded subtitles (${cues.length} lines) into player!`;
       } else {
-        statusEl.innerText = `Субтитры загружены (${cues.length} строк). Выберите видеофайл для просмотра.`;
+        statusEl.innerText = `Subtitles loaded (${cues.length} lines). Select a video file to watch.`;
       }
     });
 
@@ -3282,7 +3282,7 @@
       let rotatedCount = 0;
 
       for (let i = 0; i <= retries; i++) {
-        if (signal && signal.aborted) throw new Error('Отменено пользователем.');
+        if (signal && signal.aborted) throw new Error('Cancelled by user.');
         try {
           const currentKey = getCurrentKey();
           const opts = makeOptionsFn(currentKey);
@@ -3292,7 +3292,7 @@
           if (res.status === 429 && rotatedCount < totalKeys - 1 && rotateKey()) {
             rotatedCount++;
             i--;
-            statusEl.innerText = `🔄 Лимит на ключе. Переключение на ключ #${activeKeyIdx + 1}...`;
+            statusEl.innerText = `🔄 Key rate-limited. Switching to key #${activeKeyIdx + 1}...`;
             continue;
           }
 
@@ -3302,22 +3302,22 @@
             const ra = parseInt(res.headers.get('retry-after') || '0', 10);
             let waitSec = ra > 0 ? ra : Math.ceil(1200 * Math.pow(2, i) / 1000);
             if (waitSec < 1) waitSec = 1;
-            statusEl.innerText = `⏳ Лимит запросов. Ждем ${waitSec} сек... (Попытка ${i + 1}/${retries})`;
+            statusEl.innerText = `⏳ Rate limit. Waiting ${waitSec}s... (Attempt ${i + 1}/${retries})`;
             await new Promise((r) => setTimeout(r, waitSec * 1000));
             continue;
           }
           return res;
         } catch (e) {
-          if (e && e.name === 'AbortError') throw new Error('Отменено пользователем.');
+          if (e && e.name === 'AbortError') throw new Error('Cancelled by user.');
           lastErr = e;
           if (i < retries) {
-            statusEl.innerText = `🌐 Ошибка сети. Повторная попытка...`;
+            statusEl.innerText = `🌐 Network error. Retrying...`;
             await new Promise((r) => setTimeout(r, 2000));
           }
         }
       }
       if (lastErr) throw lastErr;
-      throw new Error('Сеть недоступна');
+      throw new Error('Network unavailable');
     }
 
     async function sendToGroq(blob, filename, model, promptHint, signal) {
@@ -3338,10 +3338,10 @@
       }, signal);
       
       if (!res.ok) {
-        if (res.status === 401) throw new Error('Неверный API-ключ Groq.');
-        if (res.status === 413) throw new Error('Файл слишком большой для отправки.');
-        if (res.status === 429) throw new Error('Лимит бесплатного тарифа исчерпан. Подождите минуту или добавьте второй ключ.');
-        throw new Error(`Ошибка сервера Groq (Код ${res.status}). Попробуйте позже.`);
+        if (res.status === 401) throw new Error('Invalid Groq API key.');
+        if (res.status === 413) throw new Error('File too large to upload.');
+        if (res.status === 429) throw new Error('Free tier rate limit reached. Wait a minute or add a second key.');
+        throw new Error(`Groq server error (Code ${res.status}). Try again later.`);
       }
 
       const data = await res.json();
@@ -3512,7 +3512,7 @@
       const primaryModel = llmModelEl.value || 'openai/gpt-oss-120b';
 
       if (bridge && typeof bridge.translateSubtitlesNative === 'function') {
-        statusElRef.innerText = `Перевод субтитров (${targetLang}) в фоне...`;
+        statusElRef.innerText = `Translating subtitles (${targetLang}) in background...`;
         setProgress(56);
         const resObj = await new Promise((resolve, reject) => {
           let done = false;
@@ -3520,7 +3520,7 @@
             if (done) return;
             done = true;
             try { if (typeof bridge.cancelNativeSubtitles === 'function') bridge.cancelNativeSubtitles(); } catch (err) {}
-            reject(new Error('Отменено пользователем.'));
+            reject(new Error('Cancelled by user.'));
           };
           if (signal) {
             if (signal.aborted) { onAbort(); return; }
@@ -3536,13 +3536,13 @@
             done = true;
             if (signal) signal.removeEventListener('abort', onAbort);
             try { resolve(JSON.parse(jsonStr || '{}')); }
-            catch (err) { reject(new Error('Ошибка чтения перевода.')); }
+            catch (err) { reject(new Error('Failed to parse translation response.')); }
           };
           window.__onNativeTranslateError = (errMsg) => {
             if (done) return;
             done = true;
             if (signal) signal.removeEventListener('abort', onAbort);
-            reject(new Error(errMsg || 'Ошибка перевода субтитров.'));
+            reject(new Error(errMsg || 'Subtitle translation error.'));
           };
           try {
             bridge.translateSubtitlesNative(
@@ -3569,7 +3569,7 @@
         const failedCount = Number(resObj.failedLines) || 0;
         const errorDetail = String(resObj.errorDetail || '').trim();
         if (failedCount >= cueArr.length && errorDetail) {
-          throw new Error('Ошибка перевода: ' + errorDetail);
+          throw new Error('Translation error: ' + errorDetail);
         }
         return { failed: failedCount, errorDetail };
       }
@@ -3587,7 +3587,7 @@
       let nextBatch = 0;
 
       const translateOne = async (i) => {
-        if (signal && signal.aborted) throw new Error('Отменено пользователем.');
+        if (signal && signal.aborted) throw new Error('Cancelled by user.');
         const batch = cueArr.slice(i, i + batchSize);
         const rangeEnd = Math.min(i + batchSize, total);
         const prevContext = i >= 2 ? originalTexts.slice(i - 2, i) : [];
@@ -3597,14 +3597,14 @@
           let res = await requestTranslationBatch(payload, prevContext, targetLang, primaryModel, signal);
 
           if (!res.ok && primaryModel !== fallbackModel) {
-            statusElRef.innerText = `Резервный перевод через ${fallbackModel}: строки ${i + 1}–${rangeEnd}...`;
+            statusElRef.innerText = `Fallback translation via ${fallbackModel}: lines ${i + 1}–${rangeEnd}...`;
             res = await requestTranslationBatch(payload, prevContext, targetLang, fallbackModel, signal);
           }
 
           if (!res.ok) {
             const errData = await res.json().catch(() => ({}));
             const errMsg = errData.error?.message || `HTTP ${res.status}`;
-            statusElRef.innerText = `⚠️ Ошибка перевода Groq: ${errMsg}`;
+            statusElRef.innerText = `⚠️ Groq translation error: ${errMsg}`;
             failedLines += batch.length;
             return;
           }
@@ -3630,15 +3630,15 @@
           }
           failedLines += batch.length - received.size;
         } catch (e) {
-          if (e && e.message === 'Отменено пользователем.') throw e;
+          if (e && e.message === 'Cancelled by user.') throw e;
           failedLines += batch.length;
-          statusElRef.innerText = `⚠️ Ошибка разбора ответа: ${e.message}`;
+          statusElRef.innerText = `⚠️ Response parse error: ${e.message}`;
         } finally {
           completedBatches++;
           const done = Math.min(completedBatches * batchSize, total);
           setProgress(55 + Math.round((completedBatches / Math.max(1, batchStarts.length)) * 42));
           if (statusElRef && !(signal && signal.aborted)) {
-            statusElRef.innerText = `Перевод: ${done} из ${total} строк (${concurrency} потока)...`;
+            statusElRef.innerText = `Translating: ${done} of ${total} lines (${concurrency} streams)...`;
           }
         }
       };
@@ -3932,16 +3932,16 @@
       const keys = getApiKeys();
       const customPrompt = whisperPromptEl.value.trim();
 
-      if (!keys.length || !media) { statusEl.innerText = 'Укажите хотя бы один API ключ Groq и выберите файл!'; return; }
+      if (!keys.length || !media) { statusEl.innerText = 'Enter at least one Groq API key and select a file!'; return; }
 
       activeAbortCtrl = new AbortController();
       const signal = activeAbortCtrl.signal;
 
       btn.classList.add('cancel-mode');
-      btn.innerText = 'Отменить процесс';
+      btn.innerText = 'Cancel process';
       actionRow.style.display = 'none';
       vttPanelWrapper.classList.add('hidden');
-      openBtn.innerText = 'Текст';
+      openBtn.innerText = 'Text';
       setProgress(5);
       await requestWakeLock();
 
@@ -3955,7 +3955,7 @@
 
           // В нативном Android-приложении декодируем любые кодеки (AC3, E-AC3, DTS, HEVC, MKV, AVI, MP4 любого размера) через Media3 + FFmpeg в Kotlin
           if (bridge && typeof bridge.generateSubtitlesNative === 'function') {
-            statusEl.innerText = 'Извлечение аудио (все кодеки Media3 + FFmpeg) и распознавание...';
+            statusEl.innerText = 'Extracting audio (all codecs Media3 + FFmpeg) & transcribing...';
             setProgress(10);
             const nativeRes = await new Promise((resolve, reject) => {
               let done = false;
@@ -3963,7 +3963,7 @@
                 if (done) return;
                 done = true;
                 try { if (typeof bridge.cancelNativeAudioExtraction === 'function') bridge.cancelNativeAudioExtraction(); } catch (err) {}
-                reject(new Error('Отменено пользователем.'));
+                reject(new Error('Cancelled by user.'));
               };
               if (signal) {
                 if (signal.aborted) { onAbort(); return; }
@@ -3979,13 +3979,13 @@
                 done = true;
                 if (signal) signal.removeEventListener('abort', onAbort);
                 try { resolve(JSON.parse(jsonStr || '{}')); }
-                catch (err) { reject(new Error('Ошибка чтения ответа декодера.')); }
+                catch (err) { reject(new Error('Failed to read decoder response.')); }
               };
               window.__onNativeSubtitlesError = (errMsg) => {
                 if (done) return;
                 done = true;
                 if (signal) signal.removeEventListener('abort', onAbort);
-                reject(new Error(errMsg || 'Ошибка декодирования аудиодорожки.'));
+                reject(new Error(errMsg || 'Audio track decoding error.'));
               };
               try {
                 bridge.generateSubtitlesNative(
@@ -4005,11 +4005,11 @@
             (nativeRes.words || []).forEach((w) => allWords.push({ word: w.word, start: w.start, end: w.end }));
           } else {
             const file = media.file;
-            if (!file) throw new Error('Выберите видеофайл.');
+            if (!file) throw new Error('Select a video file.');
             const shouldCompress = file.size > 24 * 1024 * 1024 || (fastAudioCompressEl.checked && file.size > 10 * 1024 * 1024);
             let audioBuffer = null;
             if (shouldCompress) {
-              statusEl.innerText = 'Извлекаем и сжимаем аудиодорожку для быстрой отправки...';
+              statusEl.innerText = 'Extracting and compressing audio track for fast upload...';
               setProgress(12);
               try {
                 const ab = await file.arrayBuffer();
@@ -4022,7 +4022,7 @@
             }
 
             if (!audioBuffer) {
-              statusEl.innerText = 'Отправка напрямую в Groq...';
+              statusEl.innerText = 'Sending directly to Groq...';
               setProgress(25);
               const r = await sendToGroq(file, file.name, model, customPrompt, signal);
               r.segments.forEach((s) => allSegments.push({ start: s.start, end: s.end, text: s.text }));
@@ -4042,13 +4042,13 @@
             let rollingPrompt = customPrompt;
 
             while (pos < totalDuration - 0.1) {
-              if (signal.aborted) throw new Error('Отменено пользователем.');
+              if (signal.aborted) throw new Error('Cancelled by user.');
               const chunkEnd = Math.min(pos + chunkDuration, totalDuration);
               const isLast = chunkEnd >= totalDuration - 0.1;
               const nextCutoff = isLast ? totalDuration + 10 : (pos + chunkDuration - overlap / 2);
 
               setProgress(15 + Math.round((c / Math.max(1, totalChunks)) * 40));
-              statusEl.innerText = `Распознавание: часть ${c + 1} из ${totalChunks} (${Math.round(pos)}–${Math.round(chunkEnd)} с)...`;
+              statusEl.innerText = `Transcribing: part ${c + 1} of ${totalChunks} (${Math.round(pos)}–${Math.round(chunkEnd)}s)...`;
 
               const startSample = Math.floor(pos * sampleRate);
               const endSample = Math.min(Math.floor(chunkEnd * sampleRate), channelData.length);
@@ -4081,7 +4081,7 @@
             }
           }
 
-          if (!allSegments.length) throw new Error('Не удалось распознать речь.');
+          if (!allSegments.length) throw new Error('Could not recognize speech.');
 
           cachedWhisper = {
             fileSig,
@@ -4093,7 +4093,7 @@
             aiSummary: null
           };
         } else {
-          statusEl.innerText = 'Используем распознанный текст из кэша...';
+          statusEl.innerText = 'Using recognized text from cache...';
           setProgress(50);
         }
 
@@ -4107,8 +4107,8 @@
           const { failed, errorDetail } = await translateSegments(freshCues, targetLang, statusEl, signal);
           if (failed > 0) {
             translationWarn = errorDetail
-              ? ` (${failed} строк не переведены: ${errorDetail}).`
-              : ` (${failed} строк не переведены).`;
+              ? ` (${failed} lines not translated: ${errorDetail}).`
+              : ` (${failed} lines not translated).`;
           }
           if (failed < freshCues.length) {
             cachedWhisper.translations[targetLang] = cloneCues(freshCues);
@@ -4116,7 +4116,7 @@
           cues = freshCues;
         }
 
-        if (!cues.length) throw new Error('Не удалось построить субтитры.');
+        if (!cues.length) throw new Error('Failed to build subtitles.');
 
         cachedWhisper.activeLang = targetLang;
         saveWhisperDiskCache();
@@ -4124,7 +4124,7 @@
         refreshAllExports();
 
         actionRow.style.display = 'flex';
-        statusEl.innerText = 'Готово! Субтитры загружены.' + translationWarn;
+        statusEl.innerText = 'Done! Subtitles loaded.' + translationWarn;
 
         setupPlayer(media);
 
@@ -4133,7 +4133,7 @@
         }
 
       } catch (e) {
-        statusEl.innerText = 'Статус: ' + (e && e.message ? e.message : e);
+        statusEl.innerText = 'Status: ' + (e && e.message ? e.message : e);
       } finally {
         activeAbortCtrl = null;
         btn.classList.remove('cancel-mode');
@@ -4201,7 +4201,7 @@
           if (!Array.isArray(tracks) || tracks.length <= 1) {
             audioTrackAccItem.classList.add('hidden');
             audioTrackSelect.innerHTML = '';
-            if (audioTrackVal) audioTrackVal.textContent = 'Авто';
+            if (audioTrackVal) audioTrackVal.textContent = 'Auto';
             return;
           }
           audioTrackAccItem.classList.remove('hidden');
@@ -4304,10 +4304,10 @@
           cues = [];
           actionRow.style.display = 'none';
           vttPanelWrapper.classList.add('hidden');
-          openBtn.innerText = 'Текст';
+          openBtn.innerText = 'Text';
           if (subSearchInput) subSearchInput.value = '';
           renderInteractiveCueList();
-          statusEl.innerText = 'Видео открыто. Нажмите «Создать субтитры» или воспроизведите.';
+          statusEl.innerText = 'Video opened. Tap "Generate subtitles" or press play.';
         }
         setupPlayer(externalMediaInfo);
         aiSummaryBox.classList.remove('show');
