@@ -6,16 +6,427 @@
   <meta name="theme-color" content="#161922" id="themeColorMeta">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="SubLater">
-  <title>SubLater</title>
+  <meta name="apple-mobile-web-app-title" content="SubLyter">
+  <title>SubLyter</title>
 
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='26' fill='%23161922' stroke='%231b8ef2' stroke-width='6'/><text x='50' y='64' font-family='sans-serif' font-weight='900' font-size='38' fill='%231b8ef2' text-anchor='middle'>SUB</text></svg>">
-  <link rel="manifest" href='data:application/manifest+json,{"name":"SubLater","short_name":"SubLater","start_url":".","display":"standalone","background_color":"#161922","theme_color":"#1b8ef2","icons":[{"src":"data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" rx=\"26\" fill=\"%23161922\"/><text x=\"50\" y=\"64\" font-family=\"sans-serif\" font-weight=\"900\" font-size=\"38\" fill=\"%231b8ef2\" text-anchor=\"middle\">SUB</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
+  <link rel="manifest" href='data:application/manifest+json,{"name":"SubLyter","short_name":"SubLyter","start_url":".","display":"standalone","background_color":"#161922","theme_color":"#1b8ef2","icons":[{"src":"data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" rx=\"26\" fill=\"%23161922\"/><text x=\"50\" y=\"64\" font-family=\"sans-serif\" font-weight=\"900\" font-size=\"38\" fill=\"%231b8ef2\" text-anchor=\"middle\">SUB</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Unbounded:wght@800&family=Roboto:wght@500;700&family=Montserrat:wght@500;700&display=swap" rel="stylesheet">
   <style>
+/* syne latin */
+@font-face {
+  font-family: 'Syne';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/syne-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* syne latin */
+@font-face {
+  font-family: 'Syne';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('fonts/syne-latin-800.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* inter cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/inter-cyrillic-400.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* inter latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/inter-latin-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* inter cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('fonts/inter-cyrillic-500.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* inter latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('fonts/inter-latin-500.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* inter cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/inter-cyrillic-600.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* inter latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/inter-latin-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* inter cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/inter-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* inter latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/inter-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* montserrat cyrillic */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/montserrat-cyrillic-600.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* montserrat latin */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/montserrat-latin-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* montserrat cyrillic */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/montserrat-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* montserrat latin */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/montserrat-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* oswald cyrillic */
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('fonts/oswald-cyrillic-500.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* oswald latin */
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('fonts/oswald-latin-500.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* oswald cyrillic */
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/oswald-cyrillic-600.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* oswald latin */
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/oswald-latin-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* playfair-display cyrillic */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/playfair-display-cyrillic-600.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* playfair-display latin */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/playfair-display-latin-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* playfair-display cyrillic */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/playfair-display-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* playfair-display latin */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/playfair-display-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cormorant-garamond cyrillic */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/cormorant-garamond-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* cormorant-garamond latin */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/cormorant-garamond-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* russo-one cyrillic */
+@font-face {
+  font-family: 'Russo One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/russo-one-cyrillic-400.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* russo-one latin */
+@font-face {
+  font-family: 'Russo One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/russo-one-latin-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* unbounded cyrillic */
+@font-face {
+  font-family: 'Unbounded';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/unbounded-cyrillic-600.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* unbounded latin */
+@font-face {
+  font-family: 'Unbounded';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/unbounded-latin-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* unbounded cyrillic */
+@font-face {
+  font-family: 'Unbounded';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/unbounded-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* unbounded latin */
+@font-face {
+  font-family: 'Unbounded';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/unbounded-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* comfortaa cyrillic */
+@font-face {
+  font-family: 'Comfortaa';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/comfortaa-cyrillic-600.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* comfortaa latin */
+@font-face {
+  font-family: 'Comfortaa';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/comfortaa-latin-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* comfortaa cyrillic */
+@font-face {
+  font-family: 'Comfortaa';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/comfortaa-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* comfortaa latin */
+@font-face {
+  font-family: 'Comfortaa';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/comfortaa-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* jetbrains-mono cyrillic */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/jetbrains-mono-cyrillic-600.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* jetbrains-mono latin */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/jetbrains-mono-latin-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* caveat cyrillic */
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/caveat-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* caveat latin */
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/caveat-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* pacifico cyrillic */
+@font-face {
+  font-family: 'Pacifico';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/pacifico-cyrillic-400.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* pacifico latin */
+@font-face {
+  font-family: 'Pacifico';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/pacifico-latin-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* lobster cyrillic */
+@font-face {
+  font-family: 'Lobster';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/lobster-cyrillic-400.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* lobster latin */
+@font-face {
+  font-family: 'Lobster';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/lobster-latin-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* balsamiq-sans cyrillic */
+@font-face {
+  font-family: 'Balsamiq Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/balsamiq-sans-cyrillic-700.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* balsamiq-sans latin */
+@font-face {
+  font-family: 'Balsamiq Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/balsamiq-sans-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* press-start-2p cyrillic */
+@font-face {
+  font-family: 'Press Start 2P';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/press-start-2p-cyrillic-400.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* press-start-2p latin */
+@font-face {
+  font-family: 'Press Start 2P';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/press-start-2p-latin-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
     :root {
       --sub-color: #ffffff;
       --sub-size: 18px;
@@ -50,7 +461,7 @@
       -webkit-font-smoothing: antialiased;
       background: transparent;
       color: #f1f5f9;
-      padding: calc(4px + var(--status-bar-inset, 0px)) 14px calc(28px + var(--nav-bar-inset, 0px));
+      padding: calc(29px + var(--status-bar-inset, 0px)) 14px calc(28px + var(--nav-bar-inset, 0px));
       max-width: 640px;
       margin: auto;
       min-height: 100vh;
@@ -95,8 +506,18 @@
       animation-play-state: paused !important;
     }
     body.player-fullscreen-open #appWallpaper::before,
-    body.global-settings-open #appWallpaper::before {
+    body.player-fullscreen-open #appWallpaper::after,
+    body.player-fullscreen-open #appWallpaper .snow-drift,
+    body.global-settings-open #appWallpaper::before,
+    body.global-settings-open #appWallpaper::after,
+    body.global-settings-open #appWallpaper .snow-drift {
       animation-play-state: paused !important;
+    }
+    #appWallpaper .snow-drift {
+      display: none;
+    }
+    #appWallpaper[data-wallpaper="snow"] .snow-drift {
+      display: block;
     }
 
     /* Обои: Аврора (Мягкое свечение) */
@@ -357,34 +778,70 @@
         radial-gradient(ellipse 80% 60% at 50% 50%, color-mix(in srgb, var(--wall-col) 14%, transparent), transparent 80%);
     }
 
-    /* Обои: Снегопад (живые снежинки на GPU-композиторе без перерисовок CPU) */
-    #appWallpaper[data-wallpaper="snow"]::before {
+    /* Обои: Хаотичный 3-слойный снегопад на GPU-композиторе без перерисовок CPU */
+    #appWallpaper[data-wallpaper="snow"]::before,
+    #appWallpaper[data-wallpaper="snow"]::after,
+    #appWallpaper[data-wallpaper="snow"] .snow-drift {
       content: "";
       position: absolute;
-      top: -360px;
-      left: -180px;
-      width: calc(100% + 360px);
-      height: calc(100% + 720px);
-      background-image:
-        radial-gradient(2.4px 2.4px at 26px 32px, #ffffff 0%, color-mix(in srgb, var(--wall-col) 78%, transparent) 60%, transparent 100%),
-        radial-gradient(2px 2px at 112px 96px, color-mix(in srgb, var(--wall-col) 70%, #ffffff), transparent 80%),
-        radial-gradient(2.2px 2.2px at 154px 148px, #ffffff 0%, color-mix(in srgb, var(--wall-col) 65%, transparent) 55%, transparent 100%),
-        radial-gradient(1.5px 1.5px at 34px 74px, color-mix(in srgb, var(--wall-col) 85%, #ffffff), transparent 85%),
-        radial-gradient(1.6px 1.6px at 88px 28px, #ffffff, transparent 80%),
-        radial-gradient(1.2px 1.2px at 18px 66px, color-mix(in srgb, var(--wall-col) 65%, #ffffff), transparent 85%),
-        radial-gradient(1.1px 1.1px at 68px 22px, rgba(255, 255, 255, 0.85), transparent 85%);
-      background-size:
-        180px 180px, 180px 180px, 180px 180px,
-        120px 120px, 120px 120px,
-        90px 90px, 90px 90px;
+      top: -440px;
+      left: -60px;
+      width: calc(100% + 120px);
+      height: calc(100% + 880px);
       background-repeat: repeat;
+      pointer-events: none;
       will-change: transform;
-      animation: snowFallLive 18s linear infinite;
+    }
+    #appWallpaper[data-wallpaper="snow"]::before {
+      background-image:
+        radial-gradient(2.5px 2.5px at 26px 32px, #ffffff 0%, color-mix(in srgb, var(--wall-col) 78%, transparent) 60%, transparent 100%),
+        radial-gradient(2.1px 2.1px at 112px 96px, color-mix(in srgb, var(--wall-col) 70%, #ffffff), transparent 80%),
+        radial-gradient(2.3px 2.3px at 154px 148px, #ffffff 0%, color-mix(in srgb, var(--wall-col) 65%, transparent) 55%, transparent 100%),
+        radial-gradient(1.8px 1.8px at 66px 14px, rgba(255, 255, 255, 0.92), transparent 85%),
+        radial-gradient(2px 2px at 42px 84px, color-mix(in srgb, var(--wall-col) 80%, #ffffff), transparent 80%);
+      background-size: 180px 180px, 180px 180px, 180px 180px, 120px 120px, 120px 120px;
+      animation: snowDriftA 17s linear infinite;
+    }
+    #appWallpaper[data-wallpaper="snow"]::after {
+      background-image:
+        radial-gradient(1.9px 1.9px at 18px 46px, color-mix(in srgb, var(--wall-col) 72%, #ffffff), transparent 85%),
+        radial-gradient(1.7px 1.7px at 94px 20px, #ffffff, transparent 85%),
+        radial-gradient(2px 2px at 128px 108px, color-mix(in srgb, var(--wall-col) 85%, #ffffff), transparent 80%),
+        radial-gradient(1.6px 1.6px at 56px 76px, rgba(255, 255, 255, 0.88), transparent 85%),
+        radial-gradient(1.5px 1.5px at 84px 38px, color-mix(in srgb, var(--wall-col) 65%, #ffffff), transparent 85%);
+      background-size: 140px 140px, 140px 140px, 140px 140px, 105px 105px, 105px 105px;
+      animation: snowDriftB 23s linear infinite;
+    }
+    #appWallpaper[data-wallpaper="snow"] .snow-drift {
+      background-image:
+        radial-gradient(1.4px 1.4px at 34px 74px, color-mix(in srgb, var(--wall-col) 85%, #ffffff), transparent 85%),
+        radial-gradient(1.5px 1.5px at 88px 28px, #ffffff, transparent 80%),
+        radial-gradient(1.2px 1.2px at 18px 66px, color-mix(in srgb, var(--wall-col) 65%, #ffffff), transparent 85%),
+        radial-gradient(1.1px 1.1px at 68px 22px, rgba(255, 255, 255, 0.85), transparent 85%),
+        radial-gradient(1.3px 1.3px at 136px 124px, rgba(255, 255, 255, 0.78), transparent 85%);
+      background-size: 160px 160px, 160px 160px, 80px 80px, 80px 80px, 160px 160px;
+      animation: snowDriftC 29s linear infinite;
     }
 
-    @keyframes snowFallLive {
-      0% { transform: translate3d(0px, 0px, 0); }
-      100% { transform: translate3d(180px, 360px, 0); }
+    @keyframes snowDriftA {
+      0%   { transform: translate3d(0px, 0px, 0); }
+      25%  { transform: translate3d(34px, 90px, 0); }
+      52%  { transform: translate3d(-26px, 187px, 0); }
+      78%  { transform: translate3d(22px, 281px, 0); }
+      100% { transform: translate3d(0px, 360px, 0); }
+    }
+    @keyframes snowDriftB {
+      0%   { transform: translate3d(0px, 0px, 0); }
+      28%  { transform: translate3d(-40px, 118px, 0); }
+      56%  { transform: translate3d(20px, 235px, 0); }
+      82%  { transform: translate3d(-24px, 344px, 0); }
+      100% { transform: translate3d(0px, 420px, 0); }
+    }
+    @keyframes snowDriftC {
+      0%   { transform: translate3d(0px, 0px, 0); }
+      34%  { transform: translate3d(28px, 109px, 0); }
+      68%  { transform: translate3d(-32px, 218px, 0); }
+      100% { transform: translate3d(0px, 320px, 0); }
     }
 
     /* Обои: Дождь */
@@ -480,20 +937,21 @@
       margin-bottom: 16px;
     }
     .app-header h2 {
-      font-family: 'Unbounded', sans-serif;
+      font-family: 'Syne', 'Inter', sans-serif;
       font-weight: 800;
-      font-size: 24px;
-      letter-spacing: 0.6px;
+      font-size: 29px;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
       color: var(--accent);
       text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 26%, transparent);
       margin: 0;
       transition: color 0.3s, text-shadow 0.3s;
     }
     
-    /* Кнопка настроек в правом верхнем углу */
+    /* Круглая кнопка настроек в правом верхнем углу */
     #settingsToggle {
       width: 42px; height: 42px;
-      border-radius: 13px;
+      border-radius: 50%;
       background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
@@ -505,16 +963,16 @@
       justify-content: center;
       cursor: pointer;
       flex-shrink: 0;
-      transition: 
-        transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), 
-        background 0.2s ease,
+      transition:
+        transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+        background 0.25s ease,
         box-shadow 0.25s ease;
     }
     #settingsToggle:hover {
       background: color-mix(in srgb, var(--accent) 16%, var(--bg-surface));
     }
     #settingsToggle:active {
-      transform: scale(0.88) rotate(90deg);
+      transform: scale(0.92);
     }
     .api-get-link {
       display: inline-flex;
@@ -545,12 +1003,29 @@
       stroke-linecap: round;
       stroke-linejoin: round;
     }
-    #settingsToggle.open { 
-      transform: rotate(225deg); 
+    #settingsToggle.open {
       background: color-mix(in srgb, var(--accent) 20%, var(--bg-surface));
       box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 24%, transparent);
     }
-    #settingsToggle svg { width: 21px; height: 21px; fill: currentColor; }
+    #settingsToggle svg {
+      width: 21px;
+      height: 21px;
+      fill: currentColor;
+      transform: rotate(0deg);
+      transition: transform 0.52s cubic-bezier(0.22, 1, 0.36, 1) !important;
+      will-change: transform;
+    }
+    #settingsToggle.open svg {
+      transform: rotate(360deg);
+    }
+    #settingsBtn svg {
+      transform: rotate(0deg);
+      transition: transform 0.48s cubic-bezier(0.22, 1, 0.36, 1) !important;
+      will-change: transform;
+    }
+    #settingsBtn.open svg {
+      transform: rotate(360deg);
+    }
 
     /* Модальное окно глобальных настроек — плавная GPU-анимация без лагов и без blur внутри */
     #settingsBackdrop {
@@ -641,7 +1116,11 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      padding-bottom: 0;
+      padding: 1px 2px 2px;
+    }
+    .global-row.api-key-row .api-get-link {
+      position: relative;
+      top: -4px;
     }
     .global-row.api-key-row > span:first-child {
       flex: 1 1 auto;
@@ -925,6 +1404,19 @@
     select:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent), 0 4px 14px rgba(0, 0, 0, 0.16);
+    }
+    #model,
+    #translateLang {
+      background-color: var(--bg-elevated);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border: 1px solid color-mix(in srgb, var(--border-soft) 80%, rgba(255, 255, 255, 0.08));
+      box-shadow: none;
+    }
+    #model option,
+    #translateLang option {
+      background-color: var(--bg-elevated);
+      color: #f8fafc;
     }
 
     input[type="range"] {
@@ -1857,8 +2349,8 @@
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
     }
-    button, select, .file-pill, .cp-toggle, .cp-preset, .yt-acc-header,
-    .ctrl-btn, .chapter-time, .ai-prompt-chip, .ai-clear-btn,
+    button:not(#settingsToggle):not(#settingsBtn), select, .file-pill, .cp-toggle, .cp-preset, .yt-acc-header,
+    .ctrl-btn:not(#settingsBtn), .chapter-time, .ai-prompt-chip, .ai-clear-btn,
     .gen-mode-btn, .dl-fmt-item {
       transition-duration: 0.1s !important;
       transition-timing-function: ease-out !important;
@@ -1866,10 +2358,10 @@
   </style>
 </head>
 <body>
-  <div id="appWallpaper" aria-hidden="true" data-wallpaper="snow"></div>
+  <div id="appWallpaper" aria-hidden="true" data-wallpaper="snow"><span class="snow-drift" aria-hidden="true"></span></div>
   <div id="appTopSection">
   <header class="app-header">
-    <h2>SubLater</h2>
+    <h2>SubLyter</h2>
     <button id="settingsToggle" aria-label="Settings">
       <svg viewBox="0 0 24 24">
         <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
@@ -2066,6 +2558,31 @@
 
       <div class="yt-acc-item">
         <button type="button" class="yt-acc-header">
+          <span class="yt-acc-label">Font</span>
+          <span class="yt-acc-val" id="playerFontVal">Inter</span>
+        </button>
+        <div class="yt-acc-body">
+          <select id="playerFontSelect">
+          <option value="'Inter', sans-serif">Inter — Clean</option>
+          <option value="'Montserrat', sans-serif">Montserrat — Modern</option>
+          <option value="'Oswald', sans-serif">Oswald — Cinema</option>
+          <option value="'Playfair Display', serif">Playfair — Serif</option>
+          <option value="'Cormorant Garamond', serif">Cormorant — Classic</option>
+          <option value="'Russo One', sans-serif">Russo One — Action</option>
+          <option value="'Unbounded', sans-serif">Unbounded — Wide</option>
+          <option value="'Comfortaa', sans-serif">Comfortaa — Rounded</option>
+          <option value="'JetBrains Mono', monospace">JetBrains Mono — Tech</option>
+          <option value="'Caveat', cursive">Caveat — Handwritten</option>
+          <option value="'Pacifico', cursive">Pacifico — Brush</option>
+          <option value="'Lobster', cursive">Lobster — Vintage</option>
+          <option value="'Balsamiq Sans', cursive">Balsamiq — Comic</option>
+          <option value="'Press Start 2P', monospace">Press Start 2P — Pixel</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="yt-acc-item">
+        <button type="button" class="yt-acc-header">
           <span class="yt-acc-label">Volume boost</span>
           <span class="yt-acc-val" id="boostVal">100%</span>
         </button>
@@ -2235,13 +2752,23 @@
     <div class="global-row">
       <span>Subtitle font</span>
       <select id="subFontFamily">
-        <option value="'Inter', sans-serif">Inter</option>
-        <option value="'Roboto', sans-serif">Roboto</option>
-        <option value="'Montserrat', sans-serif">Montserrat</option>
-        <option value="Arial, sans-serif">Arial</option>
-        <option value="'Courier New', monospace">Courier</option>
+        <option value="'Inter', sans-serif">Inter — Clean</option>
+        <option value="'Montserrat', sans-serif">Montserrat — Modern</option>
+        <option value="'Oswald', sans-serif">Oswald — Cinema</option>
+        <option value="'Playfair Display', serif">Playfair — Serif</option>
+        <option value="'Cormorant Garamond', serif">Cormorant — Classic</option>
+        <option value="'Russo One', sans-serif">Russo One — Action</option>
+        <option value="'Unbounded', sans-serif">Unbounded — Wide</option>
+        <option value="'Comfortaa', sans-serif">Comfortaa — Rounded</option>
+        <option value="'JetBrains Mono', monospace">JetBrains Mono — Tech</option>
+        <option value="'Caveat', cursive">Caveat — Handwritten</option>
+        <option value="'Pacifico', cursive">Pacifico — Brush</option>
+        <option value="'Lobster', cursive">Lobster — Vintage</option>
+        <option value="'Balsamiq Sans', cursive">Balsamiq — Comic</option>
+        <option value="'Press Start 2P', monospace">Press Start 2P — Pixel</option>
       </select>
     </div>
+    <div id="subFontPreview" style="background:#13161f; border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:8px 12px; text-align:center; font-size:15px; font-weight:600; line-height:1.35; color:#ffffff; letter-spacing:0.1px;">SubLyter — Живой пример шрифта</div>
     <div class="global-row">
       <span>Autoplay</span>
       <label class="switch">
@@ -2250,7 +2777,7 @@
       </label>
     </div>
 
-    <div class="global-row api-key-row" style="margin-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 8px;">
+    <div class="global-row api-key-row" style="margin-top: 4px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 4px;">
       <span>Groq API Keys</span>
       <div class="api-row-actions">
         <span id="keysCountBadge" style="font-size: 11.5px; color: var(--accent); font-weight: 700;">0 keys</span>
@@ -2264,7 +2791,7 @@
     <input type="hidden" id="apiKey" />
     <input type="hidden" id="apiKey2" />
 
-    <div class="global-row api-key-row" style="margin-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 8px;">
+    <div class="global-row api-key-row" style="margin-top: 4px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 4px;">
       <span>Gemini API Key</span>
       <div class="api-row-actions">
         <a class="api-get-link" href="https://aistudio.google.com/apikey" onclick="if(!window.Android){window.open(this.href,'_blank','noopener');return false;}">
@@ -2955,6 +3482,9 @@
 
     const subTextColorEl = $('subTextColor');
     const subFontFamilyEl = $('subFontFamily');
+    const subFontPreviewEl = $('subFontPreview');
+    const playerFontSelect = $('playerFontSelect');
+    const playerFontValEl = $('playerFontVal');
     const bgOpacityEl = $('bgOpacity');
     const autoPlayToggle = $('autoPlayToggle');
     const smoothHzEl = $('smoothHz');
@@ -3117,9 +3647,22 @@
       root.setProperty('--sub-size', size + 'px');
       root.setProperty('--sub-width', width + '%');
       root.setProperty('--sub-bottom', bottom + '%');
+      const cleanFontName = (fontFamily || 'Inter').split(',')[0].replace(/['"]/g, '').trim() || 'Inter';
       root.setProperty('--sub-color', textColor);
       root.setProperty('--sub-font', fontFamily);
       root.setProperty('--bg-opacity', bgOpacity);
+      if (subtitleEl) subtitleEl.style.fontFamily = fontFamily;
+      if (subFontFamilyEl) subFontFamilyEl.style.fontFamily = fontFamily;
+      if (subFontPreviewEl) {
+        subFontPreviewEl.style.fontFamily = fontFamily;
+        subFontPreviewEl.style.color = textColor;
+        const lowerFont = cleanFontName.toLowerCase();
+        subFontPreviewEl.style.fontSize = lowerFont.includes('press start') ? '12px' : (lowerFont === 'caveat' ? '18px' : '15px');
+      }
+      if (playerFontSelect && playerFontSelect.value !== fontFamily) {
+        playerFontSelect.value = fontFamily;
+      }
+      if (playerFontValEl) playerFontValEl.textContent = cleanFontName;
 
       sizeVal.textContent = size + 'px';
       widthVal.textContent = width + '%';
@@ -3180,7 +3723,10 @@
         if (s.wordMode) wordModeSelect.value = s.wordMode;
         if (s.fitMode) fitModeSelect.value = s.fitMode;
         if (s.textColor) subTextColorEl.value = s.textColor;
-        if (s.fontFamily) subFontFamilyEl.value = s.fontFamily;
+        if (s.fontFamily && subFontFamilyEl) {
+          const hasFontOpt = Array.from(subFontFamilyEl.options).some(o => o.value === s.fontFamily);
+          subFontFamilyEl.value = hasFontOpt ? s.fontFamily : "'Inter', sans-serif";
+        }
         if (bgOpacityEl && s.bgOpacity !== undefined) bgOpacityEl.value = s.bgOpacity;
         if (smoothHzEl && s.smoothHz) smoothHzEl.value = s.smoothHz;
         if (s.boost !== undefined) boostSlider.value = s.boost;
@@ -3212,6 +3758,15 @@
       el.addEventListener('input', applySettings);
       el.addEventListener('change', applySettings);
     });
+
+    if (playerFontSelect) {
+      const syncFromPlayerFont = () => {
+        if (subFontFamilyEl) subFontFamilyEl.value = playerFontSelect.value;
+        applySettings();
+      };
+      playerFontSelect.addEventListener('input', syncFromPlayerFont);
+      playerFontSelect.addEventListener('change', syncFromPlayerFont);
+    }
 
     accentColorEl.addEventListener('input', (e) => {
       const color = e.target.value;
@@ -3497,6 +4052,7 @@
       e.stopPropagation();
       const willShow = !settingsMenu.classList.contains('show');
       settingsMenu.classList.toggle('show', willShow);
+      settingsBtn.classList.toggle('open', willShow);
       if (willShow) positionPlayerSettingsMenu();
       showControls();
     });
@@ -3506,6 +4062,7 @@
           && !settingsMenu.contains(e.target)
           && !settingsBtn.contains(e.target)) {
         settingsMenu.classList.remove('show');
+        settingsBtn.classList.remove('open');
         showControls();
       }
     });
@@ -4374,20 +4931,36 @@
         const sampleCount = Math.floor(dataLen / 2);
         if (sampleCount < 160) return blob;
         let peak = 0;
-        for (let i = 0; i < sampleCount; i++) {
-          const v = Math.abs(dv.getInt16(dataOff + i * 2, true));
-          if (v > peak) peak = v;
+        const aligned = (dataOff % 2) === 0;
+        const pcm16 = aligned ? new Int16Array(buf, dataOff, sampleCount) : null;
+        if (pcm16) {
+          for (let i = 0; i < sampleCount; i++) {
+            const v = pcm16[i] < 0 ? -pcm16[i] : pcm16[i];
+            if (v > peak) peak = v;
+          }
+        } else {
+          for (let i = 0; i < sampleCount; i++) {
+            const v = Math.abs(dv.getInt16(dataOff + i * 2, true));
+            if (v > peak) peak = v;
+          }
         }
         if (peak < 8) return blob;
         const target = 0.9 * 32767;
         let gain = target / peak;
         if (gain <= 1.05) return blob;
         gain = Math.min(gain, 8);
-        for (let i = 0; i < sampleCount; i++) {
-          let v = Math.round(dv.getInt16(dataOff + i * 2, true) * gain);
-          if (v > 32767) v = 32767;
-          else if (v < -32768) v = -32768;
-          dv.setInt16(dataOff + i * 2, v, true);
+        if (pcm16) {
+          for (let i = 0; i < sampleCount; i++) {
+            const v = (pcm16[i] * gain) | 0;
+            pcm16[i] = v > 32767 ? 32767 : (v < -32768 ? -32768 : v);
+          }
+        } else {
+          for (let i = 0; i < sampleCount; i++) {
+            let v = Math.round(dv.getInt16(dataOff + i * 2, true) * gain);
+            if (v > 32767) v = 32767;
+            else if (v < -32768) v = -32768;
+            dv.setInt16(dataOff + i * 2, v, true);
+          }
         }
         return new Blob([buf], { type: 'audio/wav' });
       } catch (_) {
@@ -4653,7 +5226,7 @@
     }
 
     /* ---------------- Параллельный контекстный перевод батчами (до 10 батчей одновременно) ---------------- */
-    async function translateSegments(cueArr, targetLang, statusElRef, signal) {
+    async function translateSegments(cueArr, targetLang, statusElRef, signal, concurrency = 10) {
       const batchSize = 50;
       let failedLines = 0;
 
@@ -4665,7 +5238,7 @@
       }
 
       let completedBatches = 0;
-      await runWithConcurrency(batches, 10, async (bObj) => {
+      await runWithConcurrency(batches, Math.max(1, Number(concurrency) || 10), async (bObj) => {
         if (signal && signal.aborted) throw new Error('Cancelled by user.');
         const { startLine, batch, prevContext } = bObj;
         const failed = await translateCuesDirect(batch, prevContext, targetLang, signal);
@@ -4997,6 +5570,7 @@
 
     /* ---------------- Ультрабыстрое извлечение аудио (WAV 16кГц, Int16Array) + нарезка по 60 с + 10 параллельных потоков в Groq + пайплайн перевода ---------------- */
     const PARALLEL_CHUNK_CONCURRENCY = 10;
+    const BATCH_1024_CONCURRENCY = 4;
 
     function extractMonoChannelData(audioBuffer) {
       const numChannels = audioBuffer.numberOfChannels || 1;
@@ -5127,6 +5701,7 @@
 
       currentFileName = file.name.replace(/\.[^/.]+$/, '') + (langCode ? `_${langCode}` : '');
       const bridge = window.AndroidBridge || window.ExoPlayerManager || null;
+      const isBatchMode = Boolean(genModeEl && genModeEl.value === 'all');
       const startFromSec = (Number(videoEl.currentTime) || 0) >= 30 ? Number(videoEl.currentTime) : 0;
       let generationDoneForHistory = false;
 
@@ -5137,7 +5712,7 @@
           durationSec = Number(bridge.getDuration()) || 0;
         }
         if (durationSec > startFromSec) {
-          estimatedTotalChunks = Math.max(1, Math.ceil((durationSec - startFromSec) / 59));
+          estimatedTotalChunks = Math.max(1, Math.ceil((durationSec - startFromSec) / (isBatchMode ? 294 : 59)));
         }
       } catch (_) {}
 
@@ -5180,13 +5755,14 @@
           }
 
           if (!usedEmbeddedSubtitles) {
-            const isBatchMode = Boolean(genModeEl && genModeEl.value === 'all');
             const resumeChunks = (!startFromSec && cachedPartialChunks.fileSig === fileSig && cachedPartialChunks.model === model && cachedPartialChunks.chunks)
               ? cachedPartialChunks.chunks
               : {};
             const completedChunksObj = {};
             // Внешнее видео (content://) не имеет байтов в JS — только нативный путь
-            const shouldCompress = Boolean(file.isExternalMedia) || file.size > 24 * 1024 * 1024 || fastAudioCompressEl.checked;
+            const shouldCompress = isBatchMode
+              ? (Boolean(file.isExternalMedia) || file.size > 24 * 1024 * 1024 || (fastAudioCompressEl.checked && file.size > 14 * 1024 * 1024))
+              : (Boolean(file.isExternalMedia) || file.size > 24 * 1024 * 1024 || fastAudioCompressEl.checked);
             const useNativeExtractor = Boolean(
               shouldCompress &&
               bridge &&
@@ -5196,7 +5772,16 @@
             );
 
             if (useNativeExtractor) {
-              if (startFromSec > 0) {
+              if (isBatchMode) {
+                if (startFromSec > 0) {
+                  const fromLabel = formatTime(startFromSec);
+                  statusEl.innerText = file.isStream
+                    ? `📡 1.0.24 mode from ${fromLabel}: 5-min chunks (12 kHz), 4 streams...`
+                    : `⚡ 1.0.24 mode from ${fromLabel}: 5-min chunks (12 kHz), 4 streams...`;
+                } else {
+                  statusEl.innerText = '⚡ 1.0.24 mode: extracting 5-min chunks (12 kHz) & uploading in 4 streams...';
+                }
+              } else if (startFromSec > 0) {
                 const fromLabel = formatTime(startFromSec);
                 statusEl.innerText = file.isStream
                   ? `📡 Stream (from ${fromLabel}): decoding audio via player (16 kHz, 60s)...`
@@ -5369,9 +5954,11 @@
               try { bridge.clearAudioCache(); } catch (_) {}
             }
 
-            const startedOk = (typeof bridge.startNativeAudioExtractionFrom === 'function')
-              ? bridge.startNativeAudioExtractionFrom(startFromSec)
-              : bridge.startNativeAudioExtraction();
+            const startedOk = (typeof bridge.startNativeAudioExtractionMode === 'function')
+              ? bridge.startNativeAudioExtractionMode(startFromSec, isBatchMode)
+              : ((typeof bridge.startNativeAudioExtractionFrom === 'function')
+                ? bridge.startNativeAudioExtractionFrom(startFromSec)
+                : bridge.startNativeAudioExtraction());
             if (!startedOk) {
               throw new Error('Failed to start native audio extractor');
             }
@@ -5467,32 +6054,19 @@
 
             try {
               if (isBatchMode) {
-                while (!nativeExtractionFinished && !nativeError && !signal.aborted) {
-                  statusEl.innerText = `⚡ Extracting all audio (${incomingQueue.length} parts)...`;
-                  const est = Math.max(estimatedTotalChunks, incomingQueue.length + 1, 1);
-                  setProgress(5 + Math.round((Math.min(incomingQueue.length, est) / est) * 15));
-                  await new Promise((resolve) => {
-                    chunkWaiters.push(resolve);
-                  });
-                }
-                if (signal.aborted) throw new Error('Cancelled by user.');
-                if (nativeError) throw nativeError;
-
-                const allExtracted = incomingQueue.splice(0, incomingQueue.length);
-                totalChunks = allExtracted.length;
-                statusEl.innerText = `🚀 Uploading all parts at once (${allExtracted.length} parts, ${Math.min(PARALLEL_CHUNK_CONCURRENCY, Math.max(1, allExtracted.length))} streams)...`;
-                setProgress(22);
-
-                await runWithConcurrency(
-                  allExtracted,
-                  PARALLEL_CHUNK_CONCURRENCY,
-                  async (item, idx, workerSlot, isFirstForWorker) => {
-                    if (isFirstForWorker && workerSlot > 0) {
-                      await abortableDelay(workerSlot * 30, signal);
-                    }
-                    return processSingleChunk(item);
+                // Механизм 1.0.24: чанки по 5 мин (12 кГц) сразу идут в 4 параллельных потока Groq
+                const workerCount = BATCH_1024_CONCURRENCY;
+                const workers = Array.from({ length: workerCount }, async (_, workerSlot) => {
+                  if (workerSlot > 0) {
+                    await abortableDelay(workerSlot * 60, signal);
                   }
-                );
+                  while (true) {
+                    const item = await getNextIncomingChunk();
+                    if (!item) break;
+                    await processSingleChunk(item);
+                  }
+                });
+                await Promise.all(workers);
               } else {
                 // 1. Первый чанк обрабатываем отдельно для моментального старта плеера
                 const firstItem = await getNextIncomingChunk();
@@ -5558,12 +6132,14 @@
             // WebAudio / fallback путь для браузера или при отсутствии нативного моста
             let audioBuffer = null;
             if (shouldCompress) {
-              statusEl.innerText = '⚡ Fast audio track extraction & compression (16 kHz)...';
+              statusEl.innerText = isBatchMode
+                ? '⚡ 1.0.24 mode: extracting audio at 12 kHz...'
+                : '⚡ Fast audio track extraction & compression (16 kHz)...';
               setProgress(10);
               try {
                 const ab = await file.arrayBuffer();
-                // Частота 16000 Гц идеально передаёт человеческую речь и является нативной для Whisper
-                const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                const targetRate = isBatchMode ? 12000 : 16000;
+                const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: targetRate });
                 audioBuffer = await decodeCtx.decodeAudioData(ab);
                 if (decodeCtx.close) decodeCtx.close();
               } catch (e) {
@@ -5583,10 +6159,8 @@
               if (signal.aborted) throw new Error('Cancelled by user.');
               const channelData = extractMonoChannelData(audioBuffer);
             const sampleRate = audioBuffer.sampleRate;
-            // Чанки по 60 секунд с перекрытием 1 сек: каждый кусок весит ~1.9 МБ при 16 кГц,
-            // поэтому Groq отвечает мгновенно, а параллельные потоки насыщают все доступные ключи.
-            const chunkDuration = 60;
-            const overlap = 1;
+            const chunkDuration = isBatchMode ? 300 : 60;
+            const overlap = isBatchMode ? 6 : 1;
             const advance = chunkDuration - overlap;
             const totalDuration = channelData.length / sampleRate;
 
@@ -5624,7 +6198,7 @@
             let completedChunks = 0;
 
             statusEl.innerText = isBatchMode
-              ? `🚀 Uploading all parts at once (${Math.min(PARALLEL_CHUNK_CONCURRENCY, Math.max(1, totalChunks))} streams, ${totalChunks} parts)...`
+              ? `🚀 1.0.24 mode: parallel Groq upload (${Math.min(BATCH_1024_CONCURRENCY, Math.max(1, totalChunks))} streams, ${totalChunks} parts)...`
               : `🚀 First chunk first, then ${Math.min(PARALLEL_CHUNK_CONCURRENCY, Math.max(0, totalChunks - 1))} streams (${totalChunks} parts)...`;
             setProgress(10);
 
@@ -5737,7 +6311,7 @@
               if (signal.aborted) throw new Error('Cancelled by user.');
               // Небольшой сдвиг старта воркеров пула (30 мс), чтобы равномерно распределить ключи и сетевой буфер
               if (isFirstForWorker && workerSlot > 0) {
-                await abortableDelay(workerSlot * 30, signal);
+                await abortableDelay(workerSlot * (isBatchMode ? 60 : 30), signal);
               }
               if (signal.aborted) throw new Error('Cancelled by user.');
 
@@ -5811,7 +6385,7 @@
             if (isBatchMode) {
               const batchResults = await runWithConcurrency(
                 chunkTasks,
-                PARALLEL_CHUNK_CONCURRENCY,
+                BATCH_1024_CONCURRENCY,
                 (task, taskIdx, workerSlot, isFirstForWorker) => processChunkTask(task, taskIdx, workerSlot, isFirstForWorker)
               );
               for (let i = 0; i < batchResults.length; i++) {
@@ -5899,19 +6473,21 @@
             const chCues = pipelineTranslatedCuesMap.get(i);
             if (chCues && chCues.length) streamedCues.push(...chCues);
           }
+          const translateConcurrency = isBatchMode ? BATCH_1024_CONCURRENCY : 10;
           if (streamedCues.length > 0) {
             cues = streamedCues;
             cachedWhisper.translations[targetLang] = cloneCues(cues);
           } else {
             const freshCues = buildCues(cachedWhisper.rawSegments, cachedWhisper.rawWords);
-            const failed = await translateSegments(freshCues, targetLang, statusEl, signal);
+            const failed = await translateSegments(freshCues, targetLang, statusEl, signal, translateConcurrency);
             if (failed > 0) translationWarn = ` (${failed} lines not translated).`;
             cachedWhisper.translations[targetLang] = cloneCues(freshCues);
             cues = freshCues;
           }
         } else {
+          const translateConcurrency = isBatchMode ? BATCH_1024_CONCURRENCY : 10;
           const freshCues = buildCues(cachedWhisper.rawSegments, cachedWhisper.rawWords);
-          const failed = await translateSegments(freshCues, targetLang, statusEl, signal);
+          const failed = await translateSegments(freshCues, targetLang, statusEl, signal, translateConcurrency);
           if (failed > 0) {
             translationWarn = ` (${failed} lines not translated).`;
           }

@@ -1028,12 +1028,16 @@ class ExoPlayerManager(
     }
 
     @JavascriptInterface
-    fun startNativeAudioExtraction(): Boolean = startNativeAudioExtractionForUri("", 0.0)
+    fun startNativeAudioExtraction(): Boolean = startNativeAudioExtractionForUri("", 0.0, false)
 
     @JavascriptInterface
-    fun startNativeAudioExtractionFrom(startSec: Double): Boolean = startNativeAudioExtractionForUri("", startSec)
+    fun startNativeAudioExtractionFrom(startSec: Double): Boolean = startNativeAudioExtractionForUri("", startSec, false)
 
-    fun startNativeAudioExtractionForUri(uriString: String, startSec: Double = 0.0): Boolean {
+    @JavascriptInterface
+    fun startNativeAudioExtractionMode(startSec: Double, batchMode: Boolean): Boolean =
+        startNativeAudioExtractionForUri("", startSec, batchMode)
+
+    fun startNativeAudioExtractionForUri(uriString: String, startSec: Double = 0.0, batchMode: Boolean = false): Boolean {
         cancelAudioExtraction = false
         val targetUri = if (uriString.isNotBlank() && !uriString.startsWith("blob:")) {
             Uri.parse(uriString)
@@ -1041,16 +1045,21 @@ class ExoPlayerManager(
             currentVideoUri ?: return false
         }
 
+        // Механизм 1.0.24 ("All at once"): 12 кГц моно, нарезка по 5 минут (300 с) с перекрытием 6 с
+        val targetSampleRate = if (batchMode) 12000 else 16000
+        val chunkDurationSec = if (batchMode) 300 else 60
+        val overlapSec = if (batchMode) 6 else 1
+
         // Сетевой поток (HLS/DASH/прогрессивный HTTP) нельзя открыть через
         // MediaExtractor как файл. Его разбирает отдельный ExoPlayer, а
         // StreamAudioCaptureSink получает уже декодированный PCM.
         if (targetUri.scheme == "http" || targetUri.scheme == "https") {
-            return startStreamAudioCapture(targetUri, startSec)
+            return startStreamAudioCapture(targetUri, startSec, targetSampleRate, chunkDurationSec, overlapSec)
         }
 
         Thread({
             try {
-                extractFixed60SecWavChunksAsync(targetUri, startSec)
+                extractFixedWavChunksAsync(targetUri, startSec, targetSampleRate, chunkDurationSec, overlapSec)
             } catch (e: Exception) {
                 val errorMsg = JSONObject.quote(e.message ?: "Audio extraction error")
                 postJs("if (window.__onNativeChunkError) { window.__onNativeChunkError($errorMsg); }")
@@ -1060,7 +1069,13 @@ class ExoPlayerManager(
         return true
     }
 
-    private fun startStreamAudioCapture(uri: Uri, startSec: Double = 0.0): Boolean {
+    private fun startStreamAudioCapture(
+        uri: Uri,
+        startSec: Double = 0.0,
+        targetSampleRate: Int = 16000,
+        chunkDurationSec: Int = 60,
+        overlapSec: Int = 1
+    ): Boolean {
         cancelAudioExtraction = false
         captureSink?.abort()
         val previous = capturePlayer
@@ -1085,7 +1100,10 @@ class ExoPlayerManager(
                         postJs("if (window.__onNativeChunkError) { window.__onNativeChunkError($quoted); }")
                         mainHandler.post { releaseCapturePlayer() }
                     },
-                    baseStartSec = safeStartSec
+                    baseStartSec = safeStartSec,
+                    targetSampleRate = targetSampleRate,
+                    chunkDurationSec = chunkDurationSec,
+                    overlapSec = overlapSec
                 )
                 captureSink = sink
 
@@ -1179,9 +1197,15 @@ class ExoPlayerManager(
         } catch (_: Exception) {}
     }
 
-    private fun extractFixed60SecWavChunksAsync(uri: Uri, startSec: Double = 0.0) {
+    private fun extractFixedWavChunksAsync(
+        uri: Uri,
+        startSec: Double = 0.0,
+        targetSampleRate: Int = 16000,
+        chunkDurationSec: Int = 60,
+        overlapSec: Int = 1
+    ) {
         var count = 0
-        extractWavChunksInternal(uri, startSec) { chunkJson, isLast ->
+        extractWavChunksInternal(uri, startSec, targetSampleRate, chunkDurationSec, overlapSec) { chunkJson, isLast ->
             count++
             val jsonStr = chunkJson.toString()
             postJs("if (window.__onNativeChunkReady) { window.__onNativeChunkReady($jsonStr, $isLast); }")
@@ -1191,7 +1215,14 @@ class ExoPlayerManager(
         }
     }
 
-    private fun extractWavChunksInternal(uri: Uri, requestedStartSec: Double = 0.0, onChunkReady: (JSONObject, Boolean) -> Unit) {
+    private fun extractWavChunksInternal(
+        uri: Uri,
+        requestedStartSec: Double = 0.0,
+        targetSampleRate: Int = 16000,
+        chunkDurationSec: Int = 60,
+        overlapSec: Int = 1,
+        onChunkReady: (JSONObject, Boolean) -> Unit
+    ) {
         val chunkDir = File(context.cacheDir, "sublater_chunks")
         if (!chunkDir.exists()) chunkDir.mkdirs()
         chunkDir.listFiles()?.forEach { it.delete() }
@@ -1237,9 +1268,6 @@ class ExoPlayerManager(
             baseStartSec = if (firstSampleUs >= 0L) firstSampleUs.toDouble() / 1_000_000.0 else safeStartSec
         }
 
-        val targetSampleRate = 16000
-        val chunkDurationSec = 60 // равномерная нарезка по 60 секунд
-        val overlapSec = 1 // перекрытие 1 секунда
         val maxChunkBytes = chunkDurationSec * targetSampleRate * 2
         val overlapBytesCount = overlapSec * targetSampleRate * 2
         val overlapRing = ByteArray(overlapBytesCount)

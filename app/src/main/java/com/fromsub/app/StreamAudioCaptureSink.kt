@@ -37,7 +37,10 @@ class StreamAudioCaptureSink(
     private val onChunk: (JSONObject, Boolean) -> Unit,
     private val onDone: (Int) -> Unit,
     private val onError: (String) -> Unit,
-    private val baseStartSec: Double = 0.0
+    private val baseStartSec: Double = 0.0,
+    private val targetSampleRate: Int = 16000,
+    private val chunkDurationSec: Int = 60,
+    private val overlapSec: Int = 1
 ) : AudioSink {
 
     private val chunkDir = File(context.cacheDir, "sublater_chunks")
@@ -60,9 +63,6 @@ class StreamAudioCaptureSink(
     private var aborted = false
     private var finished = false
 
-    private val targetSampleRate = 16000
-    private val overlapSec = 1
-    private val chunkDurationSec = 60
     private val maxChunkBytes = chunkDurationSec * targetSampleRate * 2
     private val overlapBytesCount = overlapSec * targetSampleRate * 2
     private val overlapRing = ByteArray(overlapBytesCount)

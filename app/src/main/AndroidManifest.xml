@@ -17,7 +17,7 @@
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:label="SubLater"
+        android:label="SubLyter"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
         android:usesCleartextTraffic="true">
@@ -52,7 +52,7 @@
 
             <!-- Сетевые ссылки из Nuvio, Stremio и подобных: они шлют ACTION_VIEW на http(s),
                  тип video/*, audio/* либо octet-stream (иногда без MIME вовсе). -->
-            <intent-filter android:label="SubLater">
+            <intent-filter android:label="SubLyter">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
@@ -67,7 +67,7 @@
                 <data android:mimeType="application/dash+xml" />
             </intent-filter>
             <!-- Тип может прийти любым -->
-            <intent-filter android:label="SubLater">
+            <intent-filter android:label="SubLyter">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
