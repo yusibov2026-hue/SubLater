@@ -120,10 +120,10 @@ class ExoPlayerManager(
     private var cachedIsPlaying: Boolean = false
 
     @Volatile
-    private var cachedVideoWidth: Int = 1920
+    private var cachedVideoWidth: Int = 0
 
     @Volatile
-    private var cachedVideoHeight: Int = 1080
+    private var cachedVideoHeight: Int = 0
 
     init {
         SubtitleForegroundService.onCancelRequested = {
@@ -160,8 +160,17 @@ class ExoPlayerManager(
 
                     override fun onVideoSizeChanged(videoSize: VideoSize) {
                         if (videoSize.width > 0 && videoSize.height > 0) {
-                            cachedVideoWidth = videoSize.width
-                            cachedVideoHeight = videoSize.height
+                            val par = if (videoSize.pixelWidthHeightRatio > 0f) videoSize.pixelWidthHeightRatio else 1f
+                            var effW = (videoSize.width * par).toInt().coerceAtLeast(1)
+                            var effH = videoSize.height
+                            if (videoSize.unappliedRotationDegrees % 180 != 0) {
+                                val tmp = effW
+                                effW = effH
+                                effH = tmp
+                            }
+                            cachedVideoWidth = effW
+                            cachedVideoHeight = effH
+                            postJs("if (window.__onNativeVideoSizeChanged) window.__onNativeVideoSizeChanged($effW, $effH);")
                         }
                     }
 
@@ -204,6 +213,8 @@ class ExoPlayerManager(
         currentVideoUri = uri
         currentMimeHint = mimeHint
         selectedAudioOrderIndex = 0
+        cachedVideoWidth = 0
+        cachedVideoHeight = 0
     }
 
     fun setMediaUri(uri: Uri) {
@@ -260,6 +271,8 @@ class ExoPlayerManager(
     @JavascriptInterface
     fun prepareStoredVideo() {
         val uri = currentVideoUri ?: return
+        cachedVideoWidth = 0
+        cachedVideoHeight = 0
         // Подсказка типа по расширению: у сетевых ссылок без имени файла ExoPlayer иначе гадает
         val mimeHint = currentMimeHint
         if (mimeHint.isNullOrBlank() && (uri.scheme == "http" || uri.scheme == "https")) {

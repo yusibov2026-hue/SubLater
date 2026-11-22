@@ -467,14 +467,17 @@
     }
 
     body.player-fullscreen-open #appWallpaper,
-    body.global-settings-open #appWallpaper {
+    body.global-settings-open #appWallpaper,
+    body.welcome-modal-open #appWallpaper {
       visibility: hidden !important;
       animation-play-state: paused !important;
     }
     body.player-fullscreen-open #appWallpaper .sf,
     body.player-fullscreen-open #appWallpaper .sfi,
     body.global-settings-open #appWallpaper .sf,
-    body.global-settings-open #appWallpaper .sfi {
+    body.global-settings-open #appWallpaper .sfi,
+    body.welcome-modal-open #appWallpaper .sf,
+    body.welcome-modal-open #appWallpaper .sfi {
       animation-play-state: paused !important;
     }
 
@@ -879,12 +882,12 @@
       width: 42px; height: 42px;
       border-radius: 14px;
       margin-right: -3px;
-      background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid color-mix(in srgb, var(--accent) 42%, rgba(255, 255, 255, 0.14));
+      background: var(--bg-elevated);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border: none;
       color: var(--accent);
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+      box-shadow: none;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -894,8 +897,7 @@
       will-change: transform;
       transition:
         transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-        background 0.25s ease,
-        box-shadow 0.25s ease;
+        background 0.25s ease;
     }
     #settingsToggle:hover {
       background: color-mix(in srgb, var(--accent) 16%, var(--bg-surface));
@@ -977,7 +979,8 @@
       transition: opacity 0.22s ease 0.06s, visibility 0s linear 0s;
     }
 
-    body.global-settings-open #playerContainer {
+    body.global-settings-open #playerContainer,
+    body.welcome-modal-open #playerContainer {
       visibility: hidden !important;
       pointer-events: none !important;
     }
@@ -1145,7 +1148,23 @@
       font-size: 11px;
       font-weight: 700;
       background: var(--md-secondary-container);
-      color: var(--md-on-secondary-container) !important;
+      color: var(--md-on-secondary-container);
+    }
+    .m3-count-pill.keys-empty {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ff6b6b;
+    }
+    .m3-count-pill.keys-ready {
+      background: rgba(34, 197, 94, 0.2);
+      color: #4ade80;
+    }
+    body[data-m3-mode="light"] .m3-count-pill.keys-empty {
+      background: rgba(220, 38, 38, 0.14);
+      color: #dc2626;
+    }
+    body[data-m3-mode="light"] .m3-count-pill.keys-ready {
+      background: rgba(22, 163, 74, 0.14);
+      color: #15803d;
     }
     .m3-check-pill {
       display: inline-flex;
@@ -1249,15 +1268,32 @@
       color: var(--md-on-secondary-container);
       width: 36px;
       height: 36px;
+      padding: 0;
+      line-height: 0;
+      font-size: 0;
       border-radius: 50%;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-size: 15px;
-      font-weight: 700;
       flex-shrink: 0;
       transition: background-color 0.16s ease, color 0.16s ease, transform 0.15s ease;
+    }
+    .close-btn svg {
+      display: block;
+      width: 17px;
+      height: 17px;
+      stroke: currentColor;
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      flex-shrink: 0;
+    }
+    #closeAiBox svg {
+      width: 13px;
+      height: 13px;
+      stroke-width: 2.5;
     }
     .close-btn:hover { background: var(--md-error-container); color: var(--md-on-error-container); }
     .close-btn:active { transform: scale(0.92); }
@@ -1459,7 +1495,7 @@
     .cp-val { width: 30px; text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--md-on-surface-variant); }
     .cp-row input[type="range"] {
       flex: 1 1 auto;
-      height: 8px;
+      height: 6px;
       margin: 0;
       -webkit-appearance: none;
       appearance: none;
@@ -1472,18 +1508,19 @@
     .cp-row input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 18px; height: 18px;
+      width: 14px; height: 14px;
       border-radius: 50%;
-      background: #ffffff;
-      border: 2px solid var(--md-surface-container-low);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+      background: var(--md-on-surface);
+      border: none;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.32);
       cursor: pointer;
     }
     .cp-row input[type="range"]::-moz-range-thumb {
-      width: 18px; height: 18px;
+      width: 14px; height: 14px;
       border-radius: 50%;
-      background: #ffffff;
-      border: 2px solid var(--md-surface-container-low);
+      background: var(--md-on-surface);
+      border: none;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.32);
       cursor: pointer;
     }
     .cp-presets { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1503,20 +1540,20 @@
     #globalSettings .file-pill {
       background: var(--md-primary);
       color: var(--md-on-primary);
-      border-color: var(--md-primary);
+      border: none;
     }
 
     input:not([type="color"]):not([type="range"]):not([type="checkbox"]), select {
       width: 100%; padding: 13px 14px; margin: 5px 0;
       border-radius: 14px;
-      border: 1px solid color-mix(in srgb, var(--border-soft) 80%, rgba(255, 255, 255, 0.08));
-      background-color: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      border: none;
+      background-color: var(--bg-elevated);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
       color: #f8fafc;
       font-family: inherit; font-size: 14px; font-weight: 500;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
-      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: none;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, box-shadow 0.2s ease;
     }
     select {
       -webkit-appearance: none;
@@ -1536,15 +1573,14 @@
     select:active { transform: scale(0.985); }
     input:not([type="color"]):not([type="range"]):not([type="checkbox"]):focus,
     select:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent), 0 4px 14px rgba(0, 0, 0, 0.16);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 26%, transparent);
     }
     #model,
     #translateLang {
       background-color: var(--bg-elevated);
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
-      border: 1px solid color-mix(in srgb, var(--border-soft) 80%, rgba(255, 255, 255, 0.08));
+      border: none;
       box-shadow: none;
     }
     #model option,
@@ -1560,7 +1596,7 @@
     #globalSettings input[type="range"]:not(.cp-h):not(.cp-s):not(.cp-l) {
       -webkit-appearance: none;
       appearance: none;
-      height: 8px;
+      height: 5px;
       border-radius: 999px;
       background: linear-gradient(
         to right,
@@ -1570,31 +1606,31 @@
         var(--md-slider-track, var(--md-surface-container-highest)) 100%
       );
       border: none;
-      margin: 4px 0;
+      margin: 6px 0;
       cursor: pointer;
     }
     #globalSettings input[type="range"]:not(.cp-h):not(.cp-s):not(.cp-l)::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 20px;
-      height: 20px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
       background: var(--md-primary);
-      border: 2.5px solid var(--md-surface-container-low);
-      box-shadow: 0 0 0 1px color-mix(in srgb, var(--md-primary) 48%, transparent);
+      border: none;
+      box-shadow: none;
       cursor: pointer;
       transition: transform 0.14s ease;
     }
     #globalSettings input[type="range"]:not(.cp-h):not(.cp-s):not(.cp-l):active::-webkit-slider-thumb {
-      transform: scale(1.12);
+      transform: scale(1.18);
     }
     #globalSettings input[type="range"]:not(.cp-h):not(.cp-s):not(.cp-l)::-moz-range-thumb {
-      width: 20px;
-      height: 20px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
       background: var(--md-primary);
-      border: 2.5px solid var(--md-surface-container-low);
-      box-shadow: 0 0 0 1px color-mix(in srgb, var(--md-primary) 48%, transparent);
+      border: none;
+      box-shadow: none;
       cursor: pointer;
     }
 
@@ -1603,22 +1639,21 @@
       display: flex; align-items: center; gap: 12px;
       padding: 8px 12px; margin: 6px 0;
       border-radius: 14px;
-      border: 1px solid color-mix(in srgb, var(--border-soft) 80%, rgba(255, 255, 255, 0.08));
+      border: none;
       background: var(--bg-elevated);
       cursor: pointer; user-select: none;
-      transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+      transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease;
     }
-    .file-box:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border-soft)); }
+    .file-box:hover { background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated)); }
     .file-box:active {
       transform: scale(0.98);
-      background: color-mix(in srgb, var(--bg-surface) 92%, #000);
-      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 14%, var(--bg-elevated));
     }
 
     .file-pill {
       background: var(--accent);
       color: var(--on-accent, #041016);
-      border: 1px solid var(--accent);
+      border: none;
       padding: 8px 20px; border-radius: 999px;
       font-weight: 700; font-size: 13.5px; cursor: pointer;
       white-space: nowrap; user-select: none;
@@ -1662,7 +1697,7 @@
     button#btn.cancel-mode:hover,
     button#btn.cancel-mode:active,
     button#btn.cancel-mode:focus {
-      background: rgba(239, 68, 68, 0.14); color: #fca5a5; border: 1.5px solid rgba(248, 113, 113, 0.72);
+      background: rgba(239, 68, 68, 0.22); color: #fca5a5; border: none !important;
       box-shadow: none !important; filter: none !important;
     }
     button#btn.cancel-mode:active {
@@ -1694,7 +1729,7 @@
       border-radius: 13px;
       background: var(--bg-elevated);
       color: #e2e8f0;
-      border: 1px solid color-mix(in srgb, var(--accent) 38%, rgba(255, 255, 255, 0.12));
+      border: none;
       font-family: inherit;
       font-weight: 600;
       font-size: 13.5px;
@@ -1707,13 +1742,11 @@
       box-shadow: none;
       transition: 
         transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
-        background 0.2s ease, 
-        border-color 0.2s ease;
+        background 0.2s ease;
     }
     #retryBtn:hover,
     #dlBtn:hover {
       background: color-mix(in srgb, var(--accent) 16%, var(--bg-surface));
-      border-color: var(--accent);
       color: #ffffff;
     }
     #retryBtn:active,
@@ -1761,14 +1794,14 @@
       background: color-mix(in srgb, var(--bg-surface) 86%, #1a1a1a);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border: 1.5px solid var(--accent);
+      border: none;
       border-radius: 14px;
       padding: 6px;
       z-index: 999;
       display: none;
       flex-direction: column;
       gap: 4px;
-      box-shadow: 0 12px 32px #000000;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
       overflow: hidden;
     }
     #dlFormatMenu.show {
@@ -1834,17 +1867,15 @@
       justify-content: center;
       background: var(--bg-elevated);
       color: #e2e8f0;
-      border: 1px solid color-mix(in srgb, var(--accent) 38%, rgba(255, 255, 255, 0.12));
+      border: none;
       box-shadow: none;
       transition: 
         transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
         background 0.2s ease,
-        border-color 0.2s ease,
         box-shadow 0.2s ease;
     }
     #openBtn:hover {
       background: color-mix(in srgb, var(--accent) 16%, var(--bg-surface));
-      border-color: var(--accent);
       color: #ffffff;
     }
     #openBtn:active {
@@ -1854,6 +1885,30 @@
 
     #status { color: #dbe2ef; font-size: 13.5px; line-height: 1.5; font-weight: 500; margin: 10px 4px 2px; text-align: center; }
     #status:empty { display: none; }
+    .status-api-hint {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 6px 8px;
+    }
+    .status-settings-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: none;
+      background: color-mix(in srgb, var(--accent) 20%, var(--bg-elevated));
+      color: var(--accent);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.14s ease, filter 0.16s ease;
+    }
+    .status-settings-btn:hover { filter: brightness(1.08); }
+    .status-settings-btn:active { transform: scale(0.94); }
 
     /* Панель ИИ-видео в стиле YouTube (Вопросы по видео с Gemini) */
     #aiSummaryBox {
@@ -1924,15 +1979,15 @@
     }
     .ai-clear-btn,
     #aiSummaryBox .close-btn {
-      background: transparent;
-      border: 1px solid var(--border-soft);
+      background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
+      border: none;
       color: var(--text-muted);
     }
     .ai-clear-btn {
       font-size: 11.5px;
       font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 8px;
+      padding: 5px 11px;
+      border-radius: 999px;
       cursor: pointer;
       transition: background 0.2s, color 0.2s, transform 0.2s;
     }
@@ -1948,8 +2003,8 @@
     }
     .ai-Prompts-row::-webkit-scrollbar { display: none; }
     .ai-prompt-chip {
-      background: transparent;
-      border: 1px solid var(--border-soft);
+      background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
+      border: none;
       color: #e2e8f0;
       padding: 7px 12px;
       border-radius: 999px;
@@ -1958,11 +2013,10 @@
       white-space: nowrap;
       cursor: pointer;
       flex-shrink: 0;
-      transition: background 0.2s, border-color 0.2s, transform 0.2s;
+      transition: background 0.2s, transform 0.2s;
     }
     .ai-prompt-chip:hover {
-      background: color-mix(in srgb, var(--accent) 12%, var(--bg-surface));
-      border-color: color-mix(in srgb, var(--accent) 50%, var(--border-soft));
+      background: color-mix(in srgb, var(--accent) 18%, var(--bg-surface));
       color: #fff;
     }
     .ai-prompt-chip:active { transform: scale(0.95); }
@@ -2007,10 +2061,10 @@
     .chapter-time {
       display: inline-flex;
       align-items: center;
-      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      background: color-mix(in srgb, var(--accent) 18%, transparent);
       color: var(--accent);
-      border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
-      padding: 1px 7px;
+      border: none;
+      padding: 2px 8px;
       margin: 0 2px;
       border-radius: 6px;
       font-weight: 700;
@@ -2099,8 +2153,7 @@
     }
     body[data-m3-mode="light"] #settingsToggle {
       background: var(--bg-elevated);
-      border-color: color-mix(in srgb, var(--accent) 40%, var(--border-soft));
-      box-shadow: 0 3px 12px rgba(15, 23, 42, 0.08);
+      box-shadow: none;
     }
     body[data-m3-mode="light"] #settingsBackdrop {
       background: rgba(15, 23, 42, 0.42) !important;
@@ -2108,7 +2161,7 @@
     body[data-m3-mode="light"] input:not([type="color"]):not([type="range"]):not([type="checkbox"]),
     body[data-m3-mode="light"] select {
       color: #161922;
-      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+      box-shadow: none;
     }
     body[data-m3-mode="light"] #model option,
     body[data-m3-mode="light"] #translateLang option {
@@ -2118,6 +2171,10 @@
     body[data-m3-mode="light"] #fileName,
     body[data-m3-mode="light"] #status {
       color: #334155;
+    }
+    body[data-m3-mode="light"] .status-settings-btn {
+      background: color-mix(in srgb, var(--accent) 14%, var(--bg-elevated));
+      color: var(--accent);
     }
     body[data-m3-mode="light"] .file-box:active {
       background: color-mix(in srgb, var(--bg-elevated) 85%, #cbd5e1);
@@ -2129,7 +2186,7 @@
     body[data-m3-mode="light"] #dlBtn,
     body[data-m3-mode="light"] #openBtn {
       color: #1e293b;
-      border-color: color-mix(in srgb, var(--accent) 42%, var(--border-soft));
+      border: none;
     }
     body[data-m3-mode="light"] #retryBtn:hover,
     body[data-m3-mode="light"] #dlBtn:hover,
@@ -2138,9 +2195,9 @@
     }
     body[data-m3-mode="light"] button#btn.cancel-mode,
     body[data-m3-mode="light"] button#btn.cancel-mode:hover {
-      background: rgba(220, 38, 38, 0.12);
+      background: rgba(220, 38, 38, 0.16);
       color: #b91c1c;
-      border-color: rgba(220, 38, 38, 0.55);
+      border: none !important;
     }
     body[data-m3-mode="light"] #dlFormatMenu {
       background: rgba(255, 255, 255, 0.96);
@@ -2164,11 +2221,16 @@
     body[data-m3-mode="light"] #aiSummaryBox .ai-title {
       color: #161922;
     }
-    body[data-m3-mode="light"] .ai-clear-btn:hover {
-      color: #0f172a;
+    body[data-m3-mode="light"] .ai-clear-btn,
+    body[data-m3-mode="light"] #aiSummaryBox .close-btn {
+      background: rgba(15, 23, 42, 0.08);
     }
     body[data-m3-mode="light"] .ai-prompt-chip {
+      background: rgba(15, 23, 42, 0.07);
       color: #334155;
+    }
+    body[data-m3-mode="light"] .ai-clear-btn:hover {
+      color: #0f172a;
     }
     body[data-m3-mode="light"] .ai-prompt-chip:hover {
       color: #0f172a;
@@ -2191,11 +2253,13 @@
       background: radial-gradient(circle, color-mix(in srgb, var(--wall-col) 88%, #1e293b) 0%, color-mix(in srgb, var(--wall-col) 48%, transparent) 62%, transparent 100%);
     }
 
-    /* Плеер с идеально скруглёнными углами без выпирающих чёрных углов снизу */
+    /* Адаптивный безрамочный плеер для видео любых пропорций (вертикальных, квадратных, горизонтальных) */
     #playerContainer {
       position: relative;
       display: none;
       width: 100%;
+      max-width: 100%;
+      max-height: 76vh;
       margin: 14px auto 20px;
       padding: 0;
       background: #000000;
@@ -2203,11 +2267,11 @@
       overflow: hidden !important;
       -webkit-mask-image: -webkit-radial-gradient(white, black);
       clip-path: inset(0 round 16px);
-      border: 1.5px solid var(--border-soft);
+      border: none;
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
       align-items: center;
       justify-content: center;
-      aspect-ratio: 16/9;
+      aspect-ratio: var(--video-ar, 16 / 9);
       z-index: 20;
       touch-action: manipulation;
       user-select: none;
@@ -2222,6 +2286,7 @@
       height: 100vh !important;
       height: 100dvh !important;
       max-width: none !important;
+      max-height: none !important;
       margin: 0 !important;
       padding: 0 !important;
       aspect-ratio: auto !important;
@@ -2241,12 +2306,12 @@
     video#videoPlayer {
       width: 100%;
       height: 100%;
-      max-height: 75vh;
+      max-height: none;
       margin: 0 auto;
       padding: 0;
       display: block;
-      background: #000000;
-      object-fit: cover;
+      background: transparent;
+      object-fit: contain;
       object-position: center center;
       border: none;
       border-radius: 16px;
@@ -2316,12 +2381,13 @@
 
     #playerControls {
       position: absolute; bottom: 0; left: 0; right: 0; width: 100%;
+      box-sizing: border-box;
       border-bottom-left-radius: 16px;
       border-bottom-right-radius: 16px;
       overflow: hidden;
       background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0) 100%);
-      display: flex; align-items: center; gap: 10px;
-      padding: 20px 14px 10px; z-index: 20; opacity: 1;
+      display: flex; align-items: center; gap: 8px;
+      padding: 18px 10px 10px; z-index: 20; opacity: 1;
       transition: opacity 0.3s ease; user-select: none;
     }
     body.player-fullscreen-open #playerControls,
@@ -2342,10 +2408,10 @@
     .ctrl-btn:hover { color: var(--accent); background: rgba(255,255,255,0.12); }
     .ctrl-btn:active { transform: scale(0.82); background: rgba(255,255,255,0.2); }
     .ctrl-btn svg { width: 20px; height: 20px; fill: currentColor; }
-    #fsBtn { margin-right: 10px; }
+    #fsBtn { margin-right: 0; }
 
     #seekBar {
-      flex: 1; height: 4px; margin: 0; padding: 0; cursor: pointer;
+      flex: 1; min-width: 0; height: 4px; margin: 0; padding: 0; cursor: pointer;
       border: none; border-radius: 2px; -webkit-appearance: none;
       background: linear-gradient(to right,
         var(--accent) 0%, var(--accent) var(--progress, 0%),
@@ -2584,13 +2650,13 @@
       min-width: 96px;
     }
 
-    /* Ползунок Material You с акцентным заполнением внутри раскрытой строки */
+    /* Минималистичный ползунок Material You внутри раскрытой строки */
     .yt-acc-body input[type="range"] {
       -webkit-appearance: none;
       appearance: none;
       width: calc(100% - 4px);
-      height: 8px;
-      margin: 6px auto;
+      height: 5px;
+      margin: 8px auto;
       padding: 0;
       display: block;
       border: none;
@@ -2607,25 +2673,25 @@
     .yt-acc-body input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 20px;
-      height: 20px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
       background: var(--md-primary);
-      border: 2.5px solid var(--md-surface-container-high);
-      box-shadow: 0 0 0 1px color-mix(in srgb, var(--md-primary) 48%, transparent);
+      border: none;
+      box-shadow: none;
       cursor: pointer;
       transition: transform 0.14s ease;
     }
     .yt-acc-body input[type="range"]:active::-webkit-slider-thumb {
-      transform: scale(1.12);
+      transform: scale(1.18);
     }
     .yt-acc-body input[type="range"]::-moz-range-thumb {
-      width: 20px;
-      height: 20px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
       background: var(--md-primary);
-      border: 2.5px solid var(--md-surface-container-high);
-      box-shadow: 0 0 0 1px color-mix(in srgb, var(--md-primary) 48%, transparent);
+      border: none;
+      box-shadow: none;
       cursor: pointer;
     }
 
@@ -2759,6 +2825,185 @@
       transition-duration: 0.1s !important;
       transition-timing-function: ease-out !important;
     }
+
+    /* Приветственное окно Material You для новых пользователей */
+    #welcomeBackdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 12, 18, 0.86);
+      z-index: 100000;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease, visibility 0s linear 0.22s;
+    }
+    body[data-m3-mode="light"] #welcomeBackdrop {
+      background: rgba(15, 23, 42, 0.44);
+    }
+    #welcomeBackdrop.show {
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+      transition: opacity 0.22s ease, visibility 0s linear 0s;
+    }
+
+    #m3WelcomeModal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate3d(-50%, calc(-50% + 14px), 0) scale(0.95);
+      width: 92%;
+      max-width: 396px;
+      max-height: 88vh;
+      overflow-y: auto;
+      background: var(--md-surface-container-low);
+      color: var(--md-on-surface);
+      border: none;
+      border-radius: 30px;
+      padding: 22px 20px 20px;
+      z-index: 100001;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      box-shadow: 0 24px 54px rgba(0, 0, 0, 0.56);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: opacity 0.22s cubic-bezier(0.2, 0, 0, 1), transform 0.24s cubic-bezier(0.2, 0, 0, 1), visibility 0s linear 0.24s;
+    }
+    body[data-m3-mode="light"] #m3WelcomeModal {
+      box-shadow: 0 22px 48px rgba(15, 23, 42, 0.22);
+    }
+    #m3WelcomeModal.show {
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate3d(-50%, -50%, 0) scale(1);
+      transition: opacity 0.22s cubic-bezier(0.2, 0, 0, 1), transform 0.24s cubic-bezier(0.2, 0, 0, 1), visibility 0s linear 0s;
+    }
+    .m3-welcome-hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 10px;
+    }
+    .m3-welcome-badge {
+      width: 54px;
+      height: 54px;
+      border-radius: 18px;
+      background: var(--md-primary-container);
+      color: var(--md-on-primary-container);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .m3-welcome-badge svg {
+      width: 28px;
+      height: 28px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .m3-welcome-title {
+      margin: 0;
+      font-family: var(--title-font, 'Outfit', 'Inter', sans-serif);
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.15;
+      color: var(--md-on-surface);
+    }
+    .m3-welcome-sub {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--md-on-surface-variant);
+    }
+    .m3-welcome-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .m3-welcome-step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 13px;
+      border-radius: 18px;
+      background: var(--md-surface-container);
+      border: none;
+    }
+    .m3-welcome-step-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--md-secondary-container);
+      color: var(--md-on-secondary-container);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .m3-welcome-step-icon svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .m3-welcome-step-body {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .m3-welcome-step-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--md-on-surface);
+    }
+    .m3-welcome-step-desc {
+      font-size: 12px;
+      line-height: 1.38;
+      color: var(--md-on-surface-variant);
+    }
+    .m3-welcome-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .m3-welcome-btn-primary,
+    .m3-welcome-btn-tonal {
+      width: 100%;
+      padding: 13px 18px;
+      border-radius: 999px;
+      border: none;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.14s ease, filter 0.16s ease;
+    }
+    .m3-welcome-btn-primary {
+      background: var(--md-primary);
+      color: var(--md-on-primary);
+    }
+    .m3-welcome-btn-tonal {
+      background: var(--md-secondary-container);
+      color: var(--md-on-secondary-container);
+    }
+    .m3-welcome-btn-primary:active,
+    .m3-welcome-btn-tonal:active {
+      transform: scale(0.97);
+    }
   </style>
 </head>
 <body>
@@ -2773,6 +3018,7 @@
     </button>
   </header>
 <select id="model">
+    <option value="auto" selected>Choose model (Auto)</option>
     <option value="whisper-large-v3-turbo">whisper-large-v3-turbo</option>
     <option value="whisper-large-v3">whisper-large-v3</option>
   </select>
@@ -2783,6 +3029,55 @@
     <option value="English">Translate to English</option>
     <option value="Turkish">Translate to Turkish</option>
     <option value="Azerbaijani">Translate to Azerbaijani</option>
+    <option value="Arabic">Translate to Arabic</option>
+    <option value="Armenian">Translate to Armenian</option>
+    <option value="Belarusian">Translate to Belarusian</option>
+    <option value="Bengali">Translate to Bengali</option>
+    <option value="Bulgarian">Translate to Bulgarian</option>
+    <option value="Catalan">Translate to Catalan</option>
+    <option value="Chinese (Simplified)">Translate to Chinese (Simplified)</option>
+    <option value="Chinese (Traditional)">Translate to Chinese (Traditional)</option>
+    <option value="Croatian">Translate to Croatian</option>
+    <option value="Czech">Translate to Czech</option>
+    <option value="Danish">Translate to Danish</option>
+    <option value="Dutch">Translate to Dutch</option>
+    <option value="Estonian">Translate to Estonian</option>
+    <option value="Filipino">Translate to Filipino</option>
+    <option value="Finnish">Translate to Finnish</option>
+    <option value="French">Translate to French</option>
+    <option value="Georgian">Translate to Georgian</option>
+    <option value="German">Translate to German</option>
+    <option value="Greek">Translate to Greek</option>
+    <option value="Hebrew">Translate to Hebrew</option>
+    <option value="Hindi">Translate to Hindi</option>
+    <option value="Hungarian">Translate to Hungarian</option>
+    <option value="Indonesian">Translate to Indonesian</option>
+    <option value="Italian">Translate to Italian</option>
+    <option value="Japanese">Translate to Japanese</option>
+    <option value="Kazakh">Translate to Kazakh</option>
+    <option value="Korean">Translate to Korean</option>
+    <option value="Kyrgyz">Translate to Kyrgyz</option>
+    <option value="Latvian">Translate to Latvian</option>
+    <option value="Lithuanian">Translate to Lithuanian</option>
+    <option value="Malay">Translate to Malay</option>
+    <option value="Norwegian">Translate to Norwegian</option>
+    <option value="Persian">Translate to Persian</option>
+    <option value="Polish">Translate to Polish</option>
+    <option value="Portuguese">Translate to Portuguese</option>
+    <option value="Romanian">Translate to Romanian</option>
+    <option value="Serbian">Translate to Serbian</option>
+    <option value="Slovak">Translate to Slovak</option>
+    <option value="Slovenian">Translate to Slovenian</option>
+    <option value="Spanish">Translate to Spanish</option>
+    <option value="Swahili">Translate to Swahili</option>
+    <option value="Swedish">Translate to Swedish</option>
+    <option value="Tajik">Translate to Tajik</option>
+    <option value="Tamil">Translate to Tamil</option>
+    <option value="Thai">Translate to Thai</option>
+    <option value="Ukrainian">Translate to Ukrainian</option>
+    <option value="Urdu">Translate to Urdu</option>
+    <option value="Uzbek">Translate to Uzbek</option>
+    <option value="Vietnamese">Translate to Vietnamese</option>
   </select>
 
   <label class="file-box" for="mediaFile">
@@ -2839,7 +3134,9 @@
       </div>
       <div class="ai-header-actions">
         <button type="button" class="ai-clear-btn" id="clearAiChatBtn">Clear</button>
-        <button type="button" class="close-btn" id="closeAiBox" style="width:26px;height:26px;font-size:13px;">✕</button>
+        <button type="button" class="close-btn" id="closeAiBox" aria-label="Close AI panel" style="width:26px;height:26px;">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6L18 18M18 6L6 18"/></svg>
+        </button>
       </div>
     </div>
 
@@ -3023,7 +3320,9 @@
           <span class="m3-header-sub">Material You • Theme &amp; AI</span>
         </span>
       </div>
-      <button class="close-btn" id="closeSettingsBtn" aria-label="Close settings">✕</button>
+      <button class="close-btn" id="closeSettingsBtn" aria-label="Close settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6L18 18M18 6L6 18"/></svg>
+      </button>
     </div>
 
     <div class="m3-card">
@@ -3303,12 +3602,66 @@
     </div>
   </div>
 
+  <div id="welcomeBackdrop"></div>
+  <div id="m3WelcomeModal" role="dialog" aria-modal="true" aria-labelledby="welcomeModalTitle">
+    <div class="m3-welcome-hero">
+      <div class="m3-welcome-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="4"/><path d="M7 13h4"/><path d="M14 13h3"/><path d="M7 16h10"/></svg>
+      </div>
+      <h3 class="m3-welcome-title" id="welcomeModalTitle">Welcome to SubLyter</h3>
+      <p class="m3-welcome-sub">Fast AI subtitles, translation into 50+ languages, and smart video Q&amp;A.</p>
+    </div>
+
+    <div class="m3-welcome-steps">
+      <div class="m3-welcome-step">
+        <div class="m3-welcome-step-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        </div>
+        <div class="m3-welcome-step-body">
+          <span class="m3-welcome-step-title">Add your Groq API key</span>
+          <span class="m3-welcome-step-desc">Paste a free Groq key in Settings to enable instant transcription &amp; translation.</span>
+        </div>
+      </div>
+
+      <div class="m3-welcome-step">
+        <div class="m3-welcome-step-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><polygon points="10 9 15 12 10 15 10 9"/></svg>
+        </div>
+        <div class="m3-welcome-step-body">
+          <span class="m3-welcome-step-title">Works with any video shape</span>
+          <span class="m3-welcome-step-desc">Adaptive player fits vertical, square, and widescreen videos with live subtitles.</span>
+        </div>
+      </div>
+
+      <div class="m3-welcome-step">
+        <div class="m3-welcome-step-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M2 12h20"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg>
+        </div>
+        <div class="m3-welcome-step-body">
+          <span class="m3-welcome-step-title">Made for Material You</span>
+          <span class="m3-welcome-step-desc">Switch Dark, Light, or Auto themes, pick accents, and translate to 50+ languages.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="m3-welcome-actions">
+      <button type="button" class="m3-welcome-btn-primary" id="welcomeOpenSettingsBtn">Add API Key in Settings</button>
+      <button type="button" class="m3-welcome-btn-tonal" id="welcomeStartBtn">Get Started</button>
+    </div>
+  </div>
+
   
   <script>
   (function () {
     'use strict';
 
     const $ = (id) => document.getElementById(id);
+
+    function getActiveWhisperModel() {
+      const modelEl = $('model');
+      const raw = modelEl ? modelEl.value : 'auto';
+      return raw === 'auto' ? 'whisper-large-v3-turbo' : raw;
+    }
 
     /* ---------------- Wake Lock ---------------- */
     let wakeLock = null;
@@ -3981,13 +4334,14 @@
     function syncKeysBadge(keys) {
       if (!keysCountBadge) return;
       const count = keys.length;
+      keysCountBadge.style.color = '';
+      keysCountBadge.classList.toggle('keys-empty', count === 0);
+      keysCountBadge.classList.toggle('keys-ready', count > 0);
       if (count === 0) {
         keysCountBadge.textContent = '0 keys';
-        keysCountBadge.style.color = '#ff6b6b';
       } else {
         const word = count === 1 ? 'key' : 'keys';
         keysCountBadge.textContent = `${count} ${word}`;
-        keysCountBadge.style.color = 'var(--accent)';
       }
     }
 
@@ -4009,6 +4363,9 @@
           if (keys[0]) androidBridge.saveSecureKey('groq_api_key', keys[0]);
           if (keys[1]) androidBridge.saveSecureKey('groq_api_key_2', keys[1]);
         } catch (e) {}
+      }
+      if (typeof refreshMissingApiStatusHint === 'function') {
+        refreshMissingApiStatusHint();
       }
     }
 
@@ -4182,13 +4539,112 @@
       }
     }
 
-    const LANG_CODES = { Russian: 'ru', English: 'en', Turkish: 'tr', Azerbaijani: 'az' };
+    const LANG_CODES = {
+      Russian: 'ru',
+      English: 'en',
+      Turkish: 'tr',
+      Azerbaijani: 'az',
+      Arabic: 'ar',
+      Armenian: 'hy',
+      Belarusian: 'be',
+      Bengali: 'bn',
+      Bulgarian: 'bg',
+      Catalan: 'ca',
+      'Chinese (Simplified)': 'zh',
+      'Chinese (Traditional)': 'zh-TW',
+      Croatian: 'hr',
+      Czech: 'cs',
+      Danish: 'da',
+      Dutch: 'nl',
+      Estonian: 'et',
+      Filipino: 'tl',
+      Finnish: 'fi',
+      French: 'fr',
+      Georgian: 'ka',
+      German: 'de',
+      Greek: 'el',
+      Hebrew: 'he',
+      Hindi: 'hi',
+      Hungarian: 'hu',
+      Indonesian: 'id',
+      Italian: 'it',
+      Japanese: 'ja',
+      Kazakh: 'kk',
+      Korean: 'ko',
+      Kyrgyz: 'ky',
+      Latvian: 'lv',
+      Lithuanian: 'lt',
+      Malay: 'ms',
+      Norwegian: 'no',
+      Persian: 'fa',
+      Polish: 'pl',
+      Portuguese: 'pt',
+      Romanian: 'ro',
+      Serbian: 'sr',
+      Slovak: 'sk',
+      Slovenian: 'sl',
+      Spanish: 'es',
+      Swahili: 'sw',
+      Swedish: 'sv',
+      Tajik: 'tg',
+      Tamil: 'ta',
+      Thai: 'th',
+      Ukrainian: 'uk',
+      Urdu: 'ur',
+      Uzbek: 'uz',
+      Vietnamese: 'vi'
+    };
 
     const videoEl = $('videoPlayer');
     const playerBox = $('playerContainer');
     const overlayEl = $('subtitleOverlay');
     const subtitleEl = $('subtitleText');
     const statusEl = $('status');
+
+    function openApiSettingsFocus() {
+      openSettings();
+      setTimeout(() => {
+        if (apiKeysListEl) {
+          try { apiKeysListEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+          try { apiKeysListEl.focus(); } catch (_) {}
+        }
+      }, 180);
+    }
+
+    function showMissingApiStatus(fromGenerate = false) {
+      if (!statusEl) return;
+      const msg = fromGenerate
+        ? 'Groq API key is missing — add it in Settings (API Keys section).'
+        : 'No Groq API key yet — open Settings to add your API key.';
+      statusEl.innerHTML = '';
+      const wrap = document.createElement('span');
+      wrap.className = 'status-api-hint';
+      const txt = document.createElement('span');
+      txt.textContent = msg;
+      const goBtn = document.createElement('button');
+      goBtn.type = 'button';
+      goBtn.className = 'status-settings-btn';
+      goBtn.textContent = 'Open Settings';
+      goBtn.addEventListener('click', openApiSettingsFocus);
+      wrap.appendChild(txt);
+      wrap.appendChild(goBtn);
+      statusEl.appendChild(wrap);
+    }
+
+    function refreshMissingApiStatusHint() {
+      if (typeof statusEl === 'undefined' || !statusEl) return;
+      const keys = getApiKeys();
+      const hasMissingBtn = Boolean(statusEl.querySelector('.status-settings-btn'));
+      if (keys.length === 0) {
+        if (!statusEl.textContent.trim() || hasMissingBtn) {
+          showMissingApiStatus(false);
+        }
+      } else if (hasMissingBtn) {
+        statusEl.innerHTML = '';
+      }
+    }
+
+    refreshMissingApiStatusHint();
     const btn = $('btn');
     const progressWrap = $('progressWrap');
     const progressBar = $('progressBar');
@@ -4657,13 +5113,67 @@
       }
     }
 
+    let lastVideoWidth = 0;
+    let lastVideoHeight = 0;
+
+    function syncPlayerAspectRatio(rawW, rawH) {
+      if (!playerBox) return;
+      const isFs = document.body.classList.contains('player-fullscreen-open') ||
+        Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      if (isFs) {
+        playerBox.style.width = '';
+        playerBox.style.height = '';
+        playerBox.style.aspectRatio = '';
+        if (typeof updateOverlayGeometry === 'function') updateOverlayGeometry();
+        if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
+        return;
+      }
+
+      const vw = Number(rawW) > 0 ? Number(rawW) : (Number(videoEl.videoWidth) || lastVideoWidth);
+      const vh = Number(rawH) > 0 ? Number(rawH) : (Number(videoEl.videoHeight) || lastVideoHeight);
+
+      if (vw > 0 && vh > 0) {
+        lastVideoWidth = vw;
+        lastVideoHeight = vh;
+        const parentEl = playerBox.parentElement || document.body;
+        const pStyle = getComputedStyle(parentEl);
+        const padX = (parseFloat(pStyle.paddingLeft) || 0) + (parseFloat(pStyle.paddingRight) || 0);
+        const maxAvailW = Math.max(160, (parentEl.clientWidth || window.innerWidth || 360) - padX);
+        const availW = Math.min(maxAvailW, window.innerWidth || maxAvailW);
+        const maxH = Math.max(220, Math.round((window.innerHeight || 720) * 0.76));
+
+        const ar = vw / vh;
+        let targetW = availW;
+        let targetH = Math.round(targetW / ar);
+        if (targetH > maxH) {
+          targetH = maxH;
+          targetW = Math.max(1, Math.round(targetH * ar));
+        }
+
+        playerBox.style.setProperty('--video-ar', `${vw} / ${vh}`);
+        playerBox.style.aspectRatio = `${vw} / ${vh}`;
+        playerBox.style.width = targetW + 'px';
+        playerBox.style.height = Math.max(1, targetH) + 'px';
+      } else {
+        playerBox.style.width = '';
+        playerBox.style.height = '';
+        playerBox.style.aspectRatio = '';
+      }
+
+      if (typeof updateOverlayGeometry === 'function') updateOverlayGeometry();
+      if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
+    }
+
+    window.__onNativeVideoSizeChanged = (w, h) => syncPlayerAspectRatio(w, h);
+
     videoEl.addEventListener('play', updatePlayState);
     videoEl.addEventListener('pause', updatePlayState);
     videoEl.addEventListener('loadedmetadata', () => {
       syncTimeUI();
-      if (videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
-        playerBox.style.aspectRatio = `${videoEl.videoWidth} / ${videoEl.videoHeight}`;
-      }
+      syncPlayerAspectRatio(videoEl.videoWidth, videoEl.videoHeight);
+    });
+    videoEl.addEventListener('resize', () => {
+      syncPlayerAspectRatio(videoEl.videoWidth, videoEl.videoHeight);
     });
     videoEl.addEventListener('seeked', () => {
       syncTimeUI();
@@ -4686,13 +5196,13 @@
     function enterFullscreenPlayer() {
       document.documentElement.classList.add('player-fullscreen-open');
       document.body.classList.add('player-fullscreen-open');
+      syncPlayerAspectRatio();
       const bridge = window.ExoPlayerManager || window.AndroidBridge;
       if (bridge && typeof bridge.setImmersiveFullscreen === 'function') {
         try { bridge.setImmersiveFullscreen(true); } catch (e) {}
       }
       setTimeout(() => {
-        updateOverlayGeometry();
-        if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
+        syncPlayerAspectRatio();
       }, 60);
     }
 
@@ -4703,6 +5213,7 @@
       }
       document.documentElement.classList.remove('player-fullscreen-open');
       document.body.classList.remove('player-fullscreen-open');
+      syncPlayerAspectRatio();
       const bridge = window.ExoPlayerManager || window.AndroidBridge;
       if (bridge && typeof bridge.setImmersiveFullscreen === 'function') {
         try { bridge.setImmersiveFullscreen(false); } catch (e) {}
@@ -4711,8 +5222,7 @@
         try { bridge.toggleLandscape(false); } catch (e) {}
       }
       setTimeout(() => {
-        updateOverlayGeometry();
-        if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
+        syncPlayerAspectRatio();
       }, 60);
     }
 
@@ -4945,7 +5455,7 @@
         if (saved && saved.isComplete !== false && saved.rawSegments && saved.rawSegments.length) {
           cachedWhisper = {
             fileSig: saved.fileSig,
-            model: saved.model || $('model').value,
+            model: saved.model || getActiveWhisperModel(),
             rawSegments: saved.rawSegments,
             rawWords: saved.rawWords || [],
             translations: saved.translations || {},
@@ -4967,7 +5477,7 @@
         } else if (saved && saved.isComplete === false && saved.partialChunks && Object.keys(saved.partialChunks).length) {
           cachedPartialChunks = {
             fileSig: saved.fileSig,
-            model: saved.model || $('model').value,
+            model: saved.model || getActiveWhisperModel(),
             chunks: saved.partialChunks
           };
           statusEl.innerText = '⏸ Unfinished progress found — tap "Generate subtitles" to resume.';
@@ -5026,7 +5536,7 @@
       if (activeAbortCtrl) return;
       const f = getActiveMedia();
       const sig = getFileSignature(f);
-      const model = $('model').value;
+      const model = getActiveWhisperModel();
       const tLang = $('translateLang').value;
 
       if (f && cachedWhisper.fileSig === sig && cachedWhisper.model === model && cachedWhisper.rawSegments.length) {
@@ -5994,8 +6504,8 @@
       const ch = playerBox.clientHeight;
       if (!cw || !ch) return;
 
-      const vw = videoEl.videoWidth || cw;
-      const vh = videoEl.videoHeight || ch;
+      const vw = videoEl.videoWidth || lastVideoWidth || cw;
+      const vh = videoEl.videoHeight || lastVideoHeight || ch;
       const fitMode = fitModeSelect.value || 'contain';
 
       let dw = cw;
@@ -6024,9 +6534,9 @@
 
     videoEl.addEventListener('loadedmetadata', updateOverlayGeometry);
     videoEl.addEventListener('loadeddata', updateOverlayGeometry);
-    window.addEventListener('resize', updateOverlayGeometry);
-    window.addEventListener('orientationchange', () => setTimeout(updateOverlayGeometry, 200));
-    document.addEventListener('fullscreenchange', () => setTimeout(updateOverlayGeometry, 80));
+    window.addEventListener('resize', () => syncPlayerAspectRatio());
+    window.addEventListener('orientationchange', () => setTimeout(() => syncPlayerAspectRatio(), 160));
+    document.addEventListener('fullscreenchange', () => setTimeout(() => syncPlayerAspectRatio(), 80));
     if (window.ResizeObserver) {
       new ResizeObserver(() => updateOverlayGeometry()).observe(playerBox);
     }
@@ -6130,6 +6640,12 @@
     function setupPlayer(file) {
       const newSig = getFileSignature(file);
       if (file && videoEl.dataset.fileSig !== newSig) {
+        lastVideoWidth = 0;
+        lastVideoHeight = 0;
+        playerBox.style.width = '';
+        playerBox.style.height = '';
+        playerBox.style.aspectRatio = '';
+        playerBox.style.removeProperty('--video-ar');
         usingNativeExoFallback = false;
         document.documentElement.classList.remove('native-exo-fallback');
         document.body.classList.remove('native-exo-fallback');
@@ -6157,6 +6673,7 @@
       playerBox.style.display = 'flex';
       videoEl.playbackRate = parseFloat(speedSlider.value) || 1;
       playerActive = true;
+      syncPlayerAspectRatio(videoEl.videoWidth, videoEl.videoHeight);
       // Нативный плеер включается раньше, чем playerActive=true, поэтому сразу
       // пересчитываем его границы — иначе первый кадр ждёт цикла 40 мс.
       if (usingNativeExoFallback && window.__syncNativePlayerBounds) {
@@ -6394,7 +6911,7 @@
       }
 
       const file = getActiveMedia();
-      const model = $('model').value;
+      const model = getActiveWhisperModel();
       const targetLang = $('translateLang').value;
       const fileSig = getFileSignature(file);
       const langCode = LANG_CODES[targetLang] || '';
@@ -6413,8 +6930,12 @@
       const keys = getApiKeys();
       const customPrompt = whisperPromptEl.value.trim();
 
-      if (!keys.length || !file) {
-        statusEl.innerText = 'Enter at least one Groq API key and select a file!';
+      if (!keys.length) {
+        showMissingApiStatus(true);
+        return;
+      }
+      if (!file) {
+        statusEl.innerText = 'Please select a video or audio file first.';
         return;
       }
 
@@ -7292,7 +7813,7 @@
       } catch (e) {}
 
       function syncNativePlayerBounds() {
-        if (!playerActive || !usingNativeExoFallback || playerBox.style.display === 'none' || document.body.classList.contains('global-settings-open')) {
+        if (!playerActive || !usingNativeExoFallback || playerBox.style.display === 'none' || document.body.classList.contains('global-settings-open') || document.body.classList.contains('welcome-modal-open')) {
           try {
             if (typeof nativeBridge.setPlayerVisibility === 'function') {
               nativeBridge.setPlayerVisibility(false);
@@ -7369,16 +7890,16 @@
 
           Object.defineProperty(videoEl, 'videoWidth', {
             get() {
-              try { return Number(nativeBridge.getVideoWidth()) || 1920; }
-              catch (e) { return 1920; }
+              try { return Number(nativeBridge.getVideoWidth()) || 0; }
+              catch (e) { return 0; }
             },
             configurable: true
           });
 
           Object.defineProperty(videoEl, 'videoHeight', {
             get() {
-              try { return Number(nativeBridge.getVideoHeight()) || 1080; }
-              catch (e) { return 1080; }
+              try { return Number(nativeBridge.getVideoHeight()) || 0; }
+              catch (e) { return 0; }
             },
             configurable: true
           });
@@ -7430,6 +7951,11 @@
               updateOverlayGeometry();
               videoEl.dispatchEvent(new Event('loadedmetadata'));
             }
+            const nw = Number(nativeBridge.getVideoWidth()) || 0;
+            const nh = Number(nativeBridge.getVideoHeight()) || 0;
+            if (nw > 0 && nh > 0 && (nw !== lastVideoWidth || nh !== lastVideoHeight)) {
+              syncPlayerAspectRatio(nw, nh);
+            }
             syncTimeUI();
             updateSubtitleFrame();
             const now = Date.now();
@@ -7455,6 +7981,48 @@
         if (!usingNativeExoFallback) return;
         try { nativeBridge.setResizeMode(e.target.value || 'contain'); } catch (err) {}
       });
+    }
+
+    /* ---------------- Приветствие Material You для нового пользователя ---------------- */
+    const welcomeModalEl = $('m3WelcomeModal');
+    const welcomeBackdropEl = $('welcomeBackdrop');
+    const welcomeOpenSettingsBtn = $('welcomeOpenSettingsBtn');
+    const welcomeStartBtn = $('welcomeStartBtn');
+
+    function openWelcomeModal() {
+      if (!welcomeModalEl || !welcomeBackdropEl) return;
+      document.body.classList.add('welcome-modal-open');
+      if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
+      if (welcomeOpenSettingsBtn) {
+        welcomeOpenSettingsBtn.textContent = getApiKeys().length > 0 ? 'Open Settings' : 'Add API Key in Settings';
+      }
+      welcomeBackdropEl.classList.add('show');
+      welcomeModalEl.classList.add('show');
+    }
+
+    function closeWelcomeModal(markSeen = true) {
+      if (markSeen) safeSetStorage('sublater_welcome_seen', '1');
+      document.body.classList.remove('welcome-modal-open');
+      if (welcomeBackdropEl) welcomeBackdropEl.classList.remove('show');
+      if (welcomeModalEl) welcomeModalEl.classList.remove('show');
+      if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
+    }
+
+    if (welcomeStartBtn) {
+      welcomeStartBtn.addEventListener('click', () => closeWelcomeModal(true));
+    }
+    if (welcomeBackdropEl) {
+      welcomeBackdropEl.addEventListener('click', () => closeWelcomeModal(true));
+    }
+    if (welcomeOpenSettingsBtn) {
+      welcomeOpenSettingsBtn.addEventListener('click', () => {
+        closeWelcomeModal(true);
+        openApiSettingsFocus();
+      });
+    }
+
+    if (safeGetStorage('sublater_welcome_seen', '') !== '1') {
+      setTimeout(openWelcomeModal, 120);
     }
 
   })();
