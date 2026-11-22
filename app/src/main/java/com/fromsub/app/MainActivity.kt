@@ -104,6 +104,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private var immersiveFullscreen = false
+    private var currentSurfaceColor: Int = 0xFF161922.toInt()
 
     fun applyImmersiveMode(fullscreen: Boolean) {
         runOnUiThread {
@@ -112,14 +113,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @Suppress("UNUSED_PARAMETER")
     fun applyStatusBarColor(color: Int) {
         runOnUiThread {
+            currentSurfaceColor = color
             if (!immersiveFullscreen) {
                 // Прозрачный статус-бар: под ним видно обои приложения
                 window.statusBarColor = Color.TRANSPARENT
                 window.navigationBarColor = Color.TRANSPARENT
-                applyBarIconAppearance(Color.BLACK)
+                applyBarIconAppearance(color)
             }
         }
     }
@@ -137,14 +138,37 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun applyBarIconAppearance(color: Int) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
-        // На светлом фоне (например, светло-голубой акцент) нужны тёмные иконки системных панелей
         val luma = (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)) / 255.0
-        val appearance = if (luma > 0.6) WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS else 0
-        window.insetsController?.setSystemBarsAppearance(
-            appearance,
-            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-        )
+        val isLightBg = luma > 0.6
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // На светлом фоне нужны тёмные иконки системных панелей
+            val appearance = if (isLightBg) {
+                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                    WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            } else {
+                0
+            }
+            window.insetsController?.setSystemBarsAppearance(
+                appearance,
+                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                    WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            var flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            if (isLightBg) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    flags = flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    flags = flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                }
+            }
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = flags
+        }
     }
 
     private fun applyCutoutMode(fullscreen: Boolean) {
@@ -189,14 +213,9 @@ class MainActivity : ComponentActivity() {
                 // Тянем контент под прозрачные панели, отступы компенсируются в CSS
                 window.setDecorFitsSystemWindows(false)
                 window.insetsController?.show(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
-                applyBarIconAppearance(Color.BLACK)
+                applyBarIconAppearance(currentSurfaceColor)
             } else {
-                @Suppress("DEPRECATION")
-                window.decorView.systemUiVisibility = (
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                )
+                applyBarIconAppearance(currentSurfaceColor)
             }
         }
     }
@@ -455,6 +474,7 @@ fun HybridVideoApp(
 ) {
     val resizeMode by exoPlayerManager.resizeModeState
     val bounds by exoPlayerManager.videoBoundsState
+    val hostSurfaceColor by exoPlayerManager.hostSurfaceColorState
 
     DisposableEffect(Unit) {
         onDispose { }
@@ -463,7 +483,7 @@ fun HybridVideoApp(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (bounds.isFullscreen) ComposeColor(0xFF000000) else ComposeColor(0xFF11131A))
+            .background(if (bounds.isFullscreen) ComposeColor(0xFF000000) else ComposeColor(hostSurfaceColor))
     ) {
         val maxW = maxWidth
         val maxH = maxHeight

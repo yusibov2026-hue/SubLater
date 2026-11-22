@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.media.AudioFormat
 import android.media.MediaCodec
@@ -107,6 +108,7 @@ class ExoPlayerManager(
     val isVideoReady = mutableStateOf(false)
     val resizeModeState = mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT)
     val videoBoundsState = mutableStateOf(VideoBounds())
+    val hostSurfaceColorState = mutableIntStateOf(0xFF161922.toInt())
 
     @Volatile
     private var cachedPositionMs: Long = 0L
@@ -312,6 +314,23 @@ class ExoPlayerManager(
             return
         }
         activity?.applyStatusBarColor(color)
+    }
+
+    @JavascriptInterface
+    fun setNativeSurfaceColor(colorHex: String) {
+        val color = try {
+            android.graphics.Color.parseColor(colorHex)
+        } catch (_: Exception) {
+            return
+        }
+        hostSurfaceColorState.intValue = color
+        activity?.applyStatusBarColor(color)
+    }
+
+    @JavascriptInterface
+    fun isSystemDarkMode(): Boolean {
+        val nightFlags = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        return nightFlags == Configuration.UI_MODE_NIGHT_YES
     }
 
     @JavascriptInterface
