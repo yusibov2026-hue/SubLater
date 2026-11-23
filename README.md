@@ -32,10 +32,6 @@
   <a href="#-quick-start--building"><strong>🛠️ Build &amp; Tests</strong></a>
 </p>
 
-<br />
-
-<img src="docs/banner.svg" alt="SubLyter Technical Overview Banner" width="100%" />
-
 </div>
 
 ---
@@ -70,6 +66,12 @@ Unlike simple subtitle wrappers, SubLyter pairs **Groq's blistering LPU™ speec
     <td align="center" width="50%">
       <img src="screenshots/4.jpg" alt="AI Models, Generation Pipeline & Diagnostics" width="250" /><br />
       <sub><strong>AI Models, Speed Engine &amp; Diagnostics</strong><br/>Gemini 4 Hydrogen, GPT-OSS 120B, 16 kHz fast audio, Progressive/Batch mode, SRT/VTT import &amp; one-tap <code>Copy log</code></sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2">
+      <img src="screenshots/5.jpg" alt="Borderless Fullscreen Live Subtitles" width="540" /><br />
+      <sub><strong>Borderless Fullscreen Live Subtitles (Landscape)</strong><br/>Crisp word-by-word subtitle overlay during fullscreen playback without black bars</sub>
     </td>
   </tr>
 </table>

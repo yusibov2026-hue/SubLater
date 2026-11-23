@@ -32,10 +32,6 @@
   <a href="#-быстрый-старт-и-сборка"><strong>🛠️ Сборка и тесты</strong></a>
 </p>
 
-<br />
-
-<img src="docs/banner.svg" alt="Технический обзор SubLyter" width="100%" />
-
 </div>
 
 ---
@@ -70,6 +66,12 @@
     <td align="center" width="50%">
       <img src="screenshots/4.jpg" alt="AI-модели, параметры генерации и диагностика" width="250" /><br />
       <sub><strong>AI-модели, движок генерации и диагностика</strong><br/>Gemini 4 Hydrogen, GPT-OSS 120B, сжатие 16 кГц, режимы All at once / Progressive, импорт и <code>Copy log</code></sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2">
+      <img src="screenshots/5.jpg" alt="Безрамочный полноэкранный плеер в горизонтальном режиме" width="540" /><br />
+      <sub><strong>Безрамочный полноэкранный плеер (горизонтальный режим)</strong><br/>Чёткие пословные субтитры поверх видео без чёрных полос</sub>
     </td>
   </tr>
 </table>
