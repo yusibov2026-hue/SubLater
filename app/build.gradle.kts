@@ -1,6 +1,19 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+}
+
+val keystorePropsFile = rootProject.file("keystore.properties")
+val keystoreProps = Properties().apply {
+    if (keystorePropsFile.exists()) {
+        keystorePropsFile.inputStream().use { load(it) }
+    }
+}
+
+fun releaseSignProp(propKey: String, envKey: String): String {
+    return (keystoreProps.getProperty(propKey) ?: System.getenv(envKey) ?: "").trim()
 }
 
 android {
@@ -11,22 +24,38 @@ android {
         applicationId = "com.fromsub.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 78
-        versionName = "1.0.78"
+        versionCode = 79
+        versionName = "1.0.79"
 
         vectorDrawables {
             useSupportLibrary = true
         }
     }
 
+    signingConfigs {
+        val ksPath = releaseSignProp("storeFile", "SUBLYTER_KEYSTORE_PATH")
+        val ksPass = releaseSignProp("storePassword", "SUBLYTER_KEYSTORE_PASSWORD")
+        val ksAlias = releaseSignProp("keyAlias", "SUBLYTER_KEY_ALIAS")
+        val ksKeyPass = releaseSignProp("keyPassword", "SUBLYTER_KEY_PASSWORD")
+        if (ksPath.isNotEmpty() && rootProject.file(ksPath).exists() && ksPass.isNotEmpty() && ksAlias.isNotEmpty()) {
+            create("release") {
+                storeFile = rootProject.file(ksPath)
+                storePassword = ksPass
+                keyAlias = ksAlias
+                keyPassword = ksKeyPass.ifEmpty { ksPass }
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
         debug {
             isDebuggable = true

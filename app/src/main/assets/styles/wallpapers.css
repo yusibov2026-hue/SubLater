@@ -1,0 +1,363 @@
+/* Обои с акцентом */
+#appWallpaper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+  opacity: var(--wallpaper-opacity, 0.45);
+  transition: opacity 0.25s ease;
+  contain: strict;
+}
+
+body.player-fullscreen-open #appWallpaper,
+body.global-settings-open #appWallpaper,
+body.welcome-modal-open #appWallpaper {
+  visibility: hidden;
+  animation-play-state: paused;
+}
+
+body.player-fullscreen-open #appWallpaper .sf,
+body.player-fullscreen-open #appWallpaper .sfi,
+body.global-settings-open #appWallpaper .sf,
+body.global-settings-open #appWallpaper .sfi,
+body.welcome-modal-open #appWallpaper .sf,
+body.welcome-modal-open #appWallpaper .sfi {
+  animation-play-state: paused;
+}
+
+#appWallpaper[data-wallpaper="aurora"] {
+  background:
+    radial-gradient(ellipse 75% 55% at 15% -5%, color-mix(in srgb, var(--wall-col) 42%, transparent), transparent 72%),
+    radial-gradient(ellipse 70% 50% at 85% 95%, color-mix(in srgb, var(--wall-col) 34%, transparent), transparent 72%),
+    radial-gradient(circle 380px at 50% 50%, color-mix(in srgb, var(--wall-col) 20%, transparent), transparent 80%);
+}
+
+#appWallpaper[data-wallpaper="stardust"] {
+  background-image:
+    radial-gradient(1px 1px at 8px 12px, color-mix(in srgb, var(--wall-col) 85%, #fff), transparent),
+    radial-gradient(0.8px 0.8px at 34px 8px, #ffffff, transparent),
+    radial-gradient(1px 1px at 52px 26px, color-mix(in srgb, var(--wall-col) 70%, #fff), transparent),
+    radial-gradient(0.9px 0.9px at 14px 40px, color-mix(in srgb, var(--wall-col) 90%, #fff), transparent),
+    radial-gradient(1.1px 1.1px at 40px 52px, #ffffff, transparent),
+    radial-gradient(0.8px 0.8px at 56px 48px, color-mix(in srgb, var(--wall-col) 80%, #fff), transparent),
+    radial-gradient(1px 1px at 24px 58px, #ffffff, transparent),
+    radial-gradient(0.9px 0.9px at 46px 14px, color-mix(in srgb, var(--wall-col) 95%, #fff), transparent),
+    radial-gradient(1.5px 1.5px at 18px 22px, color-mix(in srgb, var(--wall-col) 90%, #fff), transparent),
+    radial-gradient(1.7px 1.7px at 62px 16px, #ffffff, transparent),
+    radial-gradient(1.4px 1.4px at 96px 34px, var(--wall-col), transparent),
+    radial-gradient(1.6px 1.6px at 30px 70px, color-mix(in srgb, var(--wall-col) 80%, #fff), transparent),
+    radial-gradient(1.3px 1.3px at 78px 62px, #ffffff, transparent),
+    radial-gradient(1.8px 1.8px at 104px 88px, color-mix(in srgb, var(--wall-col) 75%, #fff), transparent),
+    radial-gradient(1.5px 1.5px at 50px 100px, var(--wall-col), transparent),
+    radial-gradient(1.2px 1.2px at 12px 96px, #ffffff, transparent),
+    radial-gradient(2.4px 2.4px at 40px 30px, #ffffff, var(--wall-col) 2px, transparent 4px),
+    radial-gradient(2px 2px at 150px 70px, color-mix(in srgb, var(--wall-col) 90%, #fff), transparent 3px),
+    radial-gradient(2.2px 2.2px at 90px 150px, #ffffff, var(--wall-col) 2px, transparent 4px),
+    radial-gradient(2px 2px at 180px 160px, var(--wall-col), transparent 3px),
+    radial-gradient(1.9px 1.9px at 20px 120px, color-mix(in srgb, var(--wall-col) 85%, #fff), transparent 3px),
+    radial-gradient(2.1px 2.1px at 120px 200px, #ffffff, var(--wall-col) 2px, transparent 4px),
+    radial-gradient(ellipse 75% 55% at 30% 25%, color-mix(in srgb, var(--wall-col) 36%, transparent), transparent 75%),
+    radial-gradient(ellipse 65% 50% at 75% 75%, color-mix(in srgb, var(--wall-col) 30%, transparent), transparent 75%);
+  background-size:
+    60px 60px, 60px 60px, 60px 60px, 60px 60px, 60px 60px, 60px 60px, 60px 60px, 60px 60px,
+    110px 110px, 110px 110px, 110px 110px, 110px 110px, 110px 110px, 110px 110px, 110px 110px, 110px 110px,
+    200px 200px, 200px 200px, 200px 200px, 200px 200px, 200px 200px, 200px 200px,
+    100% 100%, 100% 100%;
+}
+
+#appWallpaper[data-wallpaper="nebula"] {
+  background-image:
+    radial-gradient(ellipse 85% 65% at 20% 20%, color-mix(in srgb, var(--wall-col) 46%, transparent), transparent 65%),
+    radial-gradient(ellipse 75% 55% at 80% 80%, color-mix(in srgb, var(--wall-col) 38%, #a855f7 25%, transparent), transparent 65%),
+    radial-gradient(circle 320px at 60% 35%, color-mix(in srgb, var(--wall-col) 32%, #ec4899 20%, transparent), transparent 75%),
+    radial-gradient(circle 260px at 35% 70%, color-mix(in srgb, var(--wall-col) 25%, transparent), transparent 70%);
+}
+
+#appWallpaper[data-wallpaper="mesh"] {
+  background:
+    radial-gradient(at 0% 0%, color-mix(in srgb, var(--wall-col) 45%, transparent) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, color-mix(in srgb, var(--wall-col) 28%, #a855f7 20%, transparent) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, color-mix(in srgb, var(--wall-col) 36%, transparent) 0px, transparent 55%),
+    radial-gradient(at 0% 100%, color-mix(in srgb, var(--wall-col) 25%, transparent) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, color-mix(in srgb, var(--wall-col) 18%, transparent) 0px, transparent 65%);
+}
+
+#appWallpaper[data-wallpaper="soundwaves"] {
+  background-image:
+    repeating-linear-gradient(90deg,
+      color-mix(in srgb, var(--wall-col) 26%, transparent) 0px,
+      color-mix(in srgb, var(--wall-col) 26%, transparent) 2px,
+      transparent 2px,
+      transparent 14px),
+    radial-gradient(ellipse 90% 55% at 50% 40%, color-mix(in srgb, var(--wall-col) 36%, transparent), transparent 85%);
+}
+
+#appWallpaper[data-wallpaper="hexagons"] {
+  background-image:
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--wall-col) 34%, transparent), transparent 75%),
+    linear-gradient(30deg, color-mix(in srgb, var(--wall-col) 18%, transparent) 12%, transparent 12.5%, transparent 87%, color-mix(in srgb, var(--wall-col) 18%, transparent) 87.5%),
+    linear-gradient(150deg, color-mix(in srgb, var(--wall-col) 18%, transparent) 12%, transparent 12.5%, transparent 87%, color-mix(in srgb, var(--wall-col) 18%, transparent) 87.5%),
+    linear-gradient(90deg, color-mix(in srgb, var(--wall-col) 18%, transparent) 12%, transparent 12.5%, transparent 87%, color-mix(in srgb, var(--wall-col) 18%, transparent) 87.5%),
+    linear-gradient(60deg, color-mix(in srgb, var(--wall-col) 14%, transparent) 25%, transparent 25.5%, transparent 75%, color-mix(in srgb, var(--wall-col) 14%, transparent) 75%),
+    linear-gradient(60deg, color-mix(in srgb, var(--wall-col) 14%, transparent) 25%, transparent 25.5%, transparent 75%, color-mix(in srgb, var(--wall-col) 14%, transparent) 75%);
+  background-size: 100% 100%, 48px 84px, 48px 84px, 48px 84px, 48px 84px, 48px 84px;
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 24px 42px;
+}
+
+#appWallpaper[data-wallpaper="bokeh"] {
+  background-image:
+    radial-gradient(circle at 18% 22%, color-mix(in srgb, var(--wall-col) 38%, transparent) 0px, transparent 120px),
+    radial-gradient(circle at 82% 16%, color-mix(in srgb, var(--wall-col) 32%, transparent) 0px, transparent 150px),
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--wall-col) 26%, transparent) 0px, transparent 180px),
+    radial-gradient(circle at 25% 78%, color-mix(in srgb, var(--wall-col) 34%, transparent) 0px, transparent 140px),
+    radial-gradient(circle at 88% 82%, color-mix(in srgb, var(--wall-col) 40%, transparent) 0px, transparent 130px),
+    radial-gradient(circle at 65% 35%, color-mix(in srgb, var(--wall-col) 22%, transparent) 0px, transparent 90px);
+}
+
+#appWallpaper[data-wallpaper="grid"] {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--wall-col) 16%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--wall-col) 16%, transparent) 1px, transparent 1px),
+    radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--wall-col) 34%, transparent), transparent 75%);
+  background-size: 32px 32px, 32px 32px, 100% 100%;
+}
+
+#appWallpaper[data-wallpaper="matrix"] {
+  background-image:
+    repeating-linear-gradient(180deg,
+      color-mix(in srgb, var(--wall-col) 35%, transparent) 0px,
+      color-mix(in srgb, var(--wall-col) 35%, transparent) 3px,
+      transparent 3px,
+      transparent 9px),
+    repeating-linear-gradient(90deg,
+      color-mix(in srgb, var(--wall-col) 22%, transparent) 0px,
+      color-mix(in srgb, var(--wall-col) 22%, transparent) 1px,
+      transparent 1px,
+      transparent 18px),
+    radial-gradient(ellipse 90% 60% at 50% 30%, color-mix(in srgb, var(--wall-col) 32%, transparent), transparent 80%);
+}
+
+#appWallpaper[data-wallpaper="dots"] {
+  background-image:
+    radial-gradient(color-mix(in srgb, var(--wall-col) 42%, transparent) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 80% 20%, color-mix(in srgb, var(--wall-col) 30%, transparent), transparent 65%),
+    radial-gradient(circle at 20% 80%, color-mix(in srgb, var(--wall-col) 22%, transparent), transparent 60%);
+  background-size: 24px 24px, 100% 100%, 100% 100%;
+}
+
+#appWallpaper[data-wallpaper="ripples"] {
+  background-image:
+    repeating-radial-gradient(circle at 50% 40%,
+      color-mix(in srgb, var(--wall-col) 28%, transparent) 0px,
+      color-mix(in srgb, var(--wall-col) 28%, transparent) 2px,
+      transparent 2px,
+      transparent 28px),
+    radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--wall-col) 36%, transparent), transparent 75%);
+}
+
+#appWallpaper[data-wallpaper="circuit"] {
+  background-image:
+    linear-gradient(135deg, color-mix(in srgb, var(--wall-col) 15%, transparent) 25%, transparent 25%),
+    linear-gradient(225deg, color-mix(in srgb, var(--wall-col) 15%, transparent) 25%, transparent 25%),
+    linear-gradient(45deg, color-mix(in srgb, var(--wall-col) 15%, transparent) 25%, transparent 25%),
+    linear-gradient(315deg, color-mix(in srgb, var(--wall-col) 15%, transparent) 25%, transparent 25%),
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--wall-col) 30%, transparent), transparent 75%);
+  background-position: 16px 0, 16px 0, 0 0, 0 0, 0 0;
+  background-size: 32px 32px, 32px 32px, 32px 32px, 32px 32px, 100% 100%;
+}
+
+#appWallpaper[data-wallpaper="prisms"] {
+  background-image:
+    linear-gradient(30deg, color-mix(in srgb, var(--wall-col) 16%, transparent) 1px, transparent 1px),
+    linear-gradient(150deg, color-mix(in srgb, var(--wall-col) 16%, transparent) 1px, transparent 1px),
+    linear-gradient(270deg, color-mix(in srgb, var(--wall-col) 12%, transparent) 1px, transparent 1px),
+    radial-gradient(circle at 40% 60%, color-mix(in srgb, var(--wall-col) 30%, transparent), transparent 75%);
+  background-size: 40px 70px, 40px 70px, 40px 70px, 100% 100%;
+}
+
+#appWallpaper[data-wallpaper="diagonal"] {
+  background-image:
+    repeating-linear-gradient(45deg,
+      color-mix(in srgb, var(--wall-col) 14%, transparent),
+      color-mix(in srgb, var(--wall-col) 14%, transparent) 10px,
+      transparent 10px,
+      transparent 22px),
+    radial-gradient(circle at 30% 70%, color-mix(in srgb, var(--wall-col) 30%, transparent), transparent 70%);
+}
+
+#appWallpaper[data-wallpaper="sunset"] {
+  background-image:
+    linear-gradient(165deg, color-mix(in srgb, var(--wall-col) 40%, #ff7a18) 0%, transparent 60%),
+    radial-gradient(ellipse 95% 70% at 85% 100%, color-mix(in srgb, var(--wall-col) 45%, #ff2e88), transparent 72%),
+    radial-gradient(ellipse 80% 55% at 8% 0%, color-mix(in srgb, var(--wall-col) 40%, #ffd166), transparent 65%);
+}
+
+#appWallpaper[data-wallpaper="ocean"] {
+  background-image:
+    repeating-radial-gradient(ellipse at 50% 120%,
+      color-mix(in srgb, var(--wall-col) 30%, transparent) 0px,
+      color-mix(in srgb, var(--wall-col) 30%, transparent) 3px,
+      transparent 3px,
+      transparent 26px),
+    radial-gradient(ellipse 100% 70% at 50% 120%, color-mix(in srgb, var(--wall-col) 48%, transparent), transparent 75%);
+}
+
+#appWallpaper[data-wallpaper="checker"] {
+  background-image:
+    conic-gradient(from 90deg at 50% 50%,
+      color-mix(in srgb, var(--wall-col) 16%, transparent) 25%,
+      transparent 0 50%,
+      color-mix(in srgb, var(--wall-col) 16%, transparent) 0 75%,
+      transparent 0),
+    radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--wall-col) 32%, transparent), transparent 75%);
+  background-size: 44px 44px, 100% 100%;
+}
+
+#appWallpaper[data-wallpaper="plasma"] {
+  background-image:
+    radial-gradient(ellipse 70% 55% at 20% 30%, color-mix(in srgb, var(--wall-col) 40%, #7c3aed), transparent 70%),
+    radial-gradient(ellipse 65% 50% at 80% 20%, color-mix(in srgb, var(--wall-col) 35%, #06b6d4), transparent 70%),
+    radial-gradient(ellipse 75% 60% at 60% 90%, color-mix(in srgb, var(--wall-col) 30%, #ec4899), transparent 70%);
+}
+
+#appWallpaper[data-wallpaper="beams"] {
+  background-image:
+    repeating-conic-gradient(from 0deg at 50% -20%,
+      color-mix(in srgb, var(--wall-col) 22%, transparent) 0deg 6deg,
+      transparent 6deg 18deg),
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--wall-col) 36%, transparent), transparent 80%);
+}
+
+#appWallpaper[data-wallpaper="graytiles"] {
+  inset: -28px;
+  width: auto;
+  height: auto;
+  filter: blur(4px);
+  background-color: color-mix(in srgb, var(--wall-col) 10%, #35393f);
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(to right, rgba(0, 0, 0, 0.22) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.22) 1px, transparent 1px);
+  background-size: 56px 56px, 56px 56px, 14px 14px, 14px 14px;
+}
+
+#appWallpaper[data-wallpaper="galaxy"] {
+  background-image:
+    conic-gradient(from 210deg at 50% 48%, transparent 0deg, color-mix(in srgb, var(--wall-col) 26%, transparent) 70deg, transparent 140deg, color-mix(in srgb, var(--wall-col) 18%, transparent) 220deg, transparent 290deg),
+    radial-gradient(ellipse 26% 14% at 50% 48%, color-mix(in srgb, var(--wall-col) 60%, #fff 18%), transparent 70%),
+    radial-gradient(ellipse 95% 75% at 50% 50%, color-mix(in srgb, var(--wall-col) 18%, transparent), transparent 80%);
+}
+
+#appWallpaper[data-wallpaper="lava"] {
+  background-image:
+    radial-gradient(circle 190px at 22% 78%, color-mix(in srgb, var(--wall-col) 55%, #ff5a1f 45%), transparent 70%),
+    radial-gradient(circle 150px at 72% 32%, color-mix(in srgb, var(--wall-col) 45%, #ff8c00 40%), transparent 70%),
+    radial-gradient(circle 230px at 58% 88%, color-mix(in srgb, var(--wall-col) 35%, transparent), transparent 72%),
+    radial-gradient(ellipse 80% 60% at 50% 50%, color-mix(in srgb, var(--wall-col) 14%, transparent), transparent 80%);
+}
+
+/* Снегопад — отдельные плавные снежинки на GPU */
+#appWallpaper .sf {
+  position: absolute;
+  top: 0;
+  left: var(--x);
+  width: var(--sz);
+  height: var(--sz);
+  pointer-events: none;
+  contain: layout style;
+  will-change: transform;
+  animation: sfFall var(--dur) linear var(--delay) infinite;
+}
+#appWallpaper .sfi {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0%, color-mix(in srgb, var(--wall-col) 76%, transparent) 62%, transparent 100%);
+  opacity: var(--op);
+  will-change: transform;
+  animation: sfSway var(--sway-dur) ease-in-out var(--sway-delay) infinite alternate;
+}
+@keyframes sfFall {
+  0%   { transform: translate3d(0, -16px, 0); }
+  100% { transform: translate3d(var(--drift), calc(100vh + 24px), 0); }
+}
+@keyframes sfSway {
+  0%   { transform: translate3d(calc(var(--sway) * -1), 0, 0); }
+  100% { transform: translate3d(var(--sway), 0, 0); }
+}
+
+#appWallpaper[data-wallpaper="rain"] {
+  background-image:
+    repeating-linear-gradient(102deg, transparent 0 10px, color-mix(in srgb, var(--wall-col) 30%, transparent) 10px 11px, transparent 11px 22px),
+    repeating-linear-gradient(102deg, transparent 0 26px, color-mix(in srgb, var(--wall-col) 16%, transparent) 26px 27px, transparent 27px 54px),
+    radial-gradient(ellipse 90% 60% at 50% 100%, color-mix(in srgb, var(--wall-col) 20%, transparent), transparent 80%);
+}
+
+#appWallpaper[data-wallpaper="silk"] {
+  background-image:
+    repeating-linear-gradient(100deg, color-mix(in srgb, var(--wall-col) 30%, transparent) 0 2px, transparent 2px 38px),
+    radial-gradient(ellipse 90% 60% at 20% 10%, color-mix(in srgb, var(--wall-col) 22%, transparent), transparent 70%);
+}
+
+#appWallpaper[data-wallpaper="triangles"] {
+  background-image:
+    linear-gradient(30deg, color-mix(in srgb, var(--wall-col) 14%, transparent) 12%, transparent 12.5% 87%, color-mix(in srgb, var(--wall-col) 14%, transparent) 87.5%),
+    linear-gradient(150deg, color-mix(in srgb, var(--wall-col) 14%, transparent) 12%, transparent 12.5% 87%, color-mix(in srgb, var(--wall-col) 14%, transparent) 87.5%);
+  background-size: 56px 96px;
+}
+
+#appWallpaper[data-wallpaper="skyline"] {
+  background-image:
+    repeating-linear-gradient(90deg,
+      color-mix(in srgb, var(--wall-col) 38%, transparent) 0 16px,
+      transparent 16px 30px,
+      color-mix(in srgb, var(--wall-col) 26%, transparent) 30px 52px,
+      transparent 52px 70px),
+    linear-gradient(to top, color-mix(in srgb, var(--wall-col) 24%, transparent), transparent 70%);
+  background-size: 70px 72%, 100% 100%;
+  background-position: 0 100%, 0 0;
+  background-repeat: repeat-x, no-repeat;
+}
+
+#appWallpaper[data-wallpaper="confetti"] {
+  background-image:
+    radial-gradient(2px 2px at 8px 10px, var(--wall-col), transparent),
+    radial-gradient(2px 2px at 34px 46px, color-mix(in srgb, var(--wall-col) 55%, #ffd166), transparent),
+    radial-gradient(2px 2px at 60px 20px, color-mix(in srgb, var(--wall-col) 60%, #06d6a0), transparent),
+    radial-gradient(2px 2px at 84px 58px, color-mix(in srgb, var(--wall-col) 50%, #ef476f), transparent);
+  background-size: 100px 70px;
+}
+
+#appWallpaper[data-wallpaper="vortex"] {
+  background-image:
+    repeating-conic-gradient(from 0deg at 50% 50%,
+      color-mix(in srgb, var(--wall-col) 24%, transparent) 0deg 10deg,
+      transparent 10deg 24deg),
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--wall-col) 40%, transparent), transparent 62%);
+}
+
+#appWallpaper[data-wallpaper="fireflies"] {
+  background-image:
+    radial-gradient(circle 9px at 30px 40px, color-mix(in srgb, var(--wall-col) 32%, transparent), transparent 70%),
+    radial-gradient(2.2px 2.2px at 30px 40px, #ffffff, transparent),
+    radial-gradient(circle 9px at 120px 90px, color-mix(in srgb, var(--wall-col) 32%, transparent), transparent 70%),
+    radial-gradient(2.2px 2.2px at 120px 90px, var(--wall-col), transparent),
+    radial-gradient(circle 9px at 170px 30px, color-mix(in srgb, var(--wall-col) 32%, transparent), transparent 70%),
+    radial-gradient(2.2px 2.2px at 170px 30px, color-mix(in srgb, var(--wall-col) 80%, #fff), transparent),
+    radial-gradient(ellipse 70% 50% at 50% 60%, color-mix(in srgb, var(--wall-col) 12%, transparent), transparent 80%);
+  background-size: 200px 200px, 200px 200px, 200px 200px, 200px 200px, 200px 200px, 200px 200px, 100% 100%;
+}
+
+#appWallpaper[data-wallpaper="none"] {
+  display: none;
+}
+
+body[data-m3-mode="light"] #appWallpaper .sfi {
+  background: radial-gradient(circle, color-mix(in srgb, var(--wall-col) 88%, #1e293b) 0%, color-mix(in srgb, var(--wall-col) 48%, transparent) 62%, transparent 100%);
+}

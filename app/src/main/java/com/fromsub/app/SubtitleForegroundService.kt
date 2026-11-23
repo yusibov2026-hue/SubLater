@@ -34,16 +34,16 @@ class SubtitleForegroundService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        if (action == ACTION_STOP) {
+        if (action == ACTION_STOP || intent == null) {
             stopForegroundCompat()
             stopSelf()
             return START_NOT_STICKY
         }
 
-        val statusText = intent?.getStringExtra(EXTRA_STATUS_TEXT)
+        val statusText = intent.getStringExtra(EXTRA_STATUS_TEXT)
             ?.takeIf { it.isNotBlank() }
             ?: "Generating subtitles..."
-        val progress = intent?.getIntExtra(EXTRA_PROGRESS, -1) ?: -1
+        val progress = intent.getIntExtra(EXTRA_PROGRESS, -1)
 
         val notification = buildNotification(statusText, progress)
         try {
@@ -59,7 +59,7 @@ class SubtitleForegroundService : Service() {
         } catch (_: Exception) {
         }
 
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
@@ -75,7 +75,7 @@ class SubtitleForegroundService : Service() {
                 val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
                 wakeLock = pm?.newWakeLock(
                     PowerManager.PARTIAL_WAKE_LOCK,
-                    "SubLater::SubtitleGenWakeLock"
+                    "SubLyter::SubtitleGenWakeLock"
                 )?.apply {
                     setReferenceCounted(false)
                     acquire(60 * 60 * 1000L) // до 60 минут фоновой генерации
@@ -111,7 +111,7 @@ class SubtitleForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "SubLater Subtitle Generation",
+                "SubLyter Subtitle Generation",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Background audio processing and subtitle generation"
@@ -139,7 +139,7 @@ class SubtitleForegroundService : Service() {
         val cancelPendingIntent = PendingIntent.getService(this, 1, cancelIntent, pendingFlags)
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("SubLater")
+            .setContentTitle("SubLyter")
             .setContentText(contentText)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pendingIntent)

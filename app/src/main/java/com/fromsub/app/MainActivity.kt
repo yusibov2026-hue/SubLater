@@ -1,17 +1,15 @@
 package com.fromsub.app
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
-import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Bundle
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -31,29 +29,28 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
+import androidx.webkit.WebViewAssetLoader
 
 @OptIn(UnstableApi::class)
 class MainActivity : ComponentActivity() {
-
 
     private lateinit var exoPlayerManager: ExoPlayerManager
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
@@ -117,7 +114,6 @@ class MainActivity : ComponentActivity() {
         runOnUiThread {
             currentSurfaceColor = color
             if (!immersiveFullscreen) {
-                // Прозрачный статус-бар: под ним видно обои приложения
                 window.statusBarColor = Color.TRANSPARENT
                 window.navigationBarColor = Color.TRANSPARENT
                 applyBarIconAppearance(color)
@@ -137,11 +133,11 @@ class MainActivity : ComponentActivity() {
         return (rawPx / density + 0.5f).toInt()
     }
 
+    @Suppress("DEPRECATION")
     private fun applyBarIconAppearance(color: Int) {
         val luma = (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)) / 255.0
         val isLightBg = luma > 0.6
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // На светлом фоне нужны тёмные иконки системных панелей
             val appearance = if (isLightBg) {
                 WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
                     WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
@@ -154,7 +150,6 @@ class MainActivity : ComponentActivity() {
                     WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
             )
         } else {
-            @Suppress("DEPRECATION")
             var flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
                 View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
                 View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
@@ -166,7 +161,6 @@ class MainActivity : ComponentActivity() {
                     flags = flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
                 }
             }
-            @Suppress("DEPRECATION")
             window.decorView.systemUiVisibility = flags
         }
     }
@@ -175,7 +169,6 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
         val attrs = window.attributes
         attrs.layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && fullscreen) {
-            // В полноэкранном плеере контент заходит под «чёлку», чтобы чёрные поля были симметричны
             WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
         } else {
             WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -210,7 +203,6 @@ class MainActivity : ComponentActivity() {
             window.navigationBarColor = Color.TRANSPARENT
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                // Тянем контент под прозрачные панели, отступы компенсируются в CSS
                 window.setDecorFitsSystemWindows(false)
                 window.insetsController?.show(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
                 applyBarIconAppearance(currentSurfaceColor)
@@ -247,9 +239,6 @@ class MainActivity : ComponentActivity() {
         }
 
         exoPlayerManager = ExoPlayerManager(applicationContext, this)
-
-        // Приложение открыли по видео из другого приложения ещё до готовности WebView:
-        // запоминаем и отдаём в JS после загрузки страницы.
         handleExternalIntent(intent)
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -305,13 +294,11 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         exoPlayerManager.pause()
-        // Не даём WebView замораживать JS-таймеры и сетевые запросы при сворачивании приложения
         webViewRef?.resumeTimers()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        // Системные панели могут вернуться после диалога/сворачивания: прячем снова, пока играет полноэкранный плеер
         if (hasFocus && immersiveFullscreen) applyImmersiveNow()
     }
 
@@ -321,7 +308,6 @@ class MainActivity : ComponentActivity() {
         handleExternalIntent(intent)
     }
 
-    /** ACTION_VIEW / ACTION_SEND из другого приложения (торрент-клиент, галерея, «Поделиться»). */
     private fun handleExternalIntent(intent: Intent?) {
         if (intent == null) return
         if (intent.action != Intent.ACTION_VIEW && intent.action != Intent.ACTION_SEND) return
@@ -338,7 +324,6 @@ class MainActivity : ComponentActivity() {
         if (scheme != "content" && scheme != "file" && scheme != "http" && scheme != "https") return
         val isStream = scheme == "http" || scheme == "https"
         if (isStream) {
-            // Nuvio/Stremio отдают не файл, а адрес потока: играем напрямую, без прав на чтение
             handleStreamIntent(uri, intent)
             return
         }
@@ -364,24 +349,8 @@ class MainActivity : ComponentActivity() {
         }
         if (displayName.isBlank()) displayName = uri.lastPathSegment?.substringAfterLast('/') ?: "video"
         if (mime.isBlank()) mime = contentResolver.getType(uri) ?: "video/*"
-        // Торрент-клиенты часто отдают binary/octet-stream — угадываем по расширению
         if (!mime.startsWith("video/") && !mime.startsWith("audio/")) {
-            val ext = displayName.substringAfterLast('.', "").lowercase()
-            mime = when (ext) {
-                "mp4", "m4v" -> "video/mp4"
-                "mkv" -> "video/x-matroska"
-                "webm" -> "video/webm"
-                "avi" -> "video/x-msvideo"
-                "mov" -> "video/quicktime"
-                "ts", "m2ts" -> "video/mp2t"
-                "mp3" -> "audio/mpeg"
-                "m4a" -> "audio/mp4"
-                "flac" -> "audio/flac"
-                "wav" -> "audio/wav"
-                "ogg", "opus" -> "audio/ogg"
-                "aac" -> "audio/aac"
-                else -> mime.ifBlank { "video/*" }
-            }
+            mime = guessMediaMimeByExt(displayName, mime.ifBlank { "video/*" })
         }
 
         exoPlayerManager.storeMediaUri(uri)
@@ -396,32 +365,14 @@ class MainActivity : ComponentActivity() {
         flushPendingExternalMedia()
     }
 
-    /** ACTION_VIEW с http(s) из Nuvio/Stremio: играем поток, субтитры из файлов не трогаем. */
     private fun handleStreamIntent(uri: Uri, intent: Intent) {
-        // Имя = последний сегмент пути без параметров запроса и без учётных данных из URL
         var displayName = uri.lastPathSegment?.substringBefore('?')?.substringAfterLast('/') ?: ""
         displayName = Uri.decode(displayName).orEmpty().trim()
         if (displayName.isBlank()) displayName = "Stream"
 
         var mime = intent.type ?: ""
         if (mime.isBlank() || mime == "application/octet-stream" || mime == "*/*") {
-            val ext = uri.lastPathSegment?.substringAfterLast('.', "")?.lowercase() ?: ""
-            mime = when (ext) {
-                "mp4", "m4v" -> "video/mp4"
-                "mkv" -> "video/x-matroska"
-                "webm" -> "video/webm"
-                "avi" -> "video/x-msvideo"
-                "mov" -> "video/quicktime"
-                "ts", "m2ts" -> "video/mp2t"
-                "m3u8" -> "application/x-mpegURL"
-                "mpd" -> "application/dash+xml"
-                "mp3" -> "audio/mpeg"
-                "m4a" -> "audio/mp4"
-                "flac" -> "audio/flac"
-                "ogg", "opus" -> "audio/ogg"
-                "aac" -> "audio/aac"
-                else -> mime.ifBlank { "video/*" }
-            }
+            mime = guessMediaMimeByExt(uri.lastPathSegment ?: "", mime.ifBlank { "video/*" })
         }
 
         exoPlayerManager.storeMediaUri(uri, mime)
@@ -437,7 +388,26 @@ class MainActivity : ComponentActivity() {
         flushPendingExternalMedia()
     }
 
-    /** Отдаёт отложенное «видео из другого приложения» в уже загруженную страницу. */
+    private fun guessMediaMimeByExt(name: String, fallback: String): String {
+        return when (name.substringAfterLast('.', "").lowercase()) {
+            "mp4", "m4v" -> "video/mp4"
+            "mkv" -> "video/x-matroska"
+            "webm" -> "video/webm"
+            "avi" -> "video/x-msvideo"
+            "mov" -> "video/quicktime"
+            "ts", "m2ts" -> "video/mp2t"
+            "m3u8" -> "application/x-mpegURL"
+            "mpd" -> "application/dash+xml"
+            "mp3" -> "audio/mpeg"
+            "m4a" -> "audio/mp4"
+            "flac" -> "audio/flac"
+            "wav" -> "audio/wav"
+            "ogg", "opus" -> "audio/ogg"
+            "aac" -> "audio/aac"
+            else -> fallback
+        }
+    }
+
     private fun flushPendingExternalMedia() {
         if (pendingExternalJson.isBlank()) return
         val wv = webViewRef ?: return
@@ -458,9 +428,16 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-        webViewRef?.destroy()
+        exoPlayerManager.attachWebView(null)
+        webViewRef?.apply {
+            stopLoading()
+            removeJavascriptInterface("ExoPlayerManager")
+            removeJavascriptInterface("AndroidBridge")
+            destroy()
+        }
+        webViewRef = null
         exoPlayerManager.release()
+        super.onDestroy()
     }
 }
 
@@ -505,7 +482,6 @@ fun HybridVideoApp(
                 .clip(RoundedCornerShape(16.dp))
         }
 
-        // Layer 1 (Background): Native AndroidX Media3 ExoPlayer (pure black background, zero gray bars)
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -527,9 +503,13 @@ fun HybridVideoApp(
             modifier = playerModifier
         )
 
-        // Layer 2 (Foreground): WebView with SubLater UI & Subtitle Overlay
         AndroidView(
             factory = { ctx ->
+                val assetLoader = WebViewAssetLoader.Builder()
+                    .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(ctx))
+                    .build()
+                val nativeBridge = NativeBridge(exoPlayerManager)
+
                 WebView(ctx).apply {
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -541,20 +521,15 @@ fun HybridVideoApp(
                         javaScriptEnabled = true
                         domStorageEnabled = true
                         databaseEnabled = true
-                        allowFileAccess = true
+                        allowFileAccess = false
                         allowContentAccess = true
-                        @Suppress("DEPRECATION")
-                        allowFileAccessFromFileURLs = true
-                        @Suppress("DEPRECATION")
-                        allowUniversalAccessFromFileURLs = true
                         mediaPlaybackRequiresUserGesture = false
-                        mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                        mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
                         cacheMode = WebSettings.LOAD_DEFAULT
                     }
 
-                    addJavascriptInterface(exoPlayerManager, "ExoPlayerManager")
-                    addJavascriptInterface(exoPlayerManager, "AndroidBridge")
-                    addJavascriptInterface(exoPlayerManager, "Android")
+                    addJavascriptInterface(nativeBridge, "ExoPlayerManager")
+                    addJavascriptInterface(nativeBridge, "AndroidBridge")
 
                     webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(
@@ -563,7 +538,12 @@ fun HybridVideoApp(
                         ): Boolean {
                             val uri = request?.url ?: return true
                             val urlStr = uri.toString()
-                            if (urlStr.startsWith("file:///android_asset/")) return false
+                            if (
+                                urlStr.startsWith("https://appassets.androidplatform.net/") ||
+                                urlStr.startsWith("file:///android_asset/")
+                            ) {
+                                return false
+                            }
                             if (urlStr.startsWith("https://") || urlStr.startsWith("http://")) {
                                 try {
                                     context.startActivity(Intent(Intent.ACTION_VIEW, uri).apply {
@@ -579,17 +559,19 @@ fun HybridVideoApp(
                             view: WebView?,
                             request: WebResourceRequest?
                         ): WebResourceResponse? {
-                            val url = request?.url?.toString() ?: return null
+                            val uri = request?.url ?: return null
+                            val url = uri.toString()
                             if (exoPlayerManager.isChunkStreamUrl(url)) {
                                 return exoPlayerManager.buildChunkStreamResponse(url)
                             }
-                            return null
+                            return assetLoader.shouldInterceptRequest(uri)
                         }
 
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
-                            val activity = view?.context as? MainActivity
-                            if (view != null && activity != null) {
+                            if (view == null) return
+                            val activity = view.context as? MainActivity
+                            if (activity != null) {
                                 val sbInset = activity.statusBarInsetPx()
                                 val navInset = activity.navigationBarInsetPx()
                                 view.evaluateJavascript(
@@ -598,8 +580,8 @@ fun HybridVideoApp(
                                     null
                                 )
                             }
-                            val pending = (view?.context as? MainActivity)?.consumePendingExternalMedia()
-                            if (!pending.isNullOrBlank() && view != null) {
+                            val pending = activity?.consumePendingExternalMedia()
+                            if (!pending.isNullOrBlank()) {
                                 view.evaluateJavascript(
                                     "window.__onExternalMedia && window.__onExternalMedia(${org.json.JSONObject.quote(pending)});",
                                     null
@@ -618,12 +600,20 @@ fun HybridVideoApp(
                         }
 
                         override fun onPermissionRequest(request: PermissionRequest?) {
-                            request?.grant(request.resources)
+                            if (request == null) return
+                            val allowed = request.resources.filter {
+                                it == PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID
+                            }.toTypedArray()
+                            if (allowed.isNotEmpty()) {
+                                request.grant(allowed)
+                            } else {
+                                request.deny()
+                            }
                         }
                     }
 
                     exoPlayerManager.attachWebView(this)
-                    loadUrl("file:///android_asset/index.html")
+                    loadUrl("https://appassets.androidplatform.net/assets/index.html")
                     onWebViewCreated(this)
                 }
             },

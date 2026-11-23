@@ -5,9 +5,11 @@ Thumbs.db
 *.tmp
 .agent/
 .papelera/
+.tmpcheck/
 build/
 .gradle/
 local.properties
+keystore.properties
 *.apk
 *.aab
 *.keystore
@@ -15,3 +17,4 @@ local.properties
 .idea/
 *.iml
 captures/
+adjuntos/

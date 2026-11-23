@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Сетевые видеопотоки из Nuvio/Stremio/LAN могут идти по HTTP -->
+    <base-config cleartextTrafficPermitted="true" />
+    <!-- Все вызовы API с ключами — строго по HTTPS -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api.groq.com</domain>
+        <domain includeSubdomains="true">generativelanguage.googleapis.com</domain>
+    </domain-config>
+</network-security-config>

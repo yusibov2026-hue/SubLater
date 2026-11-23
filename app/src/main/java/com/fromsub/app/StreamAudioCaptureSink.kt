@@ -1,7 +1,6 @@
 package com.fromsub.app
 
 import android.content.Context
-import android.media.AudioDeviceInfo
 import android.os.Handler
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.AuxEffectInfo
@@ -37,13 +36,15 @@ class StreamAudioCaptureSink(
     private val onChunk: (JSONObject, Boolean) -> Unit,
     private val onDone: (Int) -> Unit,
     private val onError: (String) -> Unit,
+    private val sessionId: Long = 0L,
     private val baseStartSec: Double = 0.0,
     private val targetSampleRate: Int = 16000,
     private val chunkDurationSec: Int = 60,
     private val overlapSec: Int = 1
 ) : AudioSink {
 
-    private val chunkDir = File(context.cacheDir, "sublater_chunks")
+    private val chunkDir = ChunkCachePaths.chunkDir(context)
+    private val ioLock = Any()
 
     private var listener: AudioSink.Listener? = null
     private var audioAttributes: AudioAttributes = AudioAttributes.DEFAULT
@@ -78,9 +79,43 @@ class StreamAudioCaptureSink(
     private var emittedChunks = 0
     private val ioChunkBuf = ByteArray(65536)
     private var ioChunkBufUsed = 0
+    private val pendingChunks = ArrayDeque<Pair<JSONObject, Boolean>>()
+    private var pendingDoneCount: Int? = null
+    private var pendingError: String? = null
 
     fun abort() {
-        aborted = true
+        synchronized(ioLock) {
+            aborted = true
+            pendingChunks.clear()
+            pendingDoneCount = null
+            pendingError = null
+            try { currentOut?.close() } catch (_: Exception) {}
+            currentOut = null
+            try { currentFile?.delete() } catch (_: Exception) {}
+            currentFile = null
+        }
+    }
+
+    private fun drainPendingCallbacks() {
+        val chunksToEmit: List<Pair<JSONObject, Boolean>>
+        val doneCount: Int?
+        val errorMsg: String?
+        synchronized(ioLock) {
+            if (pendingChunks.isEmpty() && pendingDoneCount == null && pendingError == null) return
+            chunksToEmit = if (pendingChunks.isEmpty()) emptyList() else pendingChunks.toList().also { pendingChunks.clear() }
+            doneCount = pendingDoneCount
+            pendingDoneCount = null
+            errorMsg = pendingError
+            pendingError = null
+        }
+        for ((chunkObj, isLast) in chunksToEmit) {
+            onChunk(chunkObj, isLast)
+        }
+        if (errorMsg != null) {
+            onError(errorMsg)
+        } else if (doneCount != null) {
+            onDone(doneCount)
+        }
     }
 
     override fun setListener(listener: AudioSink.Listener) {
@@ -106,25 +141,30 @@ class StreamAudioCaptureSink(
     }
 
     override fun configure(format: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {
-        if (aborted) return
-        sourceSampleRate = if (format.sampleRate > 0) format.sampleRate else 44100
-        channelCount = if (format.channelCount > 0) format.channelCount else 2
-        pcmEncoding = if (format.pcmEncoding != Format.NO_VALUE) format.pcmEncoding else C.ENCODING_PCM_16BIT
-        resamplePos = 0.0
-        leftoverSamples = FloatArray(0)
-        configured = true
-        ended = false
-        finished = false
-        if (currentFile == null) {
-            if (!chunkDir.exists()) chunkDir.mkdirs()
-            chunkDir.listFiles()?.forEach { it.delete() }
-            chunkIndex = 0
-            emittedChunks = 0
-            totalWrittenMonoSamples = 0L
-            currentChunkStartSample = 0L
-            overlapFilled = 0
-            overlapWritePos = 0
-            startNewChunk()
+        synchronized(ioLock) {
+            if (aborted) return
+            sourceSampleRate = if (format.sampleRate > 0) format.sampleRate else 44100
+            channelCount = if (format.channelCount > 0) format.channelCount else 2
+            pcmEncoding = if (format.pcmEncoding != Format.NO_VALUE) format.pcmEncoding else C.ENCODING_PCM_16BIT
+            resamplePos = 0.0
+            leftoverSamples = FloatArray(0)
+            configured = true
+            ended = false
+            finished = false
+            if (currentFile == null) {
+                if (!chunkDir.exists()) chunkDir.mkdirs()
+                chunkDir.listFiles()?.forEach {
+                    if (!it.name.startsWith("chunk_s${sessionId}_")) it.delete()
+                }
+                chunkIndex = 0
+                emittedChunks = 0
+                totalWrittenMonoSamples = 0L
+                currentChunkStartSample = 0L
+                overlapFilled = 0
+                overlapWritePos = 0
+                ioChunkBufUsed = 0
+                startNewChunk()
+            }
         }
     }
 
@@ -136,34 +176,45 @@ class StreamAudioCaptureSink(
     }
 
     override fun handleBuffer(buffer: ByteBuffer, presentationTimeUs: Long, flags: Int): Boolean {
-        if (aborted) return true
-        if (presentationTimeUs != 0L && presentationTimeUs != lastPresentationTimeUs) {
-            lastPresentationTimeUs = presentationTimeUs
-        }
-        if (!configured || buffer.remaining() <= 0) {
-            if ((flags and C.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                finish(true)
-            }
-            return true
-        }
         try {
-            processPcm(buffer)
-        } catch (e: Exception) {
-            if (!aborted) {
-                aborted = true
-                try { currentOut?.close() } catch (_: Exception) {}
-                currentOut = null
-                onError(e.message ?: "Audio stream processing error")
+            synchronized(ioLock) {
+                if (aborted) return true
+                if (presentationTimeUs != 0L && presentationTimeUs != lastPresentationTimeUs) {
+                    lastPresentationTimeUs = presentationTimeUs
+                }
+                if (!configured || buffer.remaining() <= 0) {
+                    if ((flags and C.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                        finishLocked(true)
+                    }
+                    return true
+                }
+                try {
+                    processPcmLocked(buffer)
+                } catch (e: Exception) {
+                    if (!aborted) {
+                        aborted = true
+                        try { currentOut?.close() } catch (_: Exception) {}
+                        currentOut = null
+                        try { currentFile?.delete() } catch (_: Exception) {}
+                        currentFile = null
+                        pendingError = e.message ?: "Audio stream processing error"
+                    }
+                }
+                if ((flags and C.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                    finishLocked(true)
+                }
+                return true
             }
+        } finally {
+            drainPendingCallbacks()
         }
-        if ((flags and C.BUFFER_FLAG_END_OF_STREAM) != 0) {
-            finish(true)
-        }
-        return true
     }
 
     override fun playToEndOfStream() {
-        finish(true)
+        synchronized(ioLock) {
+            finishLocked(true)
+        }
+        drainPendingCallbacks()
     }
 
     override fun isEnded(): Boolean = ended || finished
@@ -201,27 +252,33 @@ class StreamAudioCaptureSink(
     override fun pause() {}
 
     override fun flush() {
-        resamplePos = 0.0
-        leftoverSamples = FloatArray(0)
+        synchronized(ioLock) {
+            resamplePos = 0.0
+            leftoverSamples = FloatArray(0)
+        }
     }
 
     override fun reset() {
-        try { currentOut?.flush() } catch (_: Exception) {}
+        synchronized(ioLock) {
+            try { currentOut?.flush() } catch (_: Exception) {}
+        }
     }
 
     override fun release() {
-        if (aborted) {
-            try { currentOut?.close() } catch (_: Exception) {}
-            currentOut = null
-            try { currentFile?.delete() } catch (_: Exception) {}
-            currentFile = null
-        } else {
-            finish(false)
+        synchronized(ioLock) {
+            if (aborted) {
+                try { currentOut?.close() } catch (_: Exception) {}
+                currentOut = null
+                try { currentFile?.delete() } catch (_: Exception) {}
+                currentFile = null
+            } else {
+                finishLocked(false)
+            }
+            listener = null
         }
-        listener = null
     }
 
-    private fun processPcm(buffer: ByteBuffer) {
+    private fun processPcmLocked(buffer: ByteBuffer) {
         val src = buffer.duplicate().order(ByteOrder.LITTLE_ENDIAN)
         val base = src.position()
         val bytesPerSample = when (pcmEncoding) {
@@ -241,7 +298,7 @@ class StreamAudioCaptureSink(
             val frameStart = base + frame * frameSize
             var sum = 0f
             for (ch in 0 until channelCount) {
-                val weight = channelWeight(ch, channelCount)
+                val weight = WavChunkWriter.channelWeight(ch, channelCount)
                 if (weight == 0f) continue
                 val idx = frameStart + ch * bytesPerSample
                 sum += readSample(src, idx, bytesPerSample) * weight
@@ -276,7 +333,7 @@ class StreamAudioCaptureSink(
         resamplePos = pos - keepFrom
 
         for (i in 0 until outCount) {
-            pushMonoSample(out[i])
+            pushMonoSampleLocked(out[i])
             if (aborted) return
         }
     }
@@ -302,52 +359,29 @@ class StreamAudioCaptureSink(
         }
     }
 
-    private fun channelWeight(channel: Int, channels: Int): Float {
-        return when {
-            channels <= 1 -> 1f
-            channels == 2 -> 0.5f
-            channels == 3 -> when (channel) { 0, 1 -> 0.4f; else -> 0.6f }
-            channels == 4 -> when (channel) { 0, 1 -> 0.4f; else -> 0.3f }
-            channels == 6 -> when (channel) {
-                0, 1 -> 0.3f
-                2 -> 0.6f
-                3 -> 0.2f
-                else -> 0.2f
-            }
-            else -> when (channel) {
-                0, 1 -> 0.25f
-                2 -> 0.45f
-                3 -> 0.15f
-                else -> 0.15f
-            }
-        }
-    }
-
     private fun startNewChunk() {
-        val file = File(chunkDir, "chunk_${chunkIndex}.wav")
+        val file = File(chunkDir, "chunk_s${sessionId}_${chunkIndex}.wav")
         currentFile = file
         currentOut = BufferedOutputStream(FileOutputStream(file), 131072)
         currentOut?.write(ByteArray(44))
         currentChunkPcmBytes = 0
     }
 
-    private fun flushIoBuf() {
+    private fun flushIoBufLocked() {
         if (ioChunkBufUsed > 0 && !aborted) {
-            try {
-                currentOut?.write(ioChunkBuf, 0, ioChunkBufUsed)
-                currentChunkPcmBytes += ioChunkBufUsed
-            } catch (_: Exception) {}
+            currentOut?.write(ioChunkBuf, 0, ioChunkBufUsed)
+            currentChunkPcmBytes += ioChunkBufUsed
             ioChunkBufUsed = 0
         }
     }
 
-    private fun pushMonoSample(sample: Short) {
+    private fun pushMonoSampleLocked(sample: Short) {
         if (aborted) return
         val lo = (sample.toInt() and 0xFF).toByte()
         val hi = ((sample.toInt() ushr 8) and 0xFF).toByte()
         ioChunkBuf[ioChunkBufUsed++] = lo
         ioChunkBuf[ioChunkBufUsed++] = hi
-        if (ioChunkBufUsed >= ioChunkBuf.size - 2) flushIoBuf()
+        if (ioChunkBufUsed >= ioChunkBuf.size - 2) flushIoBufLocked()
 
         overlapRing[overlapWritePos] = lo
         overlapRing[(overlapWritePos + 1) % overlapBytesCount] = hi
@@ -356,12 +390,12 @@ class StreamAudioCaptureSink(
         totalWrittenMonoSamples++
 
         if (currentChunkPcmBytes + ioChunkBufUsed >= maxChunkBytes) {
-            rotateNextChunk()
+            rotateNextChunkLocked()
         }
     }
 
-    private fun rotateNextChunk() {
-        finishChunk(false)
+    private fun rotateNextChunkLocked() {
+        finishChunkLocked(false)
         if (aborted) return
         chunkIndex++
         startNewChunk()
@@ -379,8 +413,10 @@ class StreamAudioCaptureSink(
         }
     }
 
-    private fun finishChunk(isLast: Boolean) {
-        flushIoBuf()
+    private fun finishChunkLocked(isLast: Boolean) {
+        try {
+            flushIoBufLocked()
+        } catch (_: Exception) {}
         val file = currentFile ?: return
         try { currentOut?.flush() } catch (_: Exception) {}
         try { currentOut?.close() } catch (_: Exception) {}
@@ -391,8 +427,15 @@ class StreamAudioCaptureSink(
             return
         }
         try {
-            RandomAccessFile(file, "rw").use { raf -> writeWavHeader(raf, currentChunkPcmBytes) }
-        } catch (_: Exception) {}
+            RandomAccessFile(file, "rw").use { raf ->
+                WavChunkWriter.writeWavHeader(raf, currentChunkPcmBytes, targetSampleRate, 1)
+            }
+        } catch (e: Exception) {
+            try { file.delete() } catch (_: Exception) {}
+            aborted = true
+            pendingError = e.message ?: "Failed to finalize WAV chunk header"
+            return
+        }
         val startSec = baseStartSec + currentChunkStartSample.toDouble() / targetSampleRate.toDouble()
         val durationSec = (currentChunkPcmBytes / 2).toDouble() / targetSampleRate.toDouble()
         val endSec = startSec + durationSec
@@ -414,39 +457,20 @@ class StreamAudioCaptureSink(
             put("isLast", isLast)
         }
         emittedChunks++
-        onChunk(chunkObj, isLast)
+        pendingChunks.addLast(chunkObj to isLast)
     }
 
-    private fun finish(isLast: Boolean) {
+    private fun finishLocked(isLast: Boolean) {
         if (finished || aborted) return
         finished = true
         ended = true
-        finishChunk(isLast)
+        finishChunkLocked(isLast)
         if (aborted) return
-        if (emittedChunks > 0) onDone(emittedChunks) else onError("Failed to decode audio data")
-    }
-
-    private fun writeWavHeader(raf: RandomAccessFile, pcmDataBytes: Int) {
-        val sampleRate = targetSampleRate
-        val channels = 1
-        val byteRate = sampleRate * channels * 2
-        val totalDataLen = pcmDataBytes + 36
-        val header = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN)
-        header.put("RIFF".toByteArray(Charsets.US_ASCII))
-        header.putInt(totalDataLen)
-        header.put("WAVE".toByteArray(Charsets.US_ASCII))
-        header.put("fmt ".toByteArray(Charsets.US_ASCII))
-        header.putInt(16)
-        header.putShort(1.toShort())
-        header.putShort(channels.toShort())
-        header.putInt(sampleRate)
-        header.putInt(byteRate)
-        header.putShort((channels * 2).toShort())
-        header.putShort(16.toShort())
-        header.put("data".toByteArray(Charsets.US_ASCII))
-        header.putInt(pcmDataBytes)
-        raf.seek(0L)
-        raf.write(header.array())
+        if (emittedChunks > 0) {
+            pendingDoneCount = emittedChunks
+        } else {
+            pendingError = "Failed to decode audio data"
+        }
     }
 }
 
