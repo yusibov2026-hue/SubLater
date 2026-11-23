@@ -9,13 +9,14 @@
 <h1>SubLyter</h1>
 
 <p>
-  <strong>Ultra-fast AI subtitle studio, 53-language streaming translator, and multimodal Gemini video Q&amp;A player for Android — crafted with a deep, borderless Material You (Material 3) interface.</strong>
+  <strong>Ultra-fast AI subtitle studio powered by <a href="https://groq.com">Groq LPU™</a> (one of the world's fastest AI inference engines), 53-language streaming translator, and multimodal Gemini video Q&amp;A player for Android — crafted with a deep, borderless Material You (Material 3) interface.</strong>
 </p>
 
 <p>
   <a href="https://github.com/yusibov2026-hue/SubLater/releases/latest">
     <img src="https://img.shields.io/badge/Release-v1.0.79-1b8ef2?style=for-the-badge&logo=android&logoColor=white" alt="Latest Release v1.0.79" />
   </a>
+  <img src="https://img.shields.io/badge/Groq%20LPU%E2%84%A2-Near--World%20Fastest%20AI-f55036?style=for-the-badge&logo=lightning&logoColor=white" alt="Powered by Groq LPU" />
   <img src="https://img.shields.io/badge/Android-7.0%2B%20(API%2024--34)-2ea043?style=for-the-badge&logo=android&logoColor=white" alt="Android 7.0+" />
   <img src="https://img.shields.io/badge/Kotlin%20%2B%20Compose-Media3%20ExoPlayer-7f52ff?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin Jetpack Compose Media3" />
   <img src="https://img.shields.io/badge/Design-Material%20You%20(M3)-60a5fa?style=for-the-badge&logo=materialdesign&logoColor=white" alt="Material You M3" />
@@ -41,9 +42,9 @@
 
 ## ✨ What Is SubLyter?
 
-**SubLyter** (`com.fromsub.app`) turns any local video or network media stream (`MP4`, `MKV`, `HLS .m3u8`, `DASH .mpd`, Stremio/Nuvio intents) into word-synchronized, translated subtitles in seconds — then lets you watch in an adaptive borderless player and ask questions about the video using multimodal Gemini AI.
+**SubLyter** (`com.fromsub.app`) turns any local video or network media stream (`MP4`, `MKV`, `HLS .m3u8`, `DASH .mpd`, Stremio/Nuvio intents) into word-synchronized, translated subtitles in seconds — powered by **Groq LPU™**, one of the world's fastest AI inference engines — then lets you watch in an adaptive borderless player and ask questions about the video using multimodal Gemini AI.
 
-Unlike simple subtitle wrappers, SubLyter pairs a **native multi-threaded Android Media3 extraction engine** with a **full-featured Material You (Material 3) experience** — complete with dynamic Dark/Light/Auto native system integration, 12 accent color palettes, 30 GPU-accelerated live wallpapers, and 24 offline fonts.
+Unlike simple subtitle wrappers, SubLyter pairs **Groq's blistering LPU™ speech & LLM throughput** and a **native 4-thread Android Media3 extraction engine** with a **full-featured Material You (Material 3) experience** — complete with dynamic Dark/Light/Auto native system integration, 12 accent color palettes, 30 GPU-accelerated live wallpapers, and 24 offline fonts.
 
 ---
 
@@ -52,33 +53,23 @@ Unlike simple subtitle wrappers, SubLyter pairs a **native multi-threaded Androi
 <div align="center">
 <table>
   <tr>
-    <td align="center" width="33%">
-      <img src="screenshots/1.jpg" alt="SubLyter Main Screen with Snowfall" width="230" /><br />
-      <sub><strong>Main Studio &amp; Snowfall</strong><br/>Clean borderless controls &amp; Whisper model selector</sub>
+    <td align="center" width="50%">
+      <img src="screenshots/1.jpg" alt="SubLyter Main Screen v1.0.79" width="250" /><br />
+      <sub><strong>Main Studio &amp; Snowfall Wallpaper</strong><br/>Borderless Material You card, Whisper Auto model selector, translation picker &amp; one-tap subtitle generation</sub>
     </td>
-    <td align="center" width="33%">
-      <img src="screenshots/4.jpg" alt="Live Extraction & Adaptive Video Player" width="230" /><br />
-      <sub><strong>Live Audio Extraction &amp; Player</strong><br/>Watch immediately while chunks stream in</sub>
-    </td>
-    <td align="center" width="33%">
-      <img src="screenshots/5.jpg" alt="Fullscreen Word-by-Word Subtitles" width="230" /><br />
-      <sub><strong>Borderless Fullscreen Playback</strong><br/>Crisp live subtitles with adaptive aspect ratio</sub>
+    <td align="center" width="50%">
+      <img src="screenshots/2.jpg" alt="Material You & Theme Settings" width="250" /><br />
+      <sub><strong>Deep Material You (M3) Customization</strong><br/>Dark/Light/Auto appearance, 12-swatch tonal accent grid, 5 background themes, 30 GPU wallpapers &amp; opacity slider</sub>
     </td>
   </tr>
   <tr>
-    <td align="center" colspan="3">
-      <table>
-        <tr>
-          <td align="center" width="50%">
-            <img src="screenshots/3.jpg" alt="Material You Appearance Settings" width="230" /><br />
-            <sub><strong>Material You Customization</strong><br/>Accent colors, 5 surface themes, 30 live wallpapers &amp; fonts</sub>
-          </td>
-          <td align="center" width="50%">
-            <img src="screenshots/2.jpg" alt="AI Models, Multi-Key Pool & Pipeline Options" width="230" /><br />
-            <sub><strong>AI Engine &amp; Multi-Key Pool</strong><br/>Unlimited Groq keys, Gemini Q&amp;A, 16 kHz fast mode &amp; import</sub>
-          </td>
-        </tr>
-      </table>
+    <td align="center" width="50%">
+      <img src="screenshots/3.jpg" alt="Title Typography & Multi-Key Groq Pool" width="250" /><br />
+      <sub><strong>Typography, Playback &amp; Multi-Key Pool</strong><br/>24 offline title fonts with live preview + multi-key Groq &amp; Gemini vaults with live key badge and <code>Get API</code> shortcuts</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="screenshots/4.jpg" alt="AI Models, Generation Pipeline & Diagnostics" width="250" /><br />
+      <sub><strong>AI Models, Speed Engine &amp; Diagnostics</strong><br/>Gemini 4 Hydrogen, GPT-OSS 120B, 16 kHz fast audio, Progressive/Batch mode, SRT/VTT import &amp; one-tap <code>Copy log</code></sub>
     </td>
   </tr>
 </table>
@@ -88,10 +79,13 @@ Unlike simple subtitle wrappers, SubLyter pairs a **native multi-threaded Androi
 
 ## ⚡ Why Generation Is So Fast
 
+> **Powered by Groq LPU™ — Almost the Fastest AI Inference in the World:** Traditional cloud transcription waits on conventional GPU queues. SubLyter runs Whisper speech-to-text (`whisper-large-v3-turbo` / `whisper-large-v3`) and streaming subtitle translation (`openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `qwen/qwen3.6-27b`) on **Groq's custom Language Processing Unit (LPU™)** architecture — delivering near-instant inference latency that turns minutes of audio into word-level timestamps in seconds. Combined with our 4-thread native WAV pipeline and multi-key rotation, the whole app feels instantaneous.
+
 SubLyter is engineered end-to-end to minimize waiting time from tap to first subtitle:
 
 | Optimization Layer | How It Works |
 | :--- | :--- |
+| **Groq LPU™ Hyper-Speed Inference** | Speech recognition (`whisper-large-v3-turbo` by default) and LLM translation run on **Groq LPU™ hardware** — one of the fastest AI inference engines in the world — transcribing and translating chunks with ultra-low latency. |
 | **4-Thread Native Audio Extraction** | `AudioChunkExtractor.kt` splits local videos into dynamic time windows and decodes them across up to **4 parallel `MediaExtractor` + `MediaCodec` threads** directly to **16 kHz mono PCM16 WAV** — no heavy shell `ffmpeg` spawning overhead. |
 | **Zero-Sleep Stream Capture** | For network streams (HLS `.m3u8`, DASH `.mpd`, HTTP/HTTPS from Stremio/Nuvio), a custom Media3 `AudioSink` (`StreamAudioCaptureSink.kt`) decodes packets at **maximum CPU throughput** rather than 1× real-time playback speed. |
 | **Progressive Live Streaming** | In **Progressive** mode, you do not wait for the entire movie to finish: chunks are transcribed, translated, and injected into the active player chunk-by-chunk while you watch. **All at once** mode uses dynamic 45–180s parallel windows for rapid batch generation. |
@@ -207,7 +201,7 @@ tests/
 
 ### 1. Install on Android
 1. Download the latest APK from **[GitHub Releases](https://github.com/yusibov2026-hue/SubLater/releases/latest)**.
-2. Open **Settings** (gear icon) and paste one or more **Groq API keys** from [console.groq.com/keys](https://console.groq.com/keys) (one per line or comma-separated).
+2. Open **Settings** (gear icon) and paste one or more **Groq API keys** from [console.groq.com/keys](https://console.groq.com/keys) (one per line or comma-separated) to unlock Groq LPU™ hyper-fast Whisper transcription & 53-language translation.
 3. *(Optional)* Add a **Gemini API key** from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) to unlock Multimodal Video Q&A.
 4. Pick any video or open a stream externally with **SubLyter**, choose a target translation language (optional), and tap **Create subtitles**.
 
