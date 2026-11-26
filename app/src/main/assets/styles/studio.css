@@ -399,9 +399,9 @@ html[dir="rtl"] .m3-hub-panel {
 }
 
 .m3-studio-card {
-  background: var(--md-surface-container-low);
+  background: #162033;
   color: var(--md-on-surface);
-  border: 1px solid color-mix(in srgb, var(--md-outline-variant) 55%, transparent);
+  border: 1px solid #24334d;
   border-radius: 22px;
   padding: 14px;
   display: flex;
@@ -409,49 +409,22 @@ html[dir="rtl"] .m3-hub-panel {
   gap: 10px;
 }
 
-#hubPanelLearn .m3-studio-card {
-  background:
-    radial-gradient(115% 75% at 94% 4%, color-mix(in srgb, var(--m3-learn-glow) 34%, transparent), transparent 62%),
-    linear-gradient(155deg, var(--m3-learn-card-a), var(--m3-learn-card-b));
-  border: 1px solid color-mix(in srgb, var(--m3-learn-border) 56%, transparent);
-}
-
-#hubPanelHistory .m3-studio-card {
-  background:
-    radial-gradient(115% 75% at 8% 8%, color-mix(in srgb, var(--m3-history-glow) 32%, transparent), transparent 62%),
-    linear-gradient(155deg, var(--m3-history-card-a), var(--m3-history-card-b));
-  border: 1px solid color-mix(in srgb, var(--m3-history-border) 56%, transparent);
-}
-
-#hubPanelVoice .m3-studio-card {
-  background:
-    radial-gradient(115% 65% at 50% 6%, color-mix(in srgb, var(--m3-voice-glow) 36%, transparent), transparent 64%),
-    linear-gradient(155deg, var(--m3-voice-card-a), var(--m3-voice-card-b));
-  border: 1px solid color-mix(in srgb, var(--m3-voice-border) 58%, transparent);
-}
-
 #hubPanelLearn .m3-studio-row,
 #hubPanelLearn .m3-studio-field,
-#hubPanelLearn .m3-empty-state {
-  background: color-mix(in srgb, var(--m3-learn-stage) 76%, transparent);
-  border: 1px solid color-mix(in srgb, var(--m3-learn-border) 38%, transparent);
-}
-
+#hubPanelLearn .m3-empty-state,
 #hubPanelHistory .m3-empty-state {
-  background: linear-gradient(160deg, var(--m3-history-stage), var(--m3-history-card-a));
-  border: 1px solid color-mix(in srgb, var(--m3-history-border) 48%, transparent);
+  background: #1c2942;
+  border: 1px solid #283a59;
 }
 
-#hubPanelHistory .m3-search-input {
-  background: color-mix(in srgb, var(--m3-history-stage) 82%, var(--bg-elevated)) !important;
+#hubPanelHistory .m3-search-input,
+#hubPanelVoice .m3-search-input {
+  background: #131c2e !important;
+  border: 1px solid #24334d;
 }
 
 #hubPanelVoice #voiceTranslateLang {
-  background-color: color-mix(in srgb, var(--m3-voice-stage) 78%, var(--bg-elevated));
-}
-
-#hubPanelVoice .m3-search-input {
-  background: color-mix(in srgb, var(--m3-voice-stage) 78%, var(--bg-elevated)) !important;
+  background-color: #131c2e;
 }
 
 .m3-studio-card-head {
@@ -715,14 +688,10 @@ html[dir="rtl"] .m3-hub-panel {
   gap: 7px;
 }
 
-#hubPanelLearn .m3-vocab-item {
-  background: color-mix(in srgb, var(--m3-learn-stage) 76%, transparent);
-  border: 1px solid color-mix(in srgb, var(--m3-learn-border) 38%, transparent);
-}
-
+#hubPanelLearn .m3-vocab-item,
 #hubPanelVoice .m3-note-card {
-  background: linear-gradient(160deg, var(--m3-voice-stage), var(--m3-voice-card-a));
-  border: 1px solid color-mix(in srgb, var(--m3-voice-border) 50%, transparent);
+  background: #1c2942;
+  border: 1px solid #283a59;
 }
 
 .m3-vocab-item-top,
@@ -877,10 +846,8 @@ html[dir="rtl"] .m3-hub-panel {
   gap: 12px;
   padding: 18px 12px;
   border-radius: 22px;
-  background:
-    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--m3-voice-glow) 34%, transparent), transparent 72%),
-    var(--m3-voice-stage);
-  border: 1px solid color-mix(in srgb, var(--m3-voice-border) 55%, transparent);
+  background: #1c2942;
+  border: 1px solid #283a59;
 }
 
 .m3-voice-controls {
@@ -1227,8 +1194,8 @@ body[data-m3-mode="light"] #wordLookupSheet {
 
 /* Subtitle History Cards (Material You) */
 .m3-hist-card {
-  background: linear-gradient(160deg, var(--m3-history-stage), var(--m3-history-card-a));
-  border: 1px solid color-mix(in srgb, var(--m3-history-border) 50%, transparent);
+  background: #162033;
+  border: 1px solid #24334d;
   border-radius: 20px;
   padding: 14px;
   display: flex;
@@ -1395,21 +1362,31 @@ body[data-m3-mode="light"] .m3-model-option.active,
 body[data-m3-mode="light"] .m3-submode-opt.active {
   border-color: var(--md-primary);
 }
-body[data-m3-mode="light"] .m3-studio-card {
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
-}
-body[data-m3-mode="light"] .m3-studio-field,
-body[data-m3-mode="light"] .m3-submode-lang-box {
-  border: 1px solid rgba(15, 23, 42, 0.12);
-}
-body[data-m3-mode="light"] .m3-hist-card,
-body[data-m3-mode="light"] .m3-note-card,
-body[data-m3-mode="light"] .m3-vocab-item {
+body[data-m3-mode="light"] .m3-studio-card,
+body[data-m3-mode="light"] .m3-hist-card {
+  background: #eef3fa;
+  border: 1px solid #cfdced;
   box-shadow: 0 3px 12px rgba(15, 23, 42, 0.05);
 }
-body[data-m3-mode="light"] .m3-studio-row,
-body[data-m3-mode="light"] .m3-empty-state {
-  border: 1px solid rgba(15, 23, 42, 0.10);
+body[data-m3-mode="light"] .m3-voice-stage,
+body[data-m3-mode="light"] #hubPanelLearn .m3-studio-row,
+body[data-m3-mode="light"] #hubPanelLearn .m3-studio-field,
+body[data-m3-mode="light"] #hubPanelLearn .m3-vocab-item,
+body[data-m3-mode="light"] #hubPanelVoice .m3-note-card,
+body[data-m3-mode="light"] #hubPanelLearn .m3-empty-state,
+body[data-m3-mode="light"] #hubPanelHistory .m3-empty-state {
+  background: #e4edf8;
+  border: 1px solid #c6d5e8;
+}
+body[data-m3-mode="light"] #hubPanelVoice #voiceTranslateLang,
+body[data-m3-mode="light"] #hubPanelVoice .m3-search-input,
+body[data-m3-mode="light"] #hubPanelHistory .m3-search-input {
+  background: #ffffff !important;
+  background-color: #ffffff;
+  border: 1px solid #c6d5e8;
+}
+body[data-m3-mode="light"] .m3-submode-lang-box {
+  border: 1px solid rgba(15, 23, 42, 0.12);
 }
 body[data-m3-mode="light"] .m3-hist-preview {
   border: 1px solid rgba(15, 23, 42, 0.08);
