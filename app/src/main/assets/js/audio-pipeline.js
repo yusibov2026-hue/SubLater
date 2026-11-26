@@ -7,8 +7,10 @@
   const subtitlesMod = root.subtitles;
   const groqMod = root.groq;
   const storageMod = root.storage;
+  const localWhisperMod = root.localWhisper;
 
   const PARALLEL_CHUNK_CONCURRENCY = 10;
+  const BATCH_1024_CONCURRENCY = 4;
 
   function extractMonoChannelData(audioBuffer) {
     const numChannels = audioBuffer.numberOfChannels || 1;
@@ -70,6 +72,8 @@
       setCues,
       onLivePublish,
       onStreamTranslated,
+      setStatus,
+      t,
       groqCtx
     } = opts;
 
@@ -153,7 +157,9 @@
     async function awaitPendingTranslations(statusEl) {
       checkAndTriggerStreamTranslations();
       if (streamingTranslate && streamTranslationPromises.length > 0) {
-        if (statusEl) statusEl.innerText = '⚡ Streaming translation of final chunks...';
+        const msg = typeof t === 'function' ? t('status.streamTranslating') : '⚡ Streaming translation of final chunks...';
+        if (typeof setStatus === 'function') setStatus(msg);
+        else if (statusEl) statusEl.innerText = msg;
         await Promise.all(streamTranslationPromises);
       }
     }
@@ -204,10 +210,25 @@
       generateVideoAiInsights,
       requestWakeLock,
       releaseWakeLock,
-      formatTime
+      formatTime,
+      t: tArg,
+      syncForegroundStatus
     } = deps;
 
-    const getBatchConcurrency = () => Math.min(8, Math.max(4, getApiKeys().length * 4));
+    const t = typeof tArg === 'function'
+      ? tArg
+      : (key, vars) => (root.i18n && typeof root.i18n.t === 'function' ? root.i18n.t(key, vars) : key);
+
+    const setStatus = (text, pct) => {
+      if (statusEl) statusEl.innerText = text;
+      if (pct !== undefined) {
+        setProgress(pct);
+      } else if (typeof syncForegroundStatus === 'function') {
+        syncForegroundStatus(text);
+      }
+    };
+
+    const getBatchConcurrency = () => BATCH_1024_CONCURRENCY;
 
     let streamTranslatedChunks = 0;
     let updateStreamProgress = () => {};
@@ -233,8 +254,7 @@
     async function generateSubtitles() {
       if (getActiveAbortCtrl()) {
         cancelActiveGeneration();
-        setProgress(null);
-        statusEl.innerText = '⏹ Cancelled by user.';
+        setStatus(t('status.cancelled'), null);
         return;
       }
 
@@ -258,13 +278,15 @@
 
       const keys = getApiKeys();
       const customPrompt = whisperPromptEl.value.trim();
+      const lwMod = localWhisperMod || (window.SubLyter && window.SubLyter.localWhisper);
+      const isLocalModel = Boolean(lwMod && lwMod.isLocalWhisperModel(model));
 
-      if (!keys.length) {
+      if (!keys.length && (!isLocalModel || Boolean(targetLang))) {
         showMissingApiStatus(true);
         return;
       }
       if (!file) {
-        statusEl.innerText = 'Please select a video or audio file first.';
+        setStatus(t('status.selectFile'));
         return;
       }
 
@@ -276,15 +298,24 @@
       updateStreamProgress = () => {};
 
       btn.classList.add('cancel-mode');
-      btn.innerText = 'Cancel process';
+      btn.innerText = t('btn.cancel');
       actionRow.style.display = 'none';
       vttPanel.classList.add('hidden');
-      openBtn.innerText = 'Text';
-      setProgress(5);
+      openBtn.innerText = t('btn.text');
+      const bridge = bridgeMod.getBridge();
+      if (bridge) {
+        try {
+          if (typeof bridge.startForegroundServiceLocalized === 'function') {
+            bridge.startForegroundServiceLocalized(t('status.generating'), t('notif.cancel'));
+          } else if (typeof bridge.startForegroundService === 'function') {
+            bridge.startForegroundService(t('status.generating'));
+          }
+        } catch (e) { diag.logWarn('gen.fgStart', e); }
+      }
+      setStatus(t('status.generating'), 5);
       await requestWakeLock();
 
       setCurrentFileName(file.name.replace(/\.[^/.]+$/, '') + (langCode ? `_${langCode}` : ''));
-      const bridge = bridgeMod.getBridge();
       const isBatchMode = Boolean(genModeEl && genModeEl.value === 'all');
       const startFromSec = (Number(videoEl.currentTime) || 0) >= 30 ? Number(videoEl.currentTime) : 0;
       let generationDoneForHistory = false;
@@ -298,8 +329,7 @@
         if (durationSec > startFromSec) {
           const remSec = durationSec - startFromSec;
           if (isBatchMode) {
-            const dynDur = remSec <= 720 ? Math.min(180, Math.max(45, Math.ceil(remSec / 4))) : 180;
-            estimatedTotalChunks = Math.max(1, Math.ceil(remSec / Math.max(1, dynDur)));
+            estimatedTotalChunks = Math.max(1, Math.ceil(remSec / 294));
           } else {
             estimatedTotalChunks = Math.max(1, Math.ceil(remSec / 60));
           }
@@ -308,8 +338,8 @@
         diag.logWarn('gen.estimate', e);
       }
 
-      if (bridge && typeof bridge.startForegroundService === 'function') {
-        try { bridge.startForegroundService('Generating subtitles...'); } catch (e) { diag.logWarn('gen.fgStart', e); }
+      if (bridge && typeof bridge.startForegroundService === 'function' && statusEl && !statusEl.innerText) {
+        try { bridge.startForegroundService(t('status.generating')); } catch (e) { diag.logWarn('gen.fgStart', e); }
       }
 
       let totalChunks = 0;
@@ -317,9 +347,11 @@
       const smartSplitEnabled = Boolean(smartSplitToggleEl && smartSplitToggleEl.checked);
       const groqCtx = {
         keyPool,
-        onStatus: (txt) => { if (statusEl) statusEl.innerText = txt; },
+        t,
+        onStatus: (txt) => setStatus(txt),
         hallucinationFilter: Boolean(hallucinationFilterEl && hallucinationFilterEl.checked),
         primaryModel: (llmModelEl && llmModelEl.value) || 'openai/gpt-oss-120b',
+        skipNormalize: isBatchMode,
         setProgress
       };
 
@@ -330,6 +362,8 @@
           let usedEmbeddedSubtitles = false;
 
           if (
+            !isLocalModel &&
+            !isBatchMode &&
             !file.isStream &&
             startFromSec === 0 &&
             bridge &&
@@ -347,8 +381,7 @@
                 });
                 if (allSegments.length >= 5) {
                   usedEmbeddedSubtitles = true;
-                  statusEl.innerText = `⚡ Extracted embedded subtitles from container (${allSegments.length} lines)!`;
-                  setProgress(50);
+                  setStatus(t('status.embeddedExtracted', { n: allSegments.length }), 50);
                 }
               }
             } catch (e) {
@@ -357,36 +390,57 @@
           }
 
           if (!usedEmbeddedSubtitles) {
+            if (isLocalModel && !lwMod.isModelDownloaded(model)) {
+              setStatus(t('status.downloadingModel', { model }));
+              await lwMod.downloadModel(model, ({ pct }) => {
+                if (!signal.aborted && statusEl) {
+                  setStatus(
+                    t('status.downloadingModelPct', { model, pct: pct || 0 }),
+                    Math.min(40, 5 + Math.round(((pct || 0) / 100) * 35))
+                  );
+                }
+              });
+              if (signal.aborted) throw new Error('Cancelled by user.');
+            }
+
             const cachedPartial = getCachedPartialChunks();
             const resumeChunks = (!startFromSec && cachedPartial.fileSig === fileSig && cachedPartial.model === model && cachedPartial.chunks)
               ? cachedPartial.chunks
               : {};
             const completedChunksObj = {};
-            const shouldCompress = isBatchMode
-              ? (Boolean(file.isExternalMedia) || file.size > 24 * 1024 * 1024 || (fastAudioCompressEl.checked && file.size > 14 * 1024 * 1024))
-              : (Boolean(file.isExternalMedia) || file.size > 24 * 1024 * 1024 || fastAudioCompressEl.checked);
-            const useNativeExtractor = Boolean(
+            const isExtOrStream = Boolean(file.isExternalMedia) || Boolean(file.isStream);
+            const shouldCompress = isLocalModel
+              ? true
+              : (isBatchMode
+                ? (isExtOrStream || file.size > 24 * 1024 * 1024 || (fastAudioCompressEl.checked && file.size > 14 * 1024 * 1024))
+                : (isExtOrStream || file.size > 24 * 1024 * 1024 || fastAudioCompressEl.checked));
+            const canUseNativeExtractor = Boolean(
               shouldCompress &&
               bridge &&
               typeof bridge.startNativeAudioExtraction === 'function' &&
               (typeof bridge.readChunkBase64 === 'function' || typeof fetch === 'function') &&
               bridge.hasNativeVideo()
             );
+            // В точном режиме v1.0.24 (All at once) для локальных файлов сначала идёт WebAudio 12 кГц (или прямой upload),
+            // а нативный MediaExtractor подключается при внешних URI/потоках или если браузер не декодирует кодек.
+            const preferNativeFirst = canUseNativeExtractor && (isExtOrStream || (!isBatchMode && !isLocalModel));
 
-            const streamingTranslate = Boolean(targetLang && !(cachedWhisper.translations && cachedWhisper.translations[targetLang]));
+            const streamingTranslate = !isBatchMode && !isLocalModel && Boolean(targetLang && !(cachedWhisper.translations && cachedWhisper.translations[targetLang]));
             const livePipeline = createLivePipeline({
               file,
-              isBatchMode,
+              isBatchMode: isBatchMode || isLocalModel,
               signal,
               streamingTranslate,
               targetLang,
               smartSplitEnabled,
               pipelineTranslatedCuesMap,
               setCues,
+              setStatus,
+              t,
               onLivePublish: (f, isFirstStart) => {
                 if (isFirstStart) {
                   setupPlayer(f);
-                  statusEl.innerText = '▶️ First subtitles ready — you can start watching while remaining parts process...';
+                  setStatus(t('status.firstSubsReady'));
                   if (autoPlayToggle.checked) videoEl.play().catch(() => {});
                 }
                 refreshAllExports();
@@ -396,27 +450,21 @@
               groqCtx
             });
 
-            if (useNativeExtractor) {
-              if (isBatchMode) {
-                if (startFromSec > 0) {
-                  const fromLabel = formatTime(startFromSec);
-                  statusEl.innerText = file.isStream
-                    ? `📡 Fast mode from ${fromLabel}: 16 kHz multi-stream...`
-                    : `⚡ Fast mode from ${fromLabel}: 16 kHz parallel streams...`;
-                } else {
-                  statusEl.innerText = file.isStream
-                    ? '📡 Fast mode: streaming 16 kHz audio chunks...'
-                    : '⚡ Fast mode: parallel 16 kHz audio extraction & upload...';
-                }
-              } else if (startFromSec > 0) {
-                const fromLabel = formatTime(startFromSec);
-                statusEl.innerText = file.isStream
-                  ? `📡 Stream (from ${fromLabel}): decoding audio via player (16 kHz, 60s)...`
-                  : `⚡ Parallel audio extraction from ${fromLabel} (16 kHz, 60s chunks)...`;
+            const runNativeExtractorFlow = async () => {
+              if (isLocalModel) {
+                setStatus(t('status.offlineExtracting', { model }));
+              } else if (isBatchMode) {
+                setStatus(
+                  startFromSec > 0
+                    ? t('status.extractingAllFrom', { from: formatTime(startFromSec) })
+                    : t('status.extractingAll')
+                );
               } else {
-                statusEl.innerText = file.isStream
-                  ? '📡 Stream: decoding audio via player (16 kHz, 60s chunks)...'
-                  : '⚡ Parallel native audio extraction (16 kHz, 60s chunks)...';
+                setStatus(
+                  startFromSec > 0
+                    ? t('status.extractingProgFrom', { from: formatTime(startFromSec) })
+                    : t('status.extractingProg')
+                );
               }
 
               const incomingQueue = [];
@@ -490,8 +538,9 @@
                 try { bridge.clearAudioCache(); } catch (e) { diag.logWarn('pipeline.clearCache', e); }
               }
 
+              const nativeBatchFlag = !isLocalModel && isBatchMode;
               const startedOk = (typeof bridge.startNativeAudioExtractionMode === 'function')
-                ? bridge.startNativeAudioExtractionMode(startFromSec, isBatchMode)
+                ? bridge.startNativeAudioExtractionMode(startFromSec, nativeBatchFlag)
                 : ((typeof bridge.startNativeAudioExtractionFrom === 'function')
                   ? bridge.startNativeAudioExtractionFrom(startFromSec)
                   : bridge.startNativeAudioExtraction());
@@ -522,14 +571,18 @@
                 } else {
                   const wavBlob = await bridgeMod.loadChunkBlob(bridge, chunkObj);
                   if (!wavBlob) throw new Error(`Failed to read chunk ${chunkObj.index}`);
-                  r = await groqMod.sendToGroq(
-                    wavBlob,
-                    chunkObj.fileName || `chunk_${chunkObj.index}.wav`,
-                    model,
-                    customPrompt,
-                    signal,
-                    groqCtx
-                  );
+                  if (isLocalModel) {
+                    r = await lwMod.transcribeBlob(model, wavBlob, { signal });
+                  } else {
+                    r = await groqMod.sendToGroq(
+                      wavBlob,
+                      chunkObj.fileName || `chunk_${chunkObj.index}.wav`,
+                      model,
+                      customPrompt,
+                      signal,
+                      groqCtx
+                    );
+                  }
                 }
 
                 completedChunks++;
@@ -538,7 +591,11 @@
                 const cutoffSec = chunkObj.cutoff !== undefined ? chunkObj.cutoff : chunkObj.cutoffSec;
                 const nextCutoffSec = chunkObj.nextCutoff !== undefined ? chunkObj.nextCutoff : chunkObj.nextCutoffSec;
 
-                statusEl.innerText = `🚀 Transcribed: ${completedChunks} chunks (${Math.round(startSec)}–${Math.round(endSec)}s)...`;
+                setStatus(
+                  isLocalModel
+                    ? t('status.offlineProgress', { done: completedChunks, start: Math.round(startSec), end: Math.round(endSec) })
+                    : t('status.transcribedChunks', { done: completedChunks, start: Math.round(startSec), end: Math.round(endSec) })
+                );
                 updateNativeProgress(completedChunks);
 
                 const resItem = {
@@ -557,11 +614,14 @@
                   segments: resItem.segments,
                   words: resItem.words
                 };
-                if (startFromSec === 0 && !generationDoneForHistory && !signal.aborted) {
+                if (!isBatchMode && startFromSec === 0 && !generationDoneForHistory && !signal.aborted) {
                   storageMod.saveProjectToHistory({
                     fileSig,
                     fileName: file.name,
                     fileSize: file.size,
+                    fileUri: file.uri || '',
+                    fileMime: file.type || '',
+                    isStream: Boolean(file.isStream),
                     updatedAt: Date.now(),
                     model,
                     isComplete: false,
@@ -575,10 +635,12 @@
               };
 
               try {
-                const workerCount = isBatchMode ? getBatchConcurrency() : Math.min(PARALLEL_CHUNK_CONCURRENCY, 10);
-                const staggerMs = isBatchMode ? 35 : 25;
+                const workerCount = isLocalModel
+                  ? 1
+                  : (isBatchMode ? BATCH_1024_CONCURRENCY : Math.min(PARALLEL_CHUNK_CONCURRENCY, 10));
+                const staggerMs = (isBatchMode || isLocalModel) ? 0 : 25;
                 const workers = Array.from({ length: workerCount }, async (_, workerSlot) => {
-                  if (workerSlot > 0) await groqMod.abortableDelay(workerSlot * staggerMs, signal);
+                  if (staggerMs > 0 && workerSlot > 0) await groqMod.abortableDelay(workerSlot * staggerMs, signal);
                   while (true) {
                     const item = await getNextIncomingChunk();
                     if (!item) break;
@@ -599,44 +661,58 @@
                 window.__onNativeChunkError = null;
                 signal.removeEventListener('abort', onSignalAbort);
               }
+            };
+
+            if (preferNativeFirst) {
+              await runNativeExtractorFlow();
             } else {
-              // WebAudio / прямой upload для браузера или небольших файлов
+              // Точный механизм 1.0.24 ("All at once") / WebAudio + авто-откат на Native Extractor для неподдерживаемых кодеков
               let audioBuffer = null;
+              let codecDecodeFailed = false;
               if (shouldCompress) {
-                statusEl.innerText = isBatchMode
-                  ? '⚡ Fast mode: extracting audio at 16 kHz...'
-                  : '⚡ Fast audio track extraction & compression (16 kHz)...';
-                setProgress(10);
+                setStatus(
+                  isLocalModel
+                    ? t('status.offlineDecoding', { model })
+                    : t('status.extractingAudio'),
+                  10
+                );
                 try {
                   const ab = await file.arrayBuffer();
-                  const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                  const targetRate = (!isLocalModel && isBatchMode) ? 12000 : 16000;
+                  const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: targetRate });
                   audioBuffer = await decodeCtx.decodeAudioData(ab);
                   if (decodeCtx.close) decodeCtx.close();
                 } catch (e) {
                   diag.logWarn('gen.webAudioDecode', e);
-                  if (file.size > 24 * 1024 * 1024) {
-                    throw new Error('Browser does not support this file codec (>24 MB). Convert to MP4/MP3.');
-                  }
+                  codecDecodeFailed = true;
                 }
               }
 
-              if (!audioBuffer) {
-                statusEl.innerText = '🚀 Uploading directly to Groq...';
-                setProgress(25);
+              if (codecDecodeFailed && canUseNativeExtractor) {
+                await runNativeExtractorFlow();
+              } else if (codecDecodeFailed && file.size > 24 * 1024 * 1024) {
+                throw new Error('Browser does not support this file codec (>24 MB). Convert to MP4/MP3.');
+              } else if (isLocalModel) {
+                if (!audioBuffer) throw new Error('Failed to decode audio for offline Whisper.');
+                if (signal.aborted) throw new Error('Cancelled by user.');
+                setStatus(t('status.offlineTranscribing', { model }), 35);
+                const monoData = extractMonoChannelData(audioBuffer);
+                const localRes = await lwMod.transcribeFloat32(model, monoData, { signal });
+                allSegments = localRes.segments || [];
+                allWords = localRes.words || [];
+              } else if (!audioBuffer) {
+                setStatus(t('status.directUpload'), 25);
                 const r = await groqMod.sendToGroq(file, file.name, model, customPrompt, signal, groqCtx);
                 r.segments.forEach((s) => allSegments.push({ start: s.start, end: s.end, text: s.text }));
                 r.words.forEach((w) => allWords.push({ word: w.word, start: w.start, end: w.end }));
               } else {
                 if (signal.aborted) throw new Error('Cancelled by user.');
-                const channelData = extractMonoChannelData(audioBuffer);
+                const channelData = isBatchMode ? audioBuffer.getChannelData(0) : extractMonoChannelData(audioBuffer);
                 const sampleRate = audioBuffer.sampleRate;
                 const totalDuration = channelData.length / sampleRate;
                 const effectiveStart = (startFromSec > 0 && startFromSec < totalDuration - 1) ? startFromSec : 0;
-                const effectiveRem = Math.max(0, totalDuration - effectiveStart);
-                const chunkDuration = isBatchMode
-                  ? (effectiveRem <= 720 ? Math.min(180, Math.max(45, Math.ceil(effectiveRem / 4))) : 180)
-                  : 60;
-                const overlap = isBatchMode ? 2 : 1;
+                const chunkDuration = isBatchMode ? 300 : 60;
+                const overlap = isBatchMode ? 6 : 1;
                 const advance = chunkDuration - overlap;
 
                 const chunkTasks = [];
@@ -660,10 +736,14 @@
 
                 totalChunks = chunkTasks.length;
                 let completedChunks = 0;
-                statusEl.innerText = isBatchMode
-                  ? `🚀 Fast mode: parallel Groq upload (${Math.min(getBatchConcurrency(), Math.max(1, totalChunks))} streams, ${totalChunks} parts)...`
-                  : `🚀 Parallel Groq upload (${Math.min(PARALLEL_CHUNK_CONCURRENCY, Math.max(1, totalChunks))} streams, ${totalChunks} parts)...`;
-                setProgress(10);
+                const webConcurrency = isBatchMode ? BATCH_1024_CONCURRENCY : PARALLEL_CHUNK_CONCURRENCY;
+                setStatus(
+                  t('status.parallelUpload', {
+                    streams: Math.min(webConcurrency, Math.max(1, totalChunks)),
+                    total: totalChunks
+                  }),
+                  16
+                );
 
                 const updateWebProgress = (recognitionDone) => {
                   const total = Math.max(1, totalChunks, recognitionDone);
@@ -671,19 +751,18 @@
                     const units = Math.min(recognitionDone + streamTranslatedChunks, total * 2);
                     setProgress(5 + Math.round((units / (total * 2)) * 93));
                   } else {
-                    setProgress(5 + Math.round((Math.min(recognitionDone, total) / total) * 50));
+                    setProgress(16 + Math.round((Math.min(recognitionDone, total) / total) * 42));
                   }
                 };
                 updateStreamProgress = () => updateWebProgress(completedChunks);
 
-                const webConcurrency = isBatchMode ? getBatchConcurrency() : PARALLEL_CHUNK_CONCURRENCY;
                 const orderedResults = await groqMod.runWithConcurrency(
                   chunkTasks,
                   webConcurrency,
                   async (task, _taskIdx, workerSlot, isFirstForWorker) => {
                     if (signal.aborted) throw new Error('Cancelled by user.');
-                    if (isFirstForWorker && workerSlot > 0) {
-                      await groqMod.abortableDelay(workerSlot * (isBatchMode ? 35 : 25), signal);
+                    if (!isBatchMode && isFirstForWorker && workerSlot > 0) {
+                      await groqMod.abortableDelay(workerSlot * 25, signal);
                     }
                     if (signal.aborted) throw new Error('Cancelled by user.');
 
@@ -698,7 +777,12 @@
                     }
 
                     completedChunks++;
-                    statusEl.innerText = `🚀 Transcribed: ${completedChunks} of ${totalChunks} (${Math.round(task.pos)}–${Math.round(task.chunkEnd)}s)...`;
+                    setStatus(t('status.transcribedOf', {
+                      done: completedChunks,
+                      total: totalChunks,
+                      start: Math.round(task.pos),
+                      end: Math.round(task.chunkEnd)
+                    }));
                     updateWebProgress(completedChunks);
 
                     const chunkItem = {
@@ -710,26 +794,31 @@
                       words: r.words || []
                     };
 
-                    completedChunksObj[String(task.index)] = {
-                      pos: task.pos,
-                      cutoff: task.cutoff,
-                      nextCutoff: task.nextCutoff,
-                      segments: chunkItem.segments,
-                      words: chunkItem.words
-                    };
-                    if (startFromSec === 0 && !generationDoneForHistory && !signal.aborted) {
-                      storageMod.saveProjectToHistory({
-                        fileSig,
-                        fileName: file.name,
-                        fileSize: file.size,
-                        updatedAt: Date.now(),
-                        model,
-                        isComplete: false,
-                        partialChunks: { ...completedChunksObj }
-                      });
+                    if (!isBatchMode) {
+                      completedChunksObj[String(task.index)] = {
+                        pos: task.pos,
+                        cutoff: task.cutoff,
+                        nextCutoff: task.nextCutoff,
+                        segments: chunkItem.segments,
+                        words: chunkItem.words
+                      };
+                      if (startFromSec === 0 && !generationDoneForHistory && !signal.aborted) {
+                        storageMod.saveProjectToHistory({
+                          fileSig,
+                          fileName: file.name,
+                          fileSize: file.size,
+                          fileUri: file.uri || '',
+                          fileMime: file.type || '',
+                          isStream: Boolean(file.isStream),
+                          updatedAt: Date.now(),
+                          model,
+                          isComplete: false,
+                          partialChunks: { ...completedChunksObj }
+                        });
+                      }
+                      livePipeline.handleCompletedChunk(task.index, chunkItem);
                     }
 
-                    livePipeline.handleCompletedChunk(task.index, chunkItem);
                     return chunkItem;
                   }
                 );
@@ -756,8 +845,7 @@
             aiSummary: null
           });
         } else {
-          statusEl.innerText = 'Using recognized text from cache...';
-          setProgress(55);
+          setStatus(t('status.usingCache'), 55);
         }
 
         const latestCached = getCachedWhisper();
@@ -779,7 +867,7 @@
           } else {
             const freshCues = subtitlesMod.buildCues(latestCached.rawSegments, latestCached.rawWords, smartSplitEnabled);
             const failed = await groqMod.translateSegments(freshCues, targetLang, statusEl, signal, translateConcurrency, groqCtx);
-            if (failed > 0) translationWarn = ` (${failed} lines not translated).`;
+            if (failed > 0) translationWarn = t('status.untranslatedWarn', { n: failed });
             latestCached.translations[targetLang] = subtitlesMod.cloneCues(freshCues);
             setCues(freshCues);
           }
@@ -787,7 +875,7 @@
           const translateConcurrency = isBatchMode ? getBatchConcurrency() : 10;
           const freshCues = subtitlesMod.buildCues(latestCached.rawSegments, latestCached.rawWords, smartSplitEnabled);
           const failed = await groqMod.translateSegments(freshCues, targetLang, statusEl, signal, translateConcurrency, groqCtx);
-          if (failed > 0) translationWarn = ` (${failed} lines not translated).`;
+          if (failed > 0) translationWarn = t('status.untranslatedWarn', { n: failed });
           if (failed < freshCues.length) {
             latestCached.translations[targetLang] = subtitlesMod.cloneCues(freshCues);
           }
@@ -808,6 +896,9 @@
             fileSig,
             fileName: file.name,
             fileSize: file.size,
+            fileUri: file.uri || '',
+            fileMime: file.type || '',
+            isStream: Boolean(file.isStream),
             updatedAt: Date.now(),
             model,
             isComplete: true,
@@ -821,7 +912,7 @@
         }
 
         actionRow.style.display = 'flex';
-        statusEl.innerText = (startFromSec === 0 ? 'Done! Subtitles loaded and saved to history.' : 'Done! Subtitles loaded.') + translationWarn;
+        setStatus((startFromSec === 0 ? t('status.doneSaved') : t('status.doneLoaded')) + translationWarn);
         setupPlayer(file);
 
         if (autoPlayToggle.checked && videoEl.paused) {
@@ -849,7 +940,7 @@
               refreshAllExports();
               actionRow.style.display = 'flex';
             }
-            statusEl.innerText = '⏹ Cancelled by user.';
+            setStatus(t('status.cancelled'));
           }
           setTimeout(() => { if (!getActiveAbortCtrl()) setProgress(null); }, 1200);
           if (btn.blur) btn.blur();

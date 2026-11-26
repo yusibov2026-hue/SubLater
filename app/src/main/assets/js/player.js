@@ -34,6 +34,13 @@
       audioTrackSelect,
       audioTrackVal,
       getCues,
+      getOriginalCues,
+      getDualSubEnabled,
+      onWordTap,
+      subMenuBtn,
+      subMenu,
+      repeatLineBtn,
+      shadowSpeedBtn,
       getAudioBoost,
       setAudioBoost,
       applySettings,
@@ -48,6 +55,8 @@
     let mediaObjectURL = null;
     let wordSpans = [];
     let currentCueIdx = -2;
+    let lastValidCue = null;
+    let currentOrigLine = '';
     let rafId = null;
     let boxVisible = null;
     let playerActive = false;
@@ -120,16 +129,27 @@
       }
     });
 
-    speedSlider.addEventListener('input', (e) => {
-      const spd = parseFloat(e.target.value) || 1;
-      videoEl.playbackRate = spd;
-      speedVal.textContent = spd.toFixed(spd % 1 === 0 ? 1 : 2) + 'x';
+    function setPlaybackSpeed(spd) {
+      const clamped = Math.min(2.0, Math.max(0.5, Number(spd) || 1));
+      videoEl.playbackRate = clamped;
+      if (speedSlider) speedSlider.value = String(clamped);
+      if (speedVal) speedVal.textContent = clamped.toFixed(clamped % 1 === 0 ? 1 : 2) + 'x';
+      if (shadowSpeedBtn) {
+        const isSlow = Math.abs(clamped - 0.75) < 0.05;
+        shadowSpeedBtn.classList.toggle('active', isSlow);
+        shadowSpeedBtn.textContent = isSlow ? '0.75×' : '1.0×';
+      }
       if (usingNativeExoFallback) {
         const b = bridgeMod.getBridge();
         if (b && typeof b.setSpeed === 'function') {
-          try { b.setSpeed(spd); } catch (err) { diag.logWarn('native.setSpeed', err); }
+          try { b.setSpeed(clamped); } catch (err) { diag.logWarn('native.setSpeed', err); }
         }
       }
+      return clamped;
+    }
+
+    speedSlider.addEventListener('input', (e) => {
+      setPlaybackSpeed(parseFloat(e.target.value) || 1);
     });
 
     fitModeSelect.addEventListener('change', (e) => {
@@ -161,29 +181,40 @@
       clearTimeout(hideControlsTimer);
       if (!videoEl.paused) {
         hideControlsTimer = setTimeout(() => {
-          if (!settingsMenu.classList.contains('show')) {
+          if (!settingsMenu.classList.contains('show') && !(subMenu && subMenu.classList.contains('show'))) {
             controlsEl.classList.add('hidden-controls');
           }
         }, 2500);
       }
     }
 
-    function rebuildCueDOM(cue) {
+    function rebuildCueDOM(cue, origText) {
       subtitleEl.innerHTML = '';
       wordSpans = [];
       boxVisible = false;
       subtitleEl.style.opacity = '0';
       if (!cue) return;
 
+      const mainWrap = document.createElement('div');
+      mainWrap.className = 'sub-main-line';
+      const tappable = typeof onWordTap === 'function';
       cue.words.forEach((w, i) => {
-        if (i > 0) subtitleEl.appendChild(document.createTextNode(' '));
+        if (i > 0) mainWrap.appendChild(document.createTextNode(' '));
         const span = document.createElement('span');
-        span.className = 'word';
+        span.className = tappable ? 'word tappable' : 'word';
         span.textContent = w.word;
         span.dataset.state = 'h';
-        subtitleEl.appendChild(span);
+        mainWrap.appendChild(span);
         wordSpans.push(span);
       });
+      subtitleEl.appendChild(mainWrap);
+
+      if (origText && origText.trim() && origText.trim() !== String(cue.text || '').trim()) {
+        const origDiv = document.createElement('div');
+        origDiv.className = 'sub-dual-orig';
+        origDiv.textContent = origText.trim();
+        subtitleEl.appendChild(origDiv);
+      }
     }
 
     function updateSubtitleFrame() {
@@ -195,10 +226,21 @@
       const holdSec = (parseInt(subHoldEl.value, 10) || 0) / 1000;
 
       const idx = subtitlesMod.findActiveCueIndex(cues, t, offsetSec, holdSec, currentCueIdx);
+      if (idx >= 0 && cues[idx]) lastValidCue = cues[idx];
 
-      if (idx !== currentCueIdx) {
+      let origText = '';
+      if (idx >= 0 && typeof getDualSubEnabled === 'function' && getDualSubEnabled()) {
+        const origCues = typeof getOriginalCues === 'function' ? getOriginalCues() : [];
+        if (origCues && origCues.length) {
+          const origIdx = subtitlesMod.findActiveCueIndex(origCues, t, offsetSec, holdSec, -1);
+          if (origIdx >= 0 && origCues[origIdx]) origText = origCues[origIdx].text || '';
+        }
+      }
+
+      if (idx !== currentCueIdx || origText !== currentOrigLine) {
         currentCueIdx = idx;
-        rebuildCueDOM(idx >= 0 ? cues[idx] : null);
+        currentOrigLine = origText;
+        rebuildCueDOM(idx >= 0 ? cues[idx] : null, origText);
       }
       if (idx < 0) return;
 
@@ -227,6 +269,31 @@
         subtitleEl.style.opacity = anySpoken ? '1' : '0';
       }
     }
+
+    subtitleEl.addEventListener('click', (e) => {
+      const wordEl = e.target && e.target.closest ? e.target.closest('.word.tappable') : null;
+      if (!wordEl || typeof onWordTap !== 'function') return;
+      e.stopPropagation();
+      e.preventDefault();
+      const cues = getCues();
+      const cue = (currentCueIdx >= 0 && cues[currentCueIdx]) ? cues[currentCueIdx] : lastValidCue;
+      const wasPlaying = !videoEl.paused;
+      if (wasPlaying) videoEl.pause();
+      const t = videoEl.currentTime || 0;
+      const offsetSec = (parseInt(subOffsetEl.value, 10) || 0) / 1000;
+      const holdSec = (parseInt(subHoldEl.value, 10) || 0) / 1000;
+      const origCues = typeof getOriginalCues === 'function' ? getOriginalCues() : [];
+      const origIdx = (origCues && origCues.length)
+        ? subtitlesMod.findActiveCueIndex(origCues, t, offsetSec, holdSec, -1)
+        : -1;
+      onWordTap({
+        word: wordEl.textContent || '',
+        sentence: cue ? cue.text : '',
+        originalSentence: (origIdx >= 0 && origCues[origIdx]) ? origCues[origIdx].text : '',
+        timeSec: t,
+        wasPlaying
+      });
+    });
 
     function startRenderLoop() {
       if (rafId) return;
@@ -733,6 +800,7 @@
 
     function exitFullscreenPlayer() {
       settingsMenu.classList.remove('show');
+      if (subMenu) subMenu.classList.remove('show');
       if (document.fullscreenElement || document.webkitFullscreenElement) {
         document.exitFullscreen?.().catch(() => {});
       }
@@ -769,6 +837,28 @@
       settingsMenu.style.right = rightPx + 'px';
       settingsMenu.style.bottom = bottomPx + 'px';
       settingsMenu.style.maxHeight = Math.min(380, availH) + 'px';
+    }
+
+    function positionPlayerSubMenu() {
+      if (!subMenu || !subMenu.classList.contains('show') || !subMenuBtn) return;
+      const isFs = document.body.classList.contains('player-fullscreen-open') || Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      if (isFs) {
+        subMenu.style.right = '14px';
+        subMenu.style.bottom = '54px';
+        subMenu.style.maxHeight = 'calc(100dvh - 68px)';
+        return;
+      }
+      const rect = subMenuBtn.getBoundingClientRect();
+      const pRect = playerBox ? playerBox.getBoundingClientRect() : rect;
+      const vw = window.innerWidth || document.documentElement.clientWidth || 360;
+      const vh = window.innerHeight || document.documentElement.clientHeight || 780;
+      let rightPx = Math.max(12, Math.round(vw - pRect.right + 8));
+      if (vw - rightPx - 288 < 12) rightPx = 12;
+      const bottomPx = Math.max(12, Math.round(vh - rect.top + 8));
+      const availH = Math.max(180, Math.round(rect.top - 16));
+      subMenu.style.right = rightPx + 'px';
+      subMenu.style.bottom = bottomPx + 'px';
+      subMenu.style.maxHeight = Math.min(380, availH) + 'px';
     }
 
     function showSeekFlash(direction, totalDelta) {
@@ -889,6 +979,8 @@
 
     window.addEventListener('resize', positionPlayerSettingsMenu);
     window.addEventListener('scroll', positionPlayerSettingsMenu, { passive: true });
+    window.addEventListener('resize', positionPlayerSubMenu);
+    window.addEventListener('scroll', positionPlayerSubMenu, { passive: true });
     window.addEventListener('resize', () => syncPlayerAspectRatio());
     window.addEventListener('orientationchange', () => setTimeout(() => syncPlayerAspectRatio(), 160));
     document.addEventListener('fullscreenchange', () => setTimeout(() => syncPlayerAspectRatio(), 80));
@@ -902,6 +994,7 @@
 
     settingsBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (subMenu) subMenu.classList.remove('show');
       const willShow = !settingsMenu.classList.contains('show');
       settingsMenu.classList.toggle('show', willShow);
       settingsBtn.classList.toggle('open', willShow);
@@ -909,12 +1002,30 @@
       showControls();
     });
 
+    if (subMenuBtn && subMenu) {
+      subMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        settingsMenu.classList.remove('show');
+        settingsBtn.classList.remove('open');
+        const willShow = !subMenu.classList.contains('show');
+        subMenu.classList.toggle('show', willShow);
+        if (willShow) positionPlayerSubMenu();
+        showControls();
+      });
+    }
+
     document.addEventListener('click', (e) => {
       if (settingsMenu.classList.contains('show')
         && !settingsMenu.contains(e.target)
         && !settingsBtn.contains(e.target)) {
         settingsMenu.classList.remove('show');
         settingsBtn.classList.remove('open');
+        showControls();
+      }
+      if (subMenu && subMenu.classList.contains('show')
+        && !subMenu.contains(e.target)
+        && (!subMenuBtn || !subMenuBtn.contains(e.target))) {
+        subMenu.classList.remove('show');
         showControls();
       }
     });
@@ -927,8 +1038,41 @@
     let seekAccum = 0;
     let firstTapPlayState = null;
 
+    function replayCurrentCue() {
+      const cues = getCues();
+      if (!cues.length) return false;
+      const cue = (currentCueIdx >= 0 && cues[currentCueIdx]) ? cues[currentCueIdx] : (lastValidCue || cues[0]);
+      if (!cue) return false;
+      const offsetSec = (parseInt(subOffsetEl.value, 10) || 0) / 1000;
+      videoEl.currentTime = Math.max(0, cue.start + offsetSec);
+      syncTimeUI();
+      updateSubtitleFrame();
+      if (videoEl.paused) {
+        videoEl.play().catch(() => {});
+        showPlayFlash(true);
+      }
+      return true;
+    }
+
+    if (repeatLineBtn) {
+      repeatLineBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        replayCurrentCue();
+        showControls();
+      });
+    }
+
+    if (shadowSpeedBtn) {
+      shadowSpeedBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isSlow = Math.abs((videoEl.playbackRate || 1) - 0.75) < 0.05;
+        setPlaybackSpeed(isSlow ? 1.0 : 0.75);
+        showControls();
+      });
+    }
+
     playerBox.addEventListener('click', (e) => {
-      if (controlsEl.contains(e.target) || settingsMenu.contains(e.target)) return;
+      if (controlsEl.contains(e.target) || settingsMenu.contains(e.target) || (subMenu && subMenu.contains(e.target)) || (e.target.closest && e.target.closest('#subtitleText .word.tappable'))) return;
       const rect = playerBox.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const side = x < rect.width / 2 ? 'left' : 'right';
@@ -1011,11 +1155,20 @@
       updateSubtitleFrame,
       syncTimeUI,
       togglePlay,
+      replayCurrentCue,
+      setPlaybackSpeed,
+      getPlaybackSpeed: () => Number(videoEl.playbackRate) || 1,
+      getCurrentCue: () => {
+        const cues = getCues();
+        return (currentCueIdx >= 0 && cues[currentCueIdx]) ? cues[currentCueIdx] : lastValidCue;
+      },
       formatTime,
       isPlayerActive: () => playerActive,
       resetOverlayState() {
         wordSpans = [];
         currentCueIdx = -2;
+        lastValidCue = null;
+        currentOrigLine = '';
         boxVisible = false;
         subtitleEl.innerHTML = '';
         subtitleEl.style.opacity = '0';

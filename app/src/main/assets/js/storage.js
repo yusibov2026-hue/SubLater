@@ -184,7 +184,10 @@
             };
           }
 
-          tx.oncomplete = () => resolve();
+          tx.oncomplete = () => {
+            notifyHistoryUpdated();
+            resolve();
+          };
           tx.onerror = () => resolve();
           tx.onabort = () => resolve();
         } catch (e) {
@@ -193,6 +196,14 @@
         }
       });
     });
+  }
+
+  function notifyHistoryUpdated() {
+    try {
+      if (typeof window !== 'undefined' && typeof window.__onHistoryUpdated === 'function') {
+        window.__onHistoryUpdated();
+      }
+    } catch (_) {}
   }
 
   function saveProjectToHistory(projectData) {
@@ -228,6 +239,70 @@
     }
   }
 
+  async function listHistoryProjects() {
+    try {
+      const db = await getHistoryDb();
+      if (!db) return [];
+      return await new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.getAll();
+        req.onsuccess = () => {
+          const items = Array.isArray(req.result) ? req.result.slice() : [];
+          items.sort((a, b) => (Number(b && b.updatedAt) || 0) - (Number(a && a.updatedAt) || 0));
+          resolve(items);
+        };
+        req.onerror = () => resolve([]);
+      });
+    } catch (e) {
+      diag.logWarn('idb.list', e);
+      return [];
+    }
+  }
+
+  async function deleteProjectFromHistory(fileSig) {
+    if (!fileSig) return false;
+    try {
+      const db = await getHistoryDb();
+      if (!db) return false;
+      return await new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.delete(fileSig);
+        tx.oncomplete = () => {
+          notifyHistoryUpdated();
+          resolve(true);
+        };
+        tx.onerror = () => resolve(false);
+        tx.onabort = () => resolve(false);
+      });
+    } catch (e) {
+      diag.logWarn('idb.delete', e);
+      return false;
+    }
+  }
+
+  async function clearHistoryProjects() {
+    try {
+      const db = await getHistoryDb();
+      if (!db) return false;
+      return await new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.clear();
+        tx.oncomplete = () => {
+          notifyHistoryUpdated();
+          resolve(true);
+        };
+        tx.onerror = () => resolve(false);
+        tx.onabort = () => resolve(false);
+      });
+    } catch (e) {
+      diag.logWarn('idb.clear', e);
+      return false;
+    }
+  }
+
   root.storage = {
     safeGetStorage,
     safeSetStorage,
@@ -237,6 +312,9 @@
     saveGeminiKeyToKeystore,
     getGeminiKeyFromKeystore,
     saveProjectToHistory,
-    getProjectFromHistory
+    getProjectFromHistory,
+    listHistoryProjects,
+    deleteProjectFromHistory,
+    clearHistoryProjects
   };
 })();

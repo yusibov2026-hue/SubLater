@@ -15,6 +15,10 @@ class NativeBridge(private val manager: ExoPlayerManager) {
         manager.startForegroundService(statusText)
 
     @JavascriptInterface
+    fun startForegroundServiceLocalized(statusText: String, cancelLabel: String) =
+        manager.startForegroundServiceLocalized(statusText, cancelLabel)
+
+    @JavascriptInterface
     fun updateForegroundNotification(statusText: String) =
         manager.updateForegroundNotification(statusText)
 
@@ -39,6 +43,9 @@ class NativeBridge(private val manager: ExoPlayerManager) {
 
     @JavascriptInterface
     fun isSystemDarkMode(): Boolean = manager.isSystemDarkMode()
+
+    @JavascriptInterface
+    fun getSystemLanguageTag(): String = manager.getSystemLanguageTag()
 
     @JavascriptInterface
     fun toggleLandscape(landscape: Boolean) = manager.toggleLandscape(landscape)
@@ -162,6 +169,21 @@ class NativeBridge(private val manager: ExoPlayerManager) {
     @JavascriptInterface
     fun startNativeAudioExtractionMode(startSec: Double, batchMode: Boolean): Boolean =
         manager.startNativeAudioExtractionMode(startSec, batchMode)
+
+    @JavascriptInterface
+    fun hasMicPermission(): Boolean = manager.hasMicPermission()
+
+    @JavascriptInterface
+    fun requestMicPermission() = manager.requestMicPermission()
+
+    @JavascriptInterface
+    fun startNativeVoiceRecording(): String = manager.startNativeVoiceRecording()
+
+    @JavascriptInterface
+    fun stopNativeVoiceRecording(): String = manager.stopNativeVoiceRecording()
+
+    @JavascriptInterface
+    fun cancelNativeVoiceRecording() = manager.cancelNativeVoiceRecording()
 
     @JavascriptInterface
     fun saveApiKey(key: String): Boolean = manager.keyVault.saveApiKey(key)

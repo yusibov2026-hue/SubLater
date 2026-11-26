@@ -9,14 +9,15 @@
   <meta name="apple-mobile-web-app-title" content="SubLyter">
   <title>SubLyter</title>
 
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='26' fill='%23161922' stroke='%231b8ef2' stroke-width='6'/><text x='50' y='64' font-family='sans-serif' font-weight='900' font-size='38' fill='%231b8ef2' text-anchor='middle'>SUB</text></svg>">
-  <link rel="manifest" href='data:application/manifest+json,{"name":"SubLyter","short_name":"SubLyter","start_url":".","display":"standalone","background_color":"#161922","theme_color":"#1b8ef2","icons":[{"src":"data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" rx=\"26\" fill=\"%23161922\"/><text x=\"50\" y=\"64\" font-family=\"sans-serif\" font-weight=\"900\" font-size=\"38\" fill=\"%231b8ef2\" text-anchor=\"middle\">SUB</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230B1324'/><polygon points='22,26 52,50 22,74' fill='none' stroke='%2338BDF8' stroke-width='9' stroke-linejoin='round'/><rect x='56' y='32' width='24' height='8' rx='4' fill='%23FFFFFF'/><rect x='58' y='46' width='24' height='8' rx='4' fill='%2338BDF8'/><rect x='56' y='60' width='22' height='8' rx='4' fill='%23FFFFFF'/></svg>">
+  <link rel="manifest" href='data:application/manifest+json,{"name":"SubLyter","short_name":"SubLyter","start_url":".","display":"standalone","background_color":"#0B1324","theme_color":"#38BDF8","icons":[{"src":"data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" rx=\"24\" fill=\"%230B1324\"/><polygon points=\"22,26 52,50 22,74\" fill=\"none\" stroke=\"%2338BDF8\" stroke-width=\"9\" stroke-linejoin=\"round\"/><rect x=\"56\" y=\"32\" width=\"24\" height=\"8\" rx=\"4\" fill=\"%23FFFFFF\"/><rect x=\"58\" y=\"46\" width=\"24\" height=\"8\" rx=\"4\" fill=\"%2338BDF8\"/><rect x=\"56\" y=\"60\" width=\"22\" height=\"8\" rx=\"4\" fill=\"%23FFFFFF\"/></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
 
   <link rel="stylesheet" href="styles/fonts.css">
   <link rel="stylesheet" href="styles/tokens.css">
   <link rel="stylesheet" href="styles/wallpapers.css">
   <link rel="stylesheet" href="styles/player.css">
   <link rel="stylesheet" href="styles/settings.css">
+  <link rel="stylesheet" href="styles/studio.css">
 </head>
 <body>
   <div id="appWallpaper" aria-hidden="true" data-wallpaper="snow"></div>
@@ -29,14 +30,49 @@
       </svg>
     </button>
   </header>
-  <select id="model">
+
+  <nav class="m3-hub-bar" id="hubTabs" role="tablist" aria-label="Workspace modes">
+    <div class="m3-hub-indicator" id="hubIndicator" aria-hidden="true"></div>
+    <button type="button" class="m3-hub-tab active" data-hub-tab="video" role="tab" aria-selected="true">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="4"/><path d="M7 13h4"/><path d="M14 13h3"/><path d="M7 16h10"/></svg>
+      <span data-i18n="tab.subtitle">Subtitle</span>
+    </button>
+    <button type="button" class="m3-hub-tab" data-hub-tab="learn" role="tab">
+      <svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+      <span data-i18n="tab.learn">Learn</span>
+      <span class="m3-tab-badge" id="learnDueCount"></span>
+    </button>
+    <button type="button" class="m3-hub-tab" data-hub-tab="history" role="tab">
+      <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
+      <span data-i18n="tab.history">History</span>
+      <span class="m3-tab-badge" id="historyCount"></span>
+    </button>
+    <button type="button" class="m3-hub-tab" data-hub-tab="voice" role="tab">
+      <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      <span data-i18n="tab.voice">Voice</span>
+      <span class="m3-tab-badge" id="voiceCount"></span>
+    </button>
+  </nav>
+
+  <div class="m3-hub-viewport" id="hubViewport">
+  <div id="hubPanelVideo" class="m3-hub-panel active">
+  <select id="model" style="display:none" aria-hidden="true">
     <option value="auto" selected>Choose model (Auto)</option>
     <option value="whisper-large-v3-turbo">whisper-large-v3-turbo</option>
     <option value="whisper-large-v3">whisper-large-v3</option>
+    <option value="local-whisper-base">Whisper Base (Offline)</option>
+    <option value="local-whisper-small">Whisper Small (Offline)</option>
   </select>
+  <button type="button" id="modelPickerBtn" class="m3-model-trigger" aria-haspopup="dialog" aria-expanded="false">
+    <div class="m3-model-trigger-main">
+      <span class="m3-model-trigger-title" id="modelPickerLabel" data-i18n="model.auto.title">Choose model (Auto)</span>
+    </div>
+    <span class="m3-model-trigger-badge" id="modelPickerBadge" data-i18n="model.auto.badge">Auto</span>
+    <svg class="m3-model-chevron" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+  </button>
 
   <select id="translateLang">
-    <option value="">No translation</option>
+    <option value="" data-i18n="lang.none">No translation</option>
     <option value="Russian">Translate to Russian</option>
     <option value="English">Translate to English</option>
     <option value="Turkish">Translate to Turkish</option>
@@ -86,6 +122,7 @@
     <option value="Tajik">Translate to Tajik</option>
     <option value="Tamil">Translate to Tamil</option>
     <option value="Thai">Translate to Thai</option>
+    <option value="Turkmen">Translate to Turkmen</option>
     <option value="Ukrainian">Translate to Ukrainian</option>
     <option value="Urdu">Translate to Urdu</option>
     <option value="Uzbek">Translate to Uzbek</option>
@@ -93,12 +130,12 @@
   </select>
 
   <label class="file-box" for="mediaFile">
-    <span class="file-pill">File</span>
-    <span id="fileName">Not selected</span>
+    <span class="file-pill" data-i18n="file.pill">File</span>
+    <span id="fileName" data-i18n="file.notSelected">Not selected</span>
     <input type="file" id="mediaFile" accept="video/*,audio/*,.mkv" style="display:none" />
   </label>
 
-  <button id="btn">Generate subtitles</button>
+  <button id="btn" data-i18n="btn.generate">Generate subtitles</button>
   <div id="progressWrap"><div id="progressBar"></div></div>
 
   <div class="action-row" id="actionRow">
@@ -106,23 +143,23 @@
       <svg class="btn-icon-refresh" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
       </svg>
-      <span>Retry</span>
+      <span data-i18n="btn.retry">Retry</span>
     </button>
     <div class="dl-wrap" id="dlWrap">
       <button type="button" id="dlBtn">
-        <span>Download</span>
+        <span data-i18n="btn.download">Download</span>
         <svg class="btn-icon-caret" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M7 10l5 5 5-5H7z"/>
         </svg>
       </button>
       <div id="dlFormatMenu">
-        <button type="button" class="dl-fmt-item" data-fmt="vtt"><span>Standard</span><span class="fmt-ext">.VTT</span></button>
-        <button type="button" class="dl-fmt-item" data-fmt="ass"><span>Karaoke</span><span class="fmt-ext">.ASS</span></button>
-        <button type="button" class="dl-fmt-item" data-fmt="srt"><span>Universal</span><span class="fmt-ext">.SRT</span></button>
-        <button type="button" class="dl-fmt-item" data-fmt="txt"><span>Plain text</span><span class="fmt-ext">.TXT</span></button>
+        <button type="button" class="dl-fmt-item" data-fmt="vtt"><span data-i18n="dl.standard">Standard</span><span class="fmt-ext">.VTT</span></button>
+        <button type="button" class="dl-fmt-item" data-fmt="ass"><span data-i18n="dl.karaoke">Karaoke</span><span class="fmt-ext">.ASS</span></button>
+        <button type="button" class="dl-fmt-item" data-fmt="srt"><span data-i18n="dl.universal">Universal</span><span class="fmt-ext">.SRT</span></button>
+        <button type="button" class="dl-fmt-item" data-fmt="txt"><span data-i18n="dl.plain">Plain text</span><span class="fmt-ext">.TXT</span></button>
         <div class="dl-sep"></div>
         <button type="button" class="dl-fmt-item" id="shareFmtItem">
-          <span>Share</span><span class="fmt-ext" id="shareFmtExt">.VTT</span>
+          <span data-i18n="dl.share">Share</span><span class="fmt-ext" id="shareFmtExt">.VTT</span>
         </button>
       </div>
     </div>
@@ -132,7 +169,7 @@
       <option value="srt">.SRT</option>
       <option value="txt">.TXT</option>
     </select>
-    <button id="openBtn">Text</button>
+    <button id="openBtn" data-i18n="btn.text">Text</button>
   </div>
 
   <p id="status"></p>
@@ -141,11 +178,11 @@
   <div id="aiSummaryBox">
     <div class="ai-title">
       <div class="ai-title-left">
-        <span class="ai-sparkle-badge">✨ AI Video</span>
-        <span class="ai-model-pill" id="aiActiveModelBadge">Gemini 3.8 Flash</span>
+        <span class="ai-sparkle-badge" data-i18n="ai.badge">✨ AI Video</span>
+        <span class="ai-model-pill" id="aiActiveModelBadge">Gemini 4 Hydrogen</span>
       </div>
       <div class="ai-header-actions">
-        <button type="button" class="ai-clear-btn" id="clearAiChatBtn">Clear</button>
+        <button type="button" class="ai-clear-btn" id="clearAiChatBtn" data-i18n="ai.clear">Clear</button>
         <button type="button" class="close-btn" id="closeAiBox" aria-label="Close AI panel" style="width:26px;height:26px;">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6L18 18M18 6L6 18"/></svg>
         </button>
@@ -153,28 +190,139 @@
     </div>
 
     <div class="ai-Prompts-row" id="aiQuickPrompts">
-      <button type="button" class="ai-prompt-chip" data-q="What is this video about? Give a short, clear summary.">📝 What is this video about?</button>
-      <button type="button" class="ai-prompt-chip" data-q="List key moments in the video with exact timestamps in [MM:SS] format.">⏱ Key timestamps</button>
-      <button type="button" class="ai-prompt-chip" data-q="What are the main takeaways and useful insights from this video?">💡 Main takeaways</button>
-      <button type="button" class="ai-prompt-chip" data-q="What is happening in the video right now and what is being said at this moment?">👁 What is in frame now?</button>
+      <button type="button" class="ai-prompt-chip" data-i18n="ai.chip.summary" data-i18n-q="ai.chip.summaryQ" data-q="What is this video about? Give a short, clear summary.">📝 What is this video about?</button>
+      <button type="button" class="ai-prompt-chip" data-i18n="ai.chip.timestamps" data-i18n-q="ai.chip.timestampsQ" data-q="List key moments in the video with exact timestamps in [MM:SS] format.">⏱ Key timestamps</button>
+      <button type="button" class="ai-prompt-chip" data-i18n="ai.chip.takeaways" data-i18n-q="ai.chip.takeawaysQ" data-q="What are the main takeaways and useful insights from this video?">💡 Main takeaways</button>
+      <button type="button" class="ai-prompt-chip" data-visual="1" data-i18n="ai.chip.frame" data-i18n-q="ai.chip.frameQ" data-q="What is happening in the video right now and what is being said at this moment?">👁 What is in frame now?</button>
     </div>
 
     <div id="aiChatList">
-      <div class="ai-msg bot" id="aiSummaryText">Hi! I am your AI video assistant (like YouTube). Ask any question about the video below or pick a quick prompt above. Tap timestamps in replies to jump to that moment.</div>
+      <div class="ai-msg bot" id="aiSummaryText" data-i18n="ai.greeting">Hi! I am your AI video assistant (like YouTube). Ask any question about the video below or pick a quick prompt above. Tap timestamps in replies to jump to that moment.</div>
     </div>
     <div id="aiChaptersList" class="hidden"></div>
 
-    <div class="ai-input-row">
-      <input type="text" id="aiQuestionInput" placeholder="Ask anything about the video..." autocomplete="off" />
-      <button type="button" id="aiSendBtn" aria-label="Send question">
+    <form class="ai-input-row" id="aiChatForm" autocomplete="off">
+      <input type="text" id="aiQuestionInput" enterkeyhint="send" inputmode="text" data-i18n-placeholder="ai.placeholder" placeholder="Ask anything about the video..." autocomplete="off" />
+      <button type="submit" id="aiSendBtn" aria-label="Send question">
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
       </button>
-    </div>
+    </form>
   </div>
 
   <div id="vttPanelWrapper">
-    <pre id="vttPanel" class="hidden" title="Tap to copy text"></pre>
+    <pre id="vttPanel" class="hidden" data-i18n-title="ai.vttTitle" title="Tap to copy text"></pre>
   </div>
+  </div><!-- /#hubPanelVideo -->
+
+  <!-- Feature 1: Language Studio -->
+  <div id="hubPanelLearn" class="m3-hub-panel">
+    <div class="m3-studio-card">
+      <div class="m3-studio-card-head">
+        <h3 class="m3-studio-title" data-i18n="learn.kicker">Language Studio</h3>
+      </div>
+      <div class="m3-studio-row">
+        <div class="m3-studio-row-text">
+          <span class="m3-studio-row-title" data-i18n="learn.dualTitle">Dual Subtitles</span>
+          <span class="m3-studio-row-desc" data-i18n="learn.dualDesc">Show original line underneath translation</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="dualSubToggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="m3-studio-field">
+        <label class="m3-studio-row-desc" for="learnDualLangSelect" data-i18n="learn.dualLangLabel">Second subtitle language</label>
+        <select id="learnDualLangSelect" class="m3-studio-select"></select>
+      </div>
+      <div class="m3-status-line" id="learnStatus"></div>
+    </div>
+
+    <div class="m3-studio-card">
+      <div class="m3-studio-card-head">
+        <span class="m3-studio-title" data-i18n="learn.flashTitle">Flashcard Review</span>
+        <span class="m3-studio-row-desc" id="flashcardProgress" data-i18n="learn.dueZero">0 due</span>
+      </div>
+      <div id="flashcardEmpty" class="m3-empty-state" data-i18n="learn.empty">Tap any word on a playing subtitle to look it up and save flashcards.</div>
+      <div id="flashcardDeckBox" style="display:none;flex-direction:column;gap:10px;">
+        <div class="m3-flashcard" id="flashcardCard">
+          <span class="m3-flashcard-pos" id="flashcardPosPill">Word</span>
+          <div class="m3-flashcard-word" id="flashcardFrontWord">Word</div>
+          <div class="m3-flashcard-hint" data-i18n="learn.cardHint">Tap card to reveal meaning &amp; context</div>
+          <div class="m3-flashcard-answer">
+            <div class="m3-flashcard-trans" id="flashcardBackTrans"></div>
+            <div class="m3-flashcard-meaning" id="flashcardBackMeaning"></div>
+            <div class="m3-flashcard-ctx" id="flashcardBackCtx"></div>
+          </div>
+        </div>
+        <div class="m3-flashcard-rating-row" id="flashcardRatingRow">
+          <button type="button" class="m3-rate-btn again" data-rate="again" data-i18n="learn.rateAgain">Again · 10m</button>
+          <button type="button" class="m3-rate-btn good" data-rate="good" data-i18n="learn.rateGood">Good · 1d+</button>
+          <button type="button" class="m3-rate-btn easy" data-rate="easy" data-i18n="learn.rateEasy">Easy · 4d+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="m3-studio-card" id="savedWordsCard">
+      <div class="m3-studio-card-head">
+        <span class="m3-studio-title" data-i18n="learn.savedWords">Saved Words</span>
+        <button type="button" class="m3-icon-mini" id="clearVocabBtn" data-i18n="learn.clear">Clear</button>
+      </div>
+      <div class="m3-vocab-list" id="vocabList"></div>
+    </div>
+  </div><!-- /#hubPanelLearn -->
+
+  <!-- Feature 2: Subtitle History -->
+  <div id="hubPanelHistory" class="m3-hub-panel">
+    <div class="m3-studio-card">
+      <div class="m3-studio-card-head">
+        <h3 class="m3-studio-title" data-i18n="history.title">Subtitle History</h3>
+        <button type="button" class="m3-icon-mini" id="clearHistoryBtn" data-i18n="history.clear" style="display:none">Clear</button>
+      </div>
+      <input type="search" id="historySearchInput" class="m3-search-input" data-i18n-placeholder="history.searchPlaceholder" placeholder="Search files, languages, subtitle text..." autocomplete="off" style="display:none" />
+      <div class="m3-chips-scroll" id="historyFilterBar" style="display:none"></div>
+      <div class="m3-status-line" id="historyStatus"></div>
+    </div>
+
+    <div id="historyEmpty" class="m3-empty-state" data-i18n="history.empty">Your generated subtitles are saved here automatically for instant one-tap reopening.</div>
+    <div class="m3-cards-list" id="historyList"></div>
+  </div><!-- /#hubPanelHistory -->
+
+  <!-- Feature 3: AI Voice Recorder & Notes -->
+  <div id="hubPanelVoice" class="m3-hub-panel">
+    <div class="m3-studio-card">
+      <div class="m3-studio-card-head">
+        <h3 class="m3-studio-title" data-i18n="voice.title">AI Voice Recorder &amp; Notes</h3>
+      </div>
+      <div class="m3-voice-stage">
+        <button type="button" class="m3-mic-btn" id="voiceRecordBtn" aria-label="Record voice note">
+          <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </button>
+        <div class="m3-voice-timer" id="voiceTimer">0:00</div>
+        <div class="m3-studio-row-desc" id="voiceRecordLabel" data-i18n="voice.tapToRecord">Tap to record</div>
+      </div>
+      <div class="m3-voice-controls">
+        <button type="button" id="voiceModelBtn" class="m3-model-trigger" aria-haspopup="dialog" aria-expanded="false">
+          <div class="m3-model-trigger-main">
+            <span class="m3-model-trigger-title" id="voiceModelLabel" data-i18n="model.auto.title">Choose model (Auto)</span>
+          </div>
+          <span class="m3-model-trigger-badge" id="voiceModelBadge" data-i18n="model.auto.badge">Auto</span>
+          <svg class="m3-model-chevron" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <select id="voiceTranslateLang" aria-label="Voice translation language"></select>
+        <label class="file-box m3-voice-file-box" for="voiceImportInput">
+          <span class="file-pill" data-i18n="file.pill">File</span>
+          <span id="voiceFileName" data-i18n="file.notSelected">Not selected</span>
+          <input type="file" id="voiceImportInput" accept="audio/*,.ogg,.opus,.m4a,.mp3,.wav" style="display:none" />
+        </label>
+      </div>
+      <div class="m3-status-line" id="voiceStatus"></div>
+      <input type="search" id="voiceSearchInput" class="m3-search-input" data-i18n-placeholder="voice.searchPlaceholder" placeholder="Search transcripts &amp; action items..." autocomplete="off" />
+    </div>
+
+    <div id="voiceEmpty" class="m3-empty-state" data-i18n="voice.empty">Tap the mic to record a memo or import any Telegram/WhatsApp voice file.</div>
+    <div class="m3-cards-list" id="voiceList"></div>
+  </div><!-- /#hubPanelVoice -->
+  </div><!-- /#hubViewport -->
   </div><!-- /#appTopSection -->
 
   <div id="playerContainer">
@@ -187,6 +335,10 @@
     <div id="playerControls">
       <span id="timeText">0:00 / 0:00</span>
       <input type="range" id="seekBar" min="0" max="100" value="0" step="0.1">
+
+      <button type="button" class="ctrl-btn" id="subMenuBtn" data-i18n-aria="subMenu.title" aria-label="Subtitles">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 13h4M14 13h3M7 16h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
 
       <button class="ctrl-btn" id="settingsBtn">
         <svg viewBox="0 0 24 24">
@@ -202,12 +354,12 @@
 
   <div id="settingsMenu">
     <div class="m3-player-menu-head">
-      <span class="m3-player-menu-title"><span class="m3-player-menu-dot"></span>Player Settings</span>
+      <span class="m3-player-menu-title"><span class="m3-player-menu-dot"></span><span data-i18n="player.menuTitle">Player Settings</span></span>
       <span class="m3-player-menu-badge">M3</span>
     </div>
     <div class="yt-acc-item">
       <button type="button" class="yt-acc-header">
-        <span class="yt-acc-label">Size</span>
+        <span class="yt-acc-label" data-i18n="player.size">Size</span>
         <span class="yt-acc-val" id="subSizeVal">18px</span>
       </button>
       <div class="yt-acc-body">
@@ -217,7 +369,7 @@
 
     <div class="yt-acc-item">
       <button type="button" class="yt-acc-header">
-        <span class="yt-acc-label">Width</span>
+        <span class="yt-acc-label" data-i18n="player.width">Width</span>
         <span class="yt-acc-val" id="subWidthVal">85%</span>
       </button>
       <div class="yt-acc-body">
@@ -227,7 +379,7 @@
 
     <div class="yt-acc-item">
       <button type="button" class="yt-acc-header">
-        <span class="yt-acc-label">Height</span>
+        <span class="yt-acc-label" data-i18n="player.height">Height</span>
         <span class="yt-acc-val" id="subBottomVal">12%</span>
       </button>
       <div class="yt-acc-body">
@@ -237,7 +389,7 @@
 
     <div class="yt-acc-item">
       <button type="button" class="yt-acc-header">
-        <span class="yt-acc-label">Offset (appear)</span>
+        <span class="yt-acc-label" data-i18n="player.offset">Offset (appear)</span>
         <span class="yt-acc-val" id="subOffsetVal">0 ms</span>
       </button>
       <div class="yt-acc-body">
@@ -247,7 +399,7 @@
 
     <div class="yt-acc-item">
       <button type="button" class="yt-acc-header">
-        <span class="yt-acc-label">Hold (disappear)</span>
+        <span class="yt-acc-label" data-i18n="player.hold">Hold (disappear)</span>
         <span class="yt-acc-val" id="subHoldVal">400 ms</span>
       </button>
       <div class="yt-acc-body">
@@ -257,21 +409,21 @@
 
     <div class="yt-acc-item">
       <button type="button" class="yt-acc-header">
-        <span class="yt-acc-label">Word mode</span>
+        <span class="yt-acc-label" data-i18n="player.wordMode">Word mode</span>
         <span class="yt-acc-val" id="wordModeVal">Word-by-word</span>
       </button>
       <div class="yt-acc-body">
         <select id="wordModeSelect">
-          <option value="hidden">Word-by-word</option>
-          <option value="karaoke">Karaoke</option>
-          <option value="full">Full line</option>
+          <option value="hidden" data-i18n="player.wordMode.hidden">Word-by-word</option>
+          <option value="karaoke" data-i18n="player.wordMode.karaoke">Karaoke</option>
+          <option value="full" data-i18n="player.wordMode.full">Full line</option>
         </select>
       </div>
     </div>
 
     <div class="yt-acc-item">
       <button type="button" class="yt-acc-header">
-        <span class="yt-acc-label">Volume boost</span>
+        <span class="yt-acc-label" data-i18n="player.boost">Volume boost</span>
         <span class="yt-acc-val" id="boostVal">100%</span>
       </button>
       <div class="yt-acc-body">
@@ -281,7 +433,7 @@
 
     <div class="yt-acc-item" id="audioTrackAccItem" style="display:none;">
       <button type="button" class="yt-acc-header">
-        <span class="yt-acc-label">Audio track</span>
+        <span class="yt-acc-label" data-i18n="player.audioTrack">Audio track</span>
         <span class="yt-acc-val" id="audioTrackVal">Track 1</span>
       </button>
       <div class="yt-acc-body">
@@ -292,7 +444,7 @@
     </div>
 
     <div class="yt-inline-row">
-      <span class="yt-acc-label">Background</span>
+      <span class="yt-acc-label" data-i18n="player.background">Background</span>
       <label class="switch">
         <input type="checkbox" id="bgToggle" checked>
         <span class="slider"></span>
@@ -314,6 +466,29 @@
     </div>
   </div>
 
+  <!-- Player Subtitles Menu (2 Modes + Dual Language Picker) -->
+  <div id="subMenu" role="dialog" aria-label="Subtitles">
+    <div class="m3-player-menu-head">
+      <span class="m3-player-menu-title"><span class="m3-player-menu-dot"></span><span data-i18n="subMenu.title">Subtitles</span></span>
+      <span class="m3-player-menu-badge">CC</span>
+    </div>
+    <div class="m3-submode-list">
+      <button type="button" class="m3-submode-opt" id="subModeSingleBtn" data-sub-mode="single">
+        <span class="m3-submode-opt-title" data-i18n="subMenu.singleTitle">Translated subtitles</span>
+        <span class="m3-submode-opt-desc" data-i18n="subMenu.singleDesc">Single track in selected language</span>
+      </button>
+      <button type="button" class="m3-submode-opt active" id="subModeDualBtn" data-sub-mode="dual">
+        <span class="m3-submode-opt-title" data-i18n="subMenu.dualTitle">Dual subtitles</span>
+        <span class="m3-submode-opt-desc" data-i18n="subMenu.dualDesc">Translated + second language</span>
+      </button>
+    </div>
+    <div class="m3-submode-lang-box" id="subMenuDualLangWrap">
+      <label class="m3-studio-row-desc" for="dualSubLangSelect" data-i18n="subMenu.dualLang">Second language</label>
+      <select id="dualSubLangSelect" class="m3-studio-select"></select>
+      <div class="m3-status-line" id="dualSubStatus"></div>
+    </div>
+  </div>
+
   <div id="settingsBackdrop"></div>
 
   <div id="globalSettings">
@@ -324,8 +499,8 @@
           <svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
         </span>
         <span class="m3-header-text">
-          <span class="m3-header-title">Settings</span>
-          <span class="m3-header-sub">Material You • Theme &amp; AI</span>
+          <span class="m3-header-title" data-i18n="settings.title">Settings</span>
+          <span class="m3-header-sub" data-i18n="settings.subtitle">Material You • Theme &amp; AI</span>
         </span>
       </div>
       <button class="close-btn" id="closeSettingsBtn" aria-label="Close settings">
@@ -334,23 +509,28 @@
     </div>
 
     <div class="m3-card">
-      <div class="m3-card-title">Material You &amp; Theme</div>
+      <div class="m3-card-title" data-i18n="settings.cardTheme">Material You &amp; Theme</div>
 
       <div class="global-row">
-        <span>Appearance</span>
+        <span data-i18n="settings.language">Language</span>
+        <select id="appLangSelect" aria-label="App language"></select>
+      </div>
+
+      <div class="global-row">
+        <span data-i18n="settings.appearance">Appearance</span>
         <div class="m3-seg-group" id="m3ThemeModeGroup" role="group" aria-label="Appearance mode">
-          <button type="button" class="m3-seg-btn" data-theme-mode="dark">Dark</button>
-          <button type="button" class="m3-seg-btn" data-theme-mode="light">Light</button>
-          <button type="button" class="m3-seg-btn active" data-theme-mode="system">Auto</button>
+          <button type="button" class="m3-seg-btn" data-theme-mode="dark" data-i18n="settings.dark">Dark</button>
+          <button type="button" class="m3-seg-btn" data-theme-mode="light" data-i18n="settings.light">Light</button>
+          <button type="button" class="m3-seg-btn active" data-theme-mode="system" data-i18n="settings.auto">Auto</button>
         </div>
         <input type="hidden" id="m3ThemeMode" value="system">
       </div>
 
       <div class="global-row">
-        <span>Accent color</span>
+        <span data-i18n="settings.accentColor">Accent color</span>
         <button type="button" class="cp-toggle" data-cp-target="accentPicker" aria-expanded="false">
           <span class="cp-toggle-dot"></span>
-          <span>Color</span>
+          <span data-i18n="settings.colorBtn">Color</span>
           <span class="cp-toggle-chevron">▾</span>
         </button>
         <div class="m3-seed-row" id="m3SeedSwatches" aria-label="Material You seed presets"></div>
@@ -368,20 +548,19 @@
       </div>
 
       <div class="global-row">
-        <span>Theme background</span>
+        <span data-i18n="settings.themeBg">Theme background</span>
         <select id="appThemeBg">
           <option value="dark-gray" selected>Dark Gray</option>
           <option value="gray">Gray</option>
           <option value="light-slate">Light Slate</option>
           <option value="warm-gray">Warm Gray</option>
-          <option value="graphite">Graphite</option>
         </select>
       </div>
 
       <div class="m3-divider"></div>
 
       <div class="global-row">
-        <span>Accent wallpaper</span>
+        <span data-i18n="settings.accentWallpaper">Accent wallpaper</span>
         <select id="accentWallpaper">
           <option value="aurora">Aurora (Glow)</option>
           <option value="nebula">Cosmic Nebula</option>
@@ -418,13 +597,13 @@
       </div>
 
       <div class="global-row" id="wallpaperColorRow">
-        <span>Wallpaper color</span>
+        <span data-i18n="settings.wallpaperColor">Wallpaper color</span>
         <label class="m3-check-pill">
-          <input type="checkbox" id="wallpaperFollowAccent" checked> Match accent
+          <input type="checkbox" id="wallpaperFollowAccent" checked> <span data-i18n="settings.matchAccent">Match accent</span>
         </label>
         <button type="button" class="cp-toggle" data-cp-target="wallpaperPicker" aria-expanded="false">
           <span class="cp-toggle-dot"></span>
-          <span>Color</span>
+          <span data-i18n="settings.colorBtn">Color</span>
           <span class="cp-toggle-chevron">▾</span>
         </button>
         <div class="color-picker" id="wallpaperPicker" data-picker="wallpaper">
@@ -441,16 +620,16 @@
       </div>
 
       <div class="global-row" id="wallpaperOpacityRow">
-        <span>Wallpaper opacity</span>
+        <span data-i18n="settings.wallpaperOpacity">Wallpaper opacity</span>
         <input type="range" id="wallpaperOpacity" min="10" max="100" value="45" style="width: 120px;">
       </div>
     </div>
 
     <div class="m3-card">
-      <div class="m3-card-title">Title &amp; Playback</div>
+      <div class="m3-card-title" data-i18n="settings.cardPlayback">Title &amp; Playback</div>
 
       <div class="global-row">
-        <span>Title font</span>
+        <span data-i18n="settings.titleFont">Title font</span>
         <select id="titleFontFamily">
           <option value="'Plus Jakarta Sans', 'Inter', sans-serif">Plus Jakarta Sans</option>
           <option value="'Inter', sans-serif">Inter</option>
@@ -480,21 +659,21 @@
       </div>
 
       <div class="global-row">
-        <span>Title size <small id="titleFontSizeVal" style="color:var(--md-primary);font-weight:700;margin-left:4px;">30px</small></span>
+        <span><span data-i18n="settings.titleSize">Title size</span> <small id="titleFontSizeVal" style="color:var(--md-primary);font-weight:700;margin-left:4px;">30px</small></span>
         <input type="range" id="titleFontSize" min="18" max="38" step="1" value="30" style="width: 120px;">
       </div>
       <div class="title-font-preview-row">
-        <span style="font-size:11px;color:var(--md-on-surface-variant);flex-shrink:0;">Preview</span>
+        <span style="font-size:11px;color:var(--md-on-surface-variant);flex-shrink:0;" data-i18n="settings.preview">Preview</span>
         <span id="titleFontPreview">SubLyter</span>
       </div>
 
       <div class="m3-divider"></div>
 
       <div class="global-row">
-        <span>Subtitle text color</span>
+        <span data-i18n="settings.subColor">Subtitle text color</span>
         <button type="button" class="cp-toggle" data-cp-target="subTextPicker" aria-expanded="false">
           <span class="cp-toggle-dot"></span>
-          <span>Color</span>
+          <span data-i18n="settings.colorBtn">Color</span>
           <span class="cp-toggle-chevron">▾</span>
         </button>
         <div class="color-picker" id="subTextPicker" data-picker="subtext">
@@ -510,7 +689,7 @@
         </div>
       </div>
       <div class="global-row">
-        <span>Autoplay</span>
+        <span data-i18n="settings.autoplay">Autoplay</span>
         <label class="switch">
           <input type="checkbox" id="autoPlayToggle" checked>
           <span class="slider"></span>
@@ -519,48 +698,48 @@
     </div>
 
     <div class="m3-card">
-      <div class="m3-card-title">API Keys &amp; AI Models</div>
+      <div class="m3-card-title" data-i18n="settings.cardApi">API Keys &amp; AI Models</div>
 
       <div class="global-row api-key-row">
-        <span>Groq API Keys</span>
+        <span data-i18n="settings.groqKeys">Groq API Keys</span>
         <div class="api-row-actions">
           <span id="keysCountBadge" class="m3-count-pill">0 keys</span>
           <a class="api-get-link" href="https://console.groq.com/keys" target="_blank" rel="noopener">
-            Get API
+            <span data-i18n="settings.getApi">Get API</span>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>
         </div>
       </div>
-      <textarea id="apiKeysList" rows="3" autocomplete="off" spellcheck="false" placeholder="Paste one or more Groq keys (one per line or comma-separated — gsk_...)" style="margin:0; width:100%; border-radius:14px; font-family:monospace; font-size:12px; padding:10px 12px; resize:vertical;"></textarea>
+      <textarea id="apiKeysList" rows="3" autocomplete="off" spellcheck="false" data-i18n-placeholder="settings.groqPlaceholder" placeholder="Paste one or more Groq keys (one per line or comma-separated — gsk_...)" style="margin:0; width:100%; border-radius:14px; font-family:monospace; font-size:12px; padding:10px 12px; resize:vertical;"></textarea>
       <input type="hidden" id="apiKey" />
       <input type="hidden" id="apiKey2" />
 
       <div class="m3-divider"></div>
 
       <div class="global-row api-key-row">
-        <span>Gemini API Key</span>
+        <span data-i18n="settings.geminiKey">Gemini API Key</span>
         <div class="api-row-actions">
           <a class="api-get-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">
-            Get API
+            <span data-i18n="settings.getApi">Get API</span>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>
         </div>
       </div>
-      <input type="password" id="geminiApiKey" autocomplete="off" spellcheck="false" placeholder="Enter Gemini key" style="margin:0; border-radius:14px; padding:10px 12px;" />
+      <input type="password" id="geminiApiKey" autocomplete="off" spellcheck="false" data-i18n-placeholder="settings.geminiPlaceholder" placeholder="Enter Gemini key" style="margin:0; border-radius:14px; padding:10px 12px;" />
 
       <div class="global-row">
-        <span>Gemini model</span>
+        <span data-i18n="settings.geminiModel">Gemini model</span>
         <select id="geminiModel">
           <option value="gemini-4-hydrogen" selected>Gemini 4 Hydrogen</option>
+          <option value="gemini-4-argon">Gemini 4 Argon</option>
           <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
           <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
           <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-          <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
         </select>
       </div>
 
       <div class="global-row global-row-stack">
-        <span>Translation model</span>
+        <span data-i18n="settings.translationModel">Translation model</span>
         <select id="llmModel">
           <option value="openai/gpt-oss-120b">GPT-OSS 120B (Accurate)</option>
           <option value="openai/gpt-oss-20b">GPT-OSS 20B (Fast)</option>
@@ -570,47 +749,145 @@
     </div>
 
     <div class="m3-card">
-      <div class="m3-card-title">Generation &amp; Subtitles</div>
+      <div class="m3-card-title" data-i18n="settings.cardGeneration">Generation &amp; Subtitles</div>
 
       <div class="global-row">
-        <span>Hallucination filter</span>
+        <span data-i18n="settings.hallucination">Hallucination filter</span>
         <label class="switch">
           <input type="checkbox" id="hallucinationFilter" checked>
           <span class="slider"></span>
         </label>
       </div>
       <div class="global-row">
-        <span>Auto-split long phrases</span>
+        <span data-i18n="settings.smartSplit">Auto-split long phrases</span>
         <label class="switch">
           <input type="checkbox" id="smartSplitToggle" checked>
           <span class="slider"></span>
         </label>
       </div>
       <div class="global-row">
-        <span>Fast audio compression (16 kHz)</span>
+        <span data-i18n="settings.fastAudio">Fast audio compression (16 kHz)</span>
         <label class="switch">
           <input type="checkbox" id="fastAudioCompress" checked>
           <span class="slider"></span>
         </label>
       </div>
       <div class="global-row">
-        <span>Generation mode</span>
+        <span data-i18n="settings.genMode">Generation mode</span>
         <div class="gen-mode-group" role="group" aria-label="Generation mode">
-          <button type="button" class="gen-mode-btn" id="genModeAllBtn" data-mode="all">All at once</button>
-          <button type="button" class="gen-mode-btn active" id="genModeProgressiveBtn" data-mode="progressive">Progressive</button>
+          <button type="button" class="gen-mode-btn" id="genModeAllBtn" data-mode="all" data-i18n="settings.genAll">All at once</button>
+          <button type="button" class="gen-mode-btn active" id="genModeProgressiveBtn" data-mode="progressive" data-i18n="settings.genProgressive">Progressive</button>
         </div>
         <input type="hidden" id="genMode" value="progressive">
       </div>
-      <input type="text" id="whisperPrompt" placeholder="Glossary / custom names (optional)" style="margin:0; padding:10px 12px; font-size:12px; border-radius:14px;" />
+      <input type="text" id="whisperPrompt" data-i18n-placeholder="settings.glossaryPlaceholder" placeholder="Glossary / custom names (optional)" style="margin:0; padding:10px 12px; font-size:12px; border-radius:14px;" />
       <div class="global-row">
-        <span>Load existing (.vtt / .srt)</span>
-        <label for="subFile" class="file-pill" style="padding: 7px 16px; font-size: 12px;">Choose</label>
+        <span data-i18n="settings.loadSub">Load existing (.vtt / .srt)</span>
+        <label for="subFile" class="file-pill" style="padding: 7px 16px; font-size: 12px;" data-i18n="settings.choose">Choose</label>
         <input type="file" id="subFile" accept=".vtt,.srt" style="display:none" />
       </div>
       <div class="global-row">
-        <span>Diagnostics log</span>
-        <button type="button" class="file-pill" id="copyDiagLogBtn" style="padding: 7px 16px; font-size: 12px; border: none; cursor: pointer;">Copy log</button>
+        <span data-i18n="settings.diagLog">Diagnostics log</span>
+        <button type="button" class="file-pill" id="copyDiagLogBtn" style="padding: 7px 16px; font-size: 12px; border: none; cursor: pointer;" data-i18n="settings.copyLog">Copy log</button>
       </div>
+      <div class="global-row">
+        <span data-i18n="settings.welcomeTour">Welcome feature tour</span>
+        <button type="button" class="file-pill" id="openWelcomeGuideBtn" style="padding: 7px 16px; font-size: 12px; border: none; cursor: pointer;" data-i18n="settings.show">Show</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Material You Speech Model Sheet -->
+  <div id="modelPickerBackdrop"></div>
+  <div id="modelPickerSheet" role="dialog" aria-modal="true" aria-labelledby="modelPickerSheetTitle">
+    <div class="m3-lookup-head">
+      <h3 class="m3-studio-title" id="modelPickerSheetTitle" data-i18n="model.sheet.title" style="font-size:18px;">Speech Model</h3>
+      <button type="button" class="close-btn" id="closeModelPickerBtn" aria-label="Close model picker">
+        <svg viewBox="0 0 24 24"><path d="M6 6L18 18M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="m3-model-list" id="modelPickerList">
+      <button type="button" class="m3-model-option active" data-model="auto">
+        <div class="m3-model-opt-head">
+          <span class="m3-model-opt-title" data-i18n="model.auto.title">Choose model (Auto)</span>
+          <span class="m3-model-opt-right">
+            <span class="m3-model-opt-badge" data-i18n="model.auto.badge">Auto</span>
+          </span>
+        </div>
+        <div class="m3-model-opt-desc" data-i18n="model.auto.desc">Automatically picks the fastest Whisper v3 Turbo pipeline on Groq LPU™ with seamless failover between keys.</div>
+      </button>
+      <button type="button" class="m3-model-option" data-model="whisper-large-v3-turbo">
+        <div class="m3-model-opt-head">
+          <span class="m3-model-opt-title" data-i18n="model.turbo.title">whisper-large-v3-turbo</span>
+          <span class="m3-model-opt-right">
+            <span class="m3-model-opt-badge" data-i18n="model.turbo.badge">Fastest</span>
+          </span>
+        </div>
+        <div class="m3-model-opt-desc" data-i18n="model.turbo.desc">Near-instant transcription with top accuracy-to-speed ratio. Recommended for 95% of videos, lectures, and voice notes.</div>
+      </button>
+      <button type="button" class="m3-model-option" data-model="whisper-large-v3">
+        <div class="m3-model-opt-head">
+          <span class="m3-model-opt-title" data-i18n="model.v3.title">whisper-large-v3</span>
+          <span class="m3-model-opt-right">
+            <span class="m3-model-opt-badge" data-i18n="model.v3.badge">Pro</span>
+          </span>
+        </div>
+        <div class="m3-model-opt-desc" data-i18n="model.v3.desc">Full-size multilingual model for tricky accents, background music, quiet speech, or rare terminology.</div>
+      </button>
+      <div class="m3-model-option m3-model-local" data-model="local-whisper-base" role="button" tabindex="0">
+        <div class="m3-model-opt-head">
+          <span class="m3-model-opt-title" data-i18n="model.base.title">Whisper Base (Offline)</span>
+          <span class="m3-model-opt-right">
+            <span class="m3-model-opt-badge" id="localModelBadge_base" data-i18n="model.base.badge">~76 MB · Offline</span>
+          </span>
+        </div>
+        <div class="m3-model-opt-desc" data-i18n="model.base.desc">Compact on-device Whisper v3 ONNX model. Fast offline speech recognition without internet or API keys.</div>
+        <div class="m3-model-dl-row">
+          <button type="button" class="m3-model-dl-btn" data-local-dl="local-whisper-base" data-i18n="model.download">Download</button>
+          <button type="button" class="m3-model-del-btn" data-local-del="local-whisper-base" data-i18n="model.delete" style="display:none">Delete</button>
+          <div class="m3-model-dl-bar" style="display:none"><div class="m3-model-dl-fill"></div></div>
+        </div>
+      </div>
+      <div class="m3-model-option m3-model-local" data-model="local-whisper-small" role="button" tabindex="0">
+        <div class="m3-model-opt-head">
+          <span class="m3-model-opt-title" data-i18n="model.small.title">Whisper Small (Offline)</span>
+          <span class="m3-model-opt-right">
+            <span class="m3-model-opt-badge" id="localModelBadge_small" data-i18n="model.small.badge">~245 MB · Offline</span>
+          </span>
+        </div>
+        <div class="m3-model-opt-desc" data-i18n="model.small.desc">Balanced multilingual on-device Whisper model. Higher offline accuracy for accents and clear phrasing without API keys.</div>
+        <div class="m3-model-dl-row">
+          <button type="button" class="m3-model-dl-btn" data-local-dl="local-whisper-small" data-i18n="model.download">Download</button>
+          <button type="button" class="m3-model-del-btn" data-local-del="local-whisper-small" data-i18n="model.delete" style="display:none">Delete</button>
+          <div class="m3-model-dl-bar" style="display:none"><div class="m3-model-dl-fill"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contextual Word Lookup Sheet (Feature 1) -->
+  <div id="wordLookupBackdrop"></div>
+  <div id="wordLookupSheet" role="dialog" aria-modal="true" aria-labelledby="wordLookupTitle">
+    <div class="m3-lookup-head">
+      <div class="m3-lookup-word-row">
+        <h3 class="m3-lookup-word" id="wordLookupTitle">Word</h3>
+        <span class="m3-flashcard-pos" id="wordLookupPos">...</span>
+      </div>
+      <button type="button" class="close-btn" id="closeWordLookupBtn" aria-label="Close lookup">
+        <svg viewBox="0 0 24 24"><path d="M6 6L18 18M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="m3-lookup-box">
+      <div class="m3-lookup-trans" id="wordLookupTranslation">...</div>
+      <div class="m3-lookup-text" id="wordLookupMeaning"></div>
+      <div class="m3-lookup-muted" id="wordLookupNuance"></div>
+      <div class="m3-lookup-muted" id="wordLookupExample"></div>
+    </div>
+    <div class="m3-lookup-muted" id="wordLookupContextLine"></div>
+    <div class="m3-status-line" id="wordLookupStatus"></div>
+    <div class="m3-full-row-actions">
+      <button type="button" class="m3-pill-btn" id="saveWordCardBtn" data-i18n="lookup.saveCard">Save Flashcard</button>
+      <button type="button" class="m3-tonal-btn" id="resumeFromLookupBtn" data-i18n="lookup.resume">Resume Video</button>
     </div>
   </div>
 
@@ -620,56 +897,69 @@
       <div class="m3-welcome-badge" aria-hidden="true">
         <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="4"/><path d="M7 13h4"/><path d="M14 13h3"/><path d="M7 16h10"/></svg>
       </div>
-      <h3 class="m3-welcome-title" id="welcomeModalTitle">Welcome to SubLyter</h3>
-      <p class="m3-welcome-sub">Fast AI subtitles, translation into 50+ languages, and smart video Q&amp;A.</p>
+      <h3 class="m3-welcome-title" id="welcomeModalTitle" data-i18n="welcome.title">Welcome to SubLyter Studio</h3>
+      <p class="m3-welcome-sub" data-i18n="welcome.sub">Groq-powered instant subtitles, Language Studio, Subtitle History &amp; AI Voice Notes — crafted in Material You.</p>
     </div>
 
     <div class="m3-welcome-steps">
       <div class="m3-welcome-step">
         <div class="m3-welcome-step-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
         </div>
         <div class="m3-welcome-step-body">
-          <span class="m3-welcome-step-title">Add your Groq API key</span>
-          <span class="m3-welcome-step-desc">Paste a free Groq key in Settings to enable instant transcription &amp; translation.</span>
+          <span class="m3-welcome-step-title" data-i18n="welcome.step1.title">Groq Speed + 53 Languages</span>
+          <span class="m3-welcome-step-desc" data-i18n="welcome.step1.desc">Instant speech subtitles, adaptive borderless player &amp; Gemini Video Q&amp;A.</span>
         </div>
       </div>
 
       <div class="m3-welcome-step">
         <div class="m3-welcome-step-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><polygon points="10 9 15 12 10 15 10 9"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
         </div>
         <div class="m3-welcome-step-body">
-          <span class="m3-welcome-step-title">Works with any video shape</span>
-          <span class="m3-welcome-step-desc">Adaptive player fits vertical, square, and widescreen videos with live subtitles.</span>
+          <span class="m3-welcome-step-title" data-i18n="welcome.step2.title">Language Studio (Learn)</span>
+          <span class="m3-welcome-step-desc" data-i18n="welcome.step2.desc">Dual subtitles, tap any word for contextual AI meaning, 0.75× shadowing &amp; flashcards.</span>
         </div>
       </div>
 
       <div class="m3-welcome-step">
         <div class="m3-welcome-step-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M2 12h20"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
         </div>
         <div class="m3-welcome-step-body">
-          <span class="m3-welcome-step-title">Made for Material You</span>
-          <span class="m3-welcome-step-desc">Switch Dark, Light, or Auto themes, pick accents, and translate to 50+ languages.</span>
+          <span class="m3-welcome-step-title" data-i18n="welcome.step3.title">Subtitle History</span>
+          <span class="m3-welcome-step-desc" data-i18n="welcome.step3.desc">Auto-saved archive of all generated subtitles with search, language badges &amp; one-tap reopen.</span>
+        </div>
+      </div>
+
+      <div class="m3-welcome-step">
+        <div class="m3-welcome-step-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+        </div>
+        <div class="m3-welcome-step-body">
+          <span class="m3-welcome-step-title" data-i18n="welcome.step4.title">AI Voice Recorder &amp; Notes</span>
+          <span class="m3-welcome-step-desc" data-i18n="welcome.step4.desc">Record live memos or import voice files for instant Groq transcripts &amp; action items.</span>
         </div>
       </div>
     </div>
 
     <div class="m3-welcome-actions">
-      <button type="button" class="m3-welcome-btn-primary" id="welcomeOpenSettingsBtn">Add API Key in Settings</button>
-      <button type="button" class="m3-welcome-btn-tonal" id="welcomeStartBtn">Get Started</button>
+      <button type="button" class="m3-welcome-btn-primary" id="welcomeOpenSettingsBtn" data-i18n="welcome.addKeyBtn">Add API Key in Settings</button>
+      <button type="button" class="m3-welcome-btn-tonal" id="welcomeStartBtn" data-i18n="welcome.startBtn">Get Started</button>
     </div>
   </div>
 
   <script defer src="js/diagnostics.js"></script>
   <script defer src="js/bridge.js"></script>
   <script defer src="js/storage.js"></script>
+  <script defer src="js/i18n.js"></script>
   <script defer src="js/subtitles.js"></script>
   <script defer src="js/groq-api.js"></script>
   <script defer src="js/gemini-qa.js"></script>
   <script defer src="js/theme.js"></script>
   <script defer src="js/player.js"></script>
+  <script defer src="js/studio.js"></script>
+  <script defer src="js/local-whisper.js"></script>
   <script defer src="js/audio-pipeline.js"></script>
   <script defer src="js/app.js"></script>
 </body>

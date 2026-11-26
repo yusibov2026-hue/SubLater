@@ -44,8 +44,11 @@ class SubtitleForegroundService : Service() {
             ?.takeIf { it.isNotBlank() }
             ?: "Generating subtitles..."
         val progress = intent.getIntExtra(EXTRA_PROGRESS, -1)
+        val cancelLabel = intent.getStringExtra(EXTRA_CANCEL_LABEL)
+            ?.takeIf { it.isNotBlank() }
+            ?: "Cancel"
 
-        val notification = buildNotification(statusText, progress)
+        val notification = buildNotification(statusText, progress, cancelLabel)
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(
@@ -122,7 +125,7 @@ class SubtitleForegroundService : Service() {
         }
     }
 
-    private fun buildNotification(contentText: String, progress: Int = -1): Notification {
+    private fun buildNotification(contentText: String, progress: Int = -1, cancelLabel: String = "Cancel"): Notification {
         val openIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -146,7 +149,7 @@ class SubtitleForegroundService : Service() {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .addAction(0, "Cancel", cancelPendingIntent)
+            .addAction(0, cancelLabel, cancelPendingIntent)
 
         if (progress in 0..100) {
             builder.setProgress(100, progress, false)
@@ -164,6 +167,7 @@ class SubtitleForegroundService : Service() {
         const val ACTION_CANCEL = "com.fromsub.app.action.CANCEL_FG"
         const val EXTRA_STATUS_TEXT = "extra_status_text"
         const val EXTRA_PROGRESS = "extra_progress"
+        const val EXTRA_CANCEL_LABEL = "extra_cancel_label"
 
         @Volatile
         var onCancelRequested: (() -> Unit)? = null

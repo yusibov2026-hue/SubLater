@@ -75,9 +75,10 @@ class AudioChunkExtractor(
         cancelRequested.set(false)
         stopActiveWorkersOnly()
 
-        val targetSampleRate = 16000
-        val streamChunkDurationSec = if (batchMode) 180 else 60
-        val streamOverlapSec = if (batchMode) 4 else 1
+        // Механизм 1.0.24 ("All at once"): 12 кГц моно, нарезка по 5 минут (300 с) с перекрытием 6 с
+        val targetSampleRate = if (batchMode) 12000 else 16000
+        val streamChunkDurationSec = if (batchMode) 300 else 60
+        val streamOverlapSec = if (batchMode) 6 else 1
 
         if (targetUri.scheme == "http" || targetUri.scheme == "https") {
             return startStreamAudioCapture(
@@ -358,23 +359,15 @@ class AudioChunkExtractor(
         val safeStartSec = if (startSec >= 30.0) startSec else 0.0
         val totalDurSec = probeAudioDurationSec(uri)
         val remainingSec = (totalDurSec - safeStartSec).coerceAtLeast(0.0)
-        val fallbackChunkDur = if (batchMode) 180 else 60
-        val overlapSec = if (batchMode) 2 else 1
+        val fallbackChunkDur = if (batchMode) 300 else 60
+        val overlapSec = if (batchMode) 6 else 1
 
-        if (totalDurSec <= 0.0 || remainingSec <= (if (batchMode) 50.0 else 70.0)) {
+        if (totalDurSec <= 0.0 || remainingSec <= (if (batchMode) 305.0 else 70.0)) {
             extractFixedWavChunksAsync(sessionId, uri, startSec, targetSampleRate, fallbackChunkDur, overlapSec)
             return
         }
 
-        val chunkDurationSec = if (batchMode) {
-            if (remainingSec <= 720.0) {
-                ceil(remainingSec / 4.0).toInt().coerceIn(45, 180)
-            } else {
-                180
-            }
-        } else {
-            60
-        }
+        val chunkDurationSec = if (batchMode) 300 else 60
 
         val windows = mutableListOf<Triple<Int, Double, Double>>()
         var curStart = safeStartSec

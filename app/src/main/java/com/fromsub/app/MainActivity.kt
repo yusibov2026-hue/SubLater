@@ -6,10 +6,13 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.util.Base64
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -32,6 +35,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,6 +52,8 @@ import androidx.core.content.ContextCompat
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
 import androidx.webkit.WebViewAssetLoader
+import java.io.ByteArrayOutputStream
+import java.util.concurrent.Executors
 
 @OptIn(UnstableApi::class)
 class MainActivity : ComponentActivity() {
@@ -56,6 +62,34 @@ class MainActivity : ComponentActivity() {
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var webViewRef: WebView? = null
     private var pendingExternalJson: String = ""
+    private var pendingExternalImageJson: String = ""
+    private var pendingAudioPermissionRequest: PermissionRequest? = null
+    private var pendingNativeMicRequest: Boolean = false
+    private val intentIoExecutor = Executors.newSingleThreadExecutor()
+
+    private val micPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val req = pendingAudioPermissionRequest
+        pendingAudioPermissionRequest = null
+        if (req != null) {
+            val allowed = req.resources.filter {
+                it == PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID ||
+                    (granted && it == PermissionRequest.RESOURCE_AUDIO_CAPTURE)
+            }.toTypedArray()
+            if (allowed.isNotEmpty()) req.grant(allowed) else req.deny()
+        }
+        if (pendingNativeMicRequest) {
+            pendingNativeMicRequest = false
+            val wv = webViewRef
+            wv?.post {
+                wv.evaluateJavascript(
+                    "window.__onNativeMicPermission && window.__onNativeMicPermission($granted);",
+                    null
+                )
+            }
+        }
+    }
 
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -88,7 +122,10 @@ class MainActivity : ComponentActivity() {
                 val mimeType = contentResolver.getType(chosenUri) ?: ""
                 val pathStr = chosenUri.toString().lowercase()
                 val isSubtitleFile = pathStr.endsWith(".vtt") || pathStr.endsWith(".srt") || pathStr.endsWith(".ass")
-                if (!isSubtitleFile && (mimeType.startsWith("video/") || mimeType.startsWith("audio/") || !mimeType.startsWith("text/"))) {
+                val isImageFile = mimeType.startsWith("image/") ||
+                    pathStr.endsWith(".jpg") || pathStr.endsWith(".jpeg") ||
+                    pathStr.endsWith(".png") || pathStr.endsWith(".webp")
+                if (!isSubtitleFile && !isImageFile && (mimeType.startsWith("video/") || mimeType.startsWith("audio/") || !mimeType.startsWith("text/"))) {
                     exoPlayerManager.storeMediaUri(chosenUri)
                 }
                 callback?.onReceiveValue(uris.toTypedArray())
@@ -246,7 +283,7 @@ class MainActivity : ComponentActivity() {
                 val wv = webViewRef
                 if (wv != null) {
                     wv.evaluateJavascript(
-                        "(function(){ if (document.body.classList.contains('player-fullscreen-open')) { document.getElementById('fsBtn').click(); return 'handled'; } return 'exit'; })()"
+                        "(function(){ var sm = document.getElementById('subMenu'); if (sm && sm.classList.contains('show')) { sm.classList.remove('show'); return 'handled'; } var mps = document.getElementById('modelPickerSheet'); if (mps && mps.classList.contains('show')) { var mc = document.getElementById('closeModelPickerBtn'); if (mc) mc.click(); return 'handled'; } var wls = document.getElementById('wordLookupSheet'); if (wls && wls.classList.contains('show')) { var c = document.getElementById('closeWordLookupBtn'); if (c) c.click(); return 'handled'; } if (document.body.classList.contains('player-fullscreen-open')) { document.getElementById('fsBtn').click(); return 'handled'; } return 'exit'; })()"
                     ) { res ->
                         if (res != null && res.contains("handled")) {
                             // Вышли из полноэкранного плеера обратно в главное меню
@@ -284,6 +321,7 @@ class MainActivity : ComponentActivity() {
                     fileChooserLauncher.launch(intent)
                     true
                 },
+                onPermissionRequest = { req -> handleWebPermissionRequest(req) },
                 onWebViewCreated = { wv ->
                     webViewRef = wv
                 }
@@ -325,6 +363,18 @@ class MainActivity : ComponentActivity() {
         val isStream = scheme == "http" || scheme == "https"
         if (isStream) {
             handleStreamIntent(uri, intent)
+            return
+        }
+
+        val resolvedMime = (intent.type ?: contentResolver.getType(uri) ?: "").lowercase()
+        val pathLower = uri.toString().lowercase()
+        val isImageShare = intent.action == Intent.ACTION_SEND && (
+            resolvedMime.startsWith("image/") ||
+                pathLower.endsWith(".jpg") || pathLower.endsWith(".jpeg") ||
+                pathLower.endsWith(".png") || pathLower.endsWith(".webp")
+            )
+        if (isImageShare) {
+            handleExternalImageIntent(uri)
             return
         }
 
@@ -427,7 +477,116 @@ class MainActivity : ComponentActivity() {
         return json
     }
 
+    private fun handleExternalImageIntent(uri: Uri) {
+        intentIoExecutor.execute {
+            try {
+                var displayName = "Screenshot"
+                contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val nameIdx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (nameIdx >= 0) {
+                            val candidate = cursor.getString(nameIdx)
+                            if (!candidate.isNullOrBlank()) displayName = candidate
+                        }
+                    }
+                }
+                val rawBytes = contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return@execute
+                val decoded = BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size) ?: return@execute
+                val maxDim = 1024
+                val scale = minOf(1f, maxDim.toFloat() / maxOf(decoded.width, decoded.height).coerceAtLeast(1))
+                val scaled = if (scale < 1f) {
+                    Bitmap.createScaledBitmap(
+                        decoded,
+                        (decoded.width * scale).toInt().coerceAtLeast(1),
+                        (decoded.height * scale).toInt().coerceAtLeast(1),
+                        true
+                    )
+                } else decoded
+                val baos = ByteArrayOutputStream()
+                scaled.compress(Bitmap.CompressFormat.JPEG, 82, baos)
+                if (scaled != decoded) scaled.recycle()
+                decoded.recycle()
+                val b64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+                val payload = org.json.JSONObject().apply {
+                    put("name", displayName)
+                    put("mime", "image/jpeg")
+                    put("base64", b64)
+                }.toString()
+                runOnUiThread {
+                    pendingExternalImageJson = payload
+                    flushPendingExternalImage()
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private fun flushPendingExternalImage() {
+        if (pendingExternalImageJson.isBlank()) return
+        val wv = webViewRef ?: return
+        val json = pendingExternalImageJson
+        pendingExternalImageJson = ""
+        wv.post {
+            wv.evaluateJavascript(
+                "window.__onExternalImage && window.__onExternalImage(${org.json.JSONObject.quote(json)});",
+                null
+            )
+        }
+    }
+
+    fun consumePendingExternalImage(): String {
+        val json = pendingExternalImageJson
+        pendingExternalImageJson = ""
+        return json
+    }
+
+    fun requestNativeMicPermission() {
+        runOnUiThread {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.RECORD_AUDIO
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                webViewRef?.evaluateJavascript(
+                    "window.__onNativeMicPermission && window.__onNativeMicPermission(true);",
+                    null
+                )
+            } else {
+                pendingNativeMicRequest = true
+                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+        }
+    }
+
+    fun handleWebPermissionRequest(request: PermissionRequest) {
+        runOnUiThread {
+            val needsMic = request.resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)
+            if (needsMic && ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.RECORD_AUDIO
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                pendingAudioPermissionRequest?.deny()
+                pendingAudioPermissionRequest = request
+                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                return@runOnUiThread
+            }
+            val allowed = request.resources.filter {
+                it == PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID ||
+                    it == PermissionRequest.RESOURCE_AUDIO_CAPTURE
+            }.toTypedArray()
+            if (allowed.isNotEmpty()) {
+                request.grant(allowed)
+            } else {
+                request.deny()
+            }
+        }
+    }
+
     override fun onDestroy() {
+        intentIoExecutor.shutdownNow()
+        pendingAudioPermissionRequest?.deny()
+        pendingAudioPermissionRequest = null
         exoPlayerManager.attachWebView(null)
         webViewRef?.apply {
             stopLoading()
@@ -442,11 +601,12 @@ class MainActivity : ComponentActivity() {
 }
 
 @OptIn(UnstableApi::class)
-@SuppressLint("SetJavaScriptEnabled")
+@SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
 fun HybridVideoApp(
     exoPlayerManager: ExoPlayerManager,
     onOpenFileChooser: (ValueCallback<Array<Uri>>, WebChromeClient.FileChooserParams?) -> Boolean,
+    onPermissionRequest: (PermissionRequest) -> Unit,
     onWebViewCreated: (WebView) -> Unit
 ) {
     val resizeMode by exoPlayerManager.resizeModeState
@@ -461,6 +621,7 @@ fun HybridVideoApp(
         modifier = Modifier
             .fillMaxSize()
             .background(if (bounds.isFullscreen) ComposeColor(0xFF000000) else ComposeColor(hostSurfaceColor))
+            .imePadding()
     ) {
         val maxW = maxWidth
         val maxH = maxHeight
@@ -488,6 +649,8 @@ fun HybridVideoApp(
                     player = exoPlayerManager.exoPlayer
                     useController = false
                     this.resizeMode = resizeMode
+                    isFocusable = false
+                    isFocusableInTouchMode = false
                     setBackgroundColor(Color.BLACK)
                     setShutterBackgroundColor(Color.BLACK)
                     setKeepContentOnPlayerReset(true)
@@ -516,6 +679,12 @@ fun HybridVideoApp(
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
                     setBackgroundColor(Color.TRANSPARENT)
+                    isFocusable = true
+                    isFocusableInTouchMode = true
+                    setOnTouchListener { v, _ ->
+                        if (!v.hasFocus()) v.requestFocus()
+                        false
+                    }
 
                     settings.apply {
                         javaScriptEnabled = true
@@ -587,6 +756,13 @@ fun HybridVideoApp(
                                     null
                                 )
                             }
+                            val pendingImg = activity?.consumePendingExternalImage()
+                            if (!pendingImg.isNullOrBlank()) {
+                                view.evaluateJavascript(
+                                    "window.__onExternalImage && window.__onExternalImage(${org.json.JSONObject.quote(pendingImg)});",
+                                    null
+                                )
+                            }
                         }
                     }
                     webChromeClient = object : WebChromeClient() {
@@ -601,14 +777,7 @@ fun HybridVideoApp(
 
                         override fun onPermissionRequest(request: PermissionRequest?) {
                             if (request == null) return
-                            val allowed = request.resources.filter {
-                                it == PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID
-                            }.toTypedArray()
-                            if (allowed.isNotEmpty()) {
-                                request.grant(allowed)
-                            } else {
-                                request.deny()
-                            }
+                            onPermissionRequest(request)
                         }
                     }
 

@@ -237,6 +237,7 @@
     let lastErr = null;
     const keyPool = ctx.keyPool || new KeyPool(ctx.getKeys || (() => []));
     const onStatus = typeof ctx.onStatus === 'function' ? ctx.onStatus : () => {};
+    const tr = (key, vars, fallback) => (typeof ctx.t === 'function' ? ctx.t(key, vars) : fallback);
     const timeoutMs = Number(ctx.timeoutMs) || 90000;
     const totalKeys = Math.max(1, keyPool.getKeys().length);
     let rotatedCount = 0;
@@ -251,7 +252,7 @@
       try {
         if (picked.allLimited && picked.waitMs > 0) {
           const waitSec = Math.max(1, Math.ceil(picked.waitMs / 1000));
-          onStatus(`⏳ Rate limit on all keys. Waiting ${waitSec}s...`);
+          onStatus(tr('status.rateLimitAll', { sec: waitSec }, `⏳ Rate limit on all keys. Waiting ${waitSec}s...`));
           await abortableDelay(picked.waitMs, signal);
           picked = keyPool.pickKey();
           if (picked.allInvalid || !picked.key) {
@@ -268,7 +269,7 @@
           if (keyPool.hasValidKeys() && invalidSwitches < totalKeys) {
             invalidSwitches++;
             i--;
-            onStatus('🔑 Key rejected (401). Switching to another key...');
+            onStatus(tr('status.keyRejectedSwitch', null, '🔑 Key rejected (401). Switching to another key...'));
             continue;
           }
           return res;
@@ -282,13 +283,13 @@
           if (rotatedCount < totalKeys - 1) {
             rotatedCount++;
             i--;
-            onStatus('🔄 Key rate-limited. Trying another key...');
+            onStatus(tr('status.keyRateLimitedSwitch', null, '🔄 Key rate-limited. Trying another key...'));
             continue;
           }
           if (i < retries) {
             rotatedCount = 0;
             const waitSec = Math.max(1, cooldownSec);
-            onStatus(`⏳ Rate limit. Waiting ${waitSec}s... (Attempt ${i + 1}/${retries})`);
+            onStatus(tr('status.rateLimitWait', { sec: waitSec, attempt: i + 1, max: retries }, `⏳ Rate limit. Waiting ${waitSec}s... (Attempt ${i + 1}/${retries})`));
             await abortableDelay(jitterMs(waitSec * 1000), signal);
             continue;
           }
@@ -297,7 +298,7 @@
         if ((res.status === 502 || res.status === 503) && i < retries) {
           rotatedCount = 0;
           const waitSec = Math.max(1, Math.ceil(1200 * Math.pow(2, i) / 1000));
-          onStatus(`⏳ Server busy (${res.status}). Retrying in ${waitSec}s...`);
+          onStatus(tr('status.serverBusyRetry', { code: res.status, sec: waitSec }, `⏳ Server busy (${res.status}). Retrying in ${waitSec}s...`));
           await abortableDelay(jitterMs(waitSec * 1000), signal);
           continue;
         }
@@ -309,7 +310,7 @@
         diag.logWarn('groq.fetch', e);
         lastErr = e;
         if (i < retries) {
-          onStatus('🌐 Network error. Retrying...');
+          onStatus(tr('status.networkRetry', null, '🌐 Network error. Retrying...'));
           await abortableDelay(jitterMs(2000), signal);
         }
       }
@@ -319,7 +320,9 @@
   }
 
   async function sendToGroq(blob, filename, model, promptHint, signal, ctx = {}) {
-    blob = await normalizeWavBlob(blob);
+    if (!ctx.skipNormalize) {
+      blob = await normalizeWavBlob(blob);
+    }
     const res = await fetchGroqWithRotation(
       'https://api.groq.com/openai/v1/audio/transcriptions',
       (key) => {
@@ -449,6 +452,7 @@
     }
 
     let completedBatches = 0;
+    const tr = (key, vars, fallback) => (typeof ctx.t === 'function' ? ctx.t(key, vars) : fallback);
     await runWithConcurrency(batches, Math.max(1, Number(concurrency) || 10), async (bObj) => {
       if (signal && signal.aborted) throw new Error('Cancelled by user.');
       const { startLine, batch, prevContext } = bObj;
@@ -456,13 +460,198 @@
       failedLines += failed;
       completedBatches++;
       const pct = 55 + Math.round((completedBatches / Math.max(1, batches.length)) * 43);
+      const fromLine = startLine + 1;
+      const toLine = Math.min(startLine + batchSize, cueArr.length);
+      const msg = tr(
+        'status.translatingBatch',
+        { done: completedBatches, total: batches.length, from: fromLine, to: toLine },
+        `⚡ Parallel translation: batch ${completedBatches} of ${batches.length} (lines ${fromLine}–${toLine})...`
+      );
+      if (statusElRef) statusElRef.innerText = msg;
+      if (typeof ctx.onStatus === 'function') ctx.onStatus(msg);
       if (typeof ctx.setProgress === 'function') ctx.setProgress(pct);
-      if (statusElRef) {
-        statusElRef.innerText = `⚡ Parallel translation: batch ${completedBatches} of ${batches.length} (lines ${startLine + 1}–${Math.min(startLine + batchSize, cueArr.length)})...`;
-      }
     });
 
     return failedLines;
+  }
+
+  async function callGroqJson(systemPrompt, userContent, signal, ctx = {}) {
+    const primaryModel = ctx.primaryModel || 'openai/gpt-oss-20b';
+    const fallbackModel = ctx.fallbackModel || 'openai/gpt-oss-120b';
+    const runModel = (modelName) => fetchGroqWithRotation(
+      'https://api.groq.com/openai/v1/chat/completions',
+      (key) => ({
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + key,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: modelName,
+          ...(String(modelName).startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
+          temperature: 0.2,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userContent }
+          ]
+        })
+      }),
+      signal,
+      3,
+      Object.assign({ timeoutMs: 45000 }, ctx)
+    );
+
+    let res = await runModel(primaryModel);
+    if (!res.ok && primaryModel !== fallbackModel) {
+      res = await runModel(fallbackModel);
+    }
+    if (!res.ok) {
+      if (res.status === 401) throw new Error('Invalid Groq API key.');
+      if (res.status === 429) throw new Error('Rate limit reached. Try again in a moment.');
+      throw new Error(`Groq AI error (HTTP ${res.status}).`);
+    }
+    const data = await res.json();
+    let content = String((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '').trim();
+    content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    return JSON.parse(content || '{}');
+  }
+
+  async function explainWordInContext(word, sentence, originalSentence, targetLang, signal, ctx = {}) {
+    const explainLang = targetLang || 'English';
+    const systemPrompt = `You are a concise, brilliant language tutor inside a video player. Explain the requested word strictly in ${explainLang} using the exact scene sentence as context. Return ONLY valid JSON with keys: {"word":"...","translation":"...","partOfSpeech":"...","meaning":"...","nuance":"...","example":"..."}. Keep each field crisp (1 short sentence max).`;
+    const userMsg = JSON.stringify({
+      word,
+      sentence: sentence || '',
+      originalSentence: originalSentence || '',
+      explainIn: explainLang
+    });
+    const parsed = await callGroqJson(systemPrompt, userMsg, signal, ctx);
+    return {
+      word: String(parsed.word || word),
+      translation: String(parsed.translation || ''),
+      partOfSpeech: String(parsed.partOfSpeech || ''),
+      meaning: String(parsed.meaning || ''),
+      nuance: String(parsed.nuance || ''),
+      example: String(parsed.example || '')
+    };
+  }
+
+  async function extractKnowledgeNote(sourceText, titleHint, targetLang, signal, ctx = {}) {
+    const outLang = targetLang || 'English';
+    const systemPrompt = `You build a structured "Second Brain" knowledge card from a video transcript. Write all fields in ${outLang}. Extract concrete takeaways, recipes, steps, tools, names, or quotes. Return ONLY valid JSON: {"title":"...","category":"...","summary":"...","points":["..."],"tags":["tag1","tag2"]}.`;
+    const clipped = String(sourceText || '').slice(0, 14000);
+    const parsed = await callGroqJson(systemPrompt, `Title: ${titleHint || 'Video'}\n\nTranscript:\n${clipped}`, signal, ctx);
+    return {
+      title: String(parsed.title || titleHint || 'Knowledge Note'),
+      category: String(parsed.category || 'Video Note'),
+      summary: String(parsed.summary || ''),
+      points: Array.isArray(parsed.points) ? parsed.points.map(String).filter(Boolean) : [],
+      tags: Array.isArray(parsed.tags) ? parsed.tags.map((t) => String(t).replace(/^#/, '').trim()).filter(Boolean) : []
+    };
+  }
+
+  async function extractKnowledgeFromImage(base64Jpeg, mimeType, titleHint, targetLang, signal, ctx = {}) {
+    const outLang = targetLang || 'English';
+    const prompt = `Analyze this screenshot/image carefully. Extract any useful text, recipe, code/tool name, place, workout, movie title, or key idea into a structured "Second Brain" card written in ${outLang}. Return ONLY valid JSON: {"title":"...","category":"...","summary":"...","points":["..."],"tags":["tag1","tag2"]}.`;
+    const cleanB64 = String(base64Jpeg || '').replace(/^data:image\/[^;]+;base64,/i, '');
+    const safeMime = mimeType || 'image/jpeg';
+
+    if (ctx.geminiKey) {
+      try {
+        const model = ctx.geminiModel || 'gemini-2.5-flash';
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+        const gRes = await fetchWithTimeout(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': ctx.geminiKey
+          },
+          body: JSON.stringify({
+            contents: [{
+              role: 'user',
+              parts: [
+                { inlineData: { mimeType: safeMime, data: cleanB64 } },
+                { text: prompt }
+              ]
+            }],
+            generationConfig: { responseMimeType: 'application/json', temperature: 0.2 }
+          })
+        }, 45000, signal);
+        if (gRes.ok) {
+          const gData = await gRes.json();
+          const rawTxt = String((gData.candidates && gData.candidates[0] && gData.candidates[0].content && gData.candidates[0].content.parts || []).map((p) => p.text || '').join('')).trim();
+          const parsed = JSON.parse(rawTxt.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''));
+          return {
+            title: String(parsed.title || titleHint || 'Screenshot Note'),
+            category: String(parsed.category || 'Screenshot'),
+            summary: String(parsed.summary || ''),
+            points: Array.isArray(parsed.points) ? parsed.points.map(String).filter(Boolean) : [],
+            tags: Array.isArray(parsed.tags) ? parsed.tags.map((t) => String(t).replace(/^#/, '').trim()).filter(Boolean) : []
+          };
+        }
+      } catch (e) {
+        if (e && (e.name === 'AbortError' || e.message === 'Cancelled by user.')) throw e;
+        diag.logWarn('vault.geminiImageFallback', e);
+      }
+    }
+
+    const res = await fetchGroqWithRotation(
+      'https://api.groq.com/openai/v1/chat/completions',
+      (key) => ({
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + key,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+          temperature: 0.2,
+          response_format: { type: 'json_object' },
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: `data:${safeMime};base64,${cleanB64}` } }
+            ]
+          }]
+        })
+      }),
+      signal,
+      3,
+      Object.assign({ timeoutMs: 45000 }, ctx)
+    );
+    if (!res.ok) {
+      if (res.status === 401) throw new Error('Invalid Groq API key.');
+      throw new Error(`Vision extraction error (HTTP ${res.status}).`);
+    }
+    const data = await res.json();
+    const raw = String((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '').trim();
+    const parsed = JSON.parse(raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '') || '{}');
+    return {
+      title: String(parsed.title || titleHint || 'Screenshot Note'),
+      category: String(parsed.category || 'Screenshot'),
+      summary: String(parsed.summary || ''),
+      points: Array.isArray(parsed.points) ? parsed.points.map(String).filter(Boolean) : [],
+      tags: Array.isArray(parsed.tags) ? parsed.tags.map((t) => String(t).replace(/^#/, '').trim()).filter(Boolean) : []
+    };
+  }
+
+  async function summarizeVoiceTranscript(transcriptText, targetLang, signal, ctx = {}) {
+    const outLang = targetLang || 'English';
+    const systemPrompt = ctx.forceTranslate
+      ? `You translate and organize a spoken voice memo into an actionable note strictly in ${outLang}. Translate title, summary, actionItems, keyDates, and the full spoken transcript into ${outLang}. Return ONLY valid JSON: {"title":"...","summary":"...","actionItems":["..."],"keyDates":["..."],"tags":["tag1","tag2"],"translatedTranscript":"..."}.`
+      : `You organize a spoken voice memo or lecture into an actionable note. Preserve the speaker's language unless translation is clearly needed; if uncertain write summary in ${outLang}. Return ONLY valid JSON: {"title":"...","summary":"...","actionItems":["..."],"keyDates":["..."],"tags":["tag1","tag2"]}.`;
+    const clipped = String(transcriptText || '').slice(0, 14000);
+    const parsed = await callGroqJson(systemPrompt, clipped, signal, ctx);
+    return {
+      title: String(parsed.title || 'Voice Note'),
+      summary: String(parsed.summary || ''),
+      actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems.map(String).filter(Boolean) : [],
+      keyDates: Array.isArray(parsed.keyDates) ? parsed.keyDates.map(String).filter(Boolean) : [],
+      tags: Array.isArray(parsed.tags) ? parsed.tags.map((t) => String(t).replace(/^#/, '').trim()).filter(Boolean) : [],
+      translatedTranscript: typeof parsed.translatedTranscript === 'string' ? parsed.translatedTranscript.trim() : ''
+    };
   }
 
   return {
@@ -475,6 +664,11 @@
     sendToGroq,
     requestTranslationBatch,
     translateCuesDirect,
-    translateSegments
+    translateSegments,
+    callGroqJson,
+    explainWordInContext,
+    extractKnowledgeNote,
+    extractKnowledgeFromImage,
+    summarizeVoiceTranscript
   };
 });

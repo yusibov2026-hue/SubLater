@@ -19,8 +19,7 @@
     'dark-gray':   { main: '#161922', surface: '#202532', elevated: '#1b202c', border: '#31384a', baseL: 10 },
     'gray':        { main: '#242936', surface: '#2f3545', elevated: '#282e3d', border: '#41495e', baseL: 15 },
     'light-slate': { main: '#2f3646', surface: '#3b4357', elevated: '#343b4d', border: '#4e5870', baseL: 20 },
-    'warm-gray':   { main: '#211f26', surface: '#2c2933', elevated: '#26242d', border: '#3e3a47', baseL: 13 },
-    'graphite':    { main: '#11131a', surface: '#1a1d27', elevated: '#151821', border: '#2a2f3d', baseL: 7 }
+    'warm-gray':   { main: '#211f26', surface: '#2c2933', elevated: '#26242d', border: '#3e3a47', baseL: 13 }
   };
 
   function cpClamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
@@ -284,11 +283,7 @@
       const secHue = (nHue + 14) % 360;
       const themeCfg = GRAY_THEMES[grayKey] || GRAY_THEMES['dark-gray'];
       const baseL = themeCfg.baseL;
-      const nSat = isAchromatic
-        ? 0
-        : (grayKey === 'graphite'
-          ? Math.min(20, Math.max(9, pSat * 0.24))
-          : Math.min(18, Math.max(8, pSat * 0.16)));
+      const nSat = isAchromatic ? 0 : Math.min(18, Math.max(8, pSat * 0.16));
       const lSat = isAchromatic ? 0 : Math.min(26, Math.max(11, pSat * 0.26));
 
       let tokens;
@@ -327,26 +322,26 @@
         tokens = {
           '--accent': effectiveAccent,
           '--on-accent': getReadableOnAccent(effectiveAccent),
-          '--bg-main': isAchromatic ? '#f4f5f7' : cpHslToHex(nHue, Math.min(14, lSat), 96),
+          '--bg-main': isAchromatic ? '#e8ecf2' : cpHslToHex(nHue, Math.min(18, lSat + 4), 91),
           '--bg-surface': '#ffffff',
-          '--bg-elevated': isAchromatic ? '#eceef2' : cpHslToHex(nHue, Math.min(16, lSat + 2), 93),
-          '--border-soft': isAchromatic ? '#d8dde6' : cpHslToHex(nHue, Math.min(18, lSat + 4), 84),
-          '--text-muted': '#556070',
-          '--md-primary': isWhiteSeed ? '#1e222b' : cpHslToHex(h, Math.min(92, Math.max(40, pSat)), 41),
+          '--bg-elevated': isAchromatic ? '#dfe4ec' : cpHslToHex(nHue, Math.min(20, lSat + 5), 87),
+          '--border-soft': isAchromatic ? '#b9c3d2' : cpHslToHex(nHue, Math.min(22, lSat + 6), 74),
+          '--text-muted': '#3b4758',
+          '--md-primary': isWhiteSeed ? '#1b202b' : cpHslToHex(h, Math.min(92, Math.max(44, pSat)), 38),
           '--md-on-primary': '#ffffff',
-          '--md-primary-container': isWhiteSeed ? '#ffffff' : cpHslToHex(h, Math.min(90, pSat * 0.86), 86),
-          '--md-on-primary-container': isWhiteSeed ? '#14171f' : cpHslToHex(h, Math.min(95, pSat), 14),
-          '--md-secondary-container': isWhiteSeed ? '#dfe3ec' : cpHslToHex(secHue, Math.min(58, Math.max(22, pSat * 0.45)), 84),
-          '--md-on-secondary-container': isWhiteSeed ? '#161a24' : cpHslToHex(secHue, Math.max(28, pSat * 0.68), 16),
-          '--md-surface-container-low': cpHslToHex(nHue, lSat, 96),
-          '--md-surface-container': cpHslToHex(nHue, isAchromatic ? 0 : lSat + 2, 91),
-          '--md-surface-container-high': cpHslToHex(nHue, isAchromatic ? 0 : lSat + 4, 86),
-          '--md-surface-container-highest': cpHslToHex(nHue, isAchromatic ? 0 : lSat + 5, 80),
-          '--md-on-surface': cpHslToHex(nHue, isAchromatic ? 0 : Math.min(18, lSat + 4), 12),
-          '--md-on-surface-variant': cpHslToHex(nHue, isAchromatic ? 0 : Math.min(16, lSat + 4), 34),
-          '--md-outline': cpHslToHex(nHue, isAchromatic ? 0 : 12, 48),
-          '--md-outline-variant': cpHslToHex(nHue, isAchromatic ? 0 : 14, 78),
-          '--md-slider-track': cpHslToHex(nHue, isAchromatic ? 0 : Math.min(24, lSat + 6), 76),
+          '--md-primary-container': isWhiteSeed ? '#d2d8e4' : cpHslToHex(h, Math.min(88, pSat * 0.85), 82),
+          '--md-on-primary-container': isWhiteSeed ? '#111620' : cpHslToHex(h, Math.min(95, pSat), 14),
+          '--md-secondary-container': isWhiteSeed ? '#cdd5e3' : cpHslToHex(secHue, Math.min(60, Math.max(24, pSat * 0.50)), 80),
+          '--md-on-secondary-container': isWhiteSeed ? '#111620' : cpHslToHex(secHue, Math.max(30, pSat * 0.72), 14),
+          '--md-surface-container-low': cpHslToHex(nHue, lSat, 93),
+          '--md-surface-container': cpHslToHex(nHue, isAchromatic ? 0 : lSat + 3, 87),
+          '--md-surface-container-high': cpHslToHex(nHue, isAchromatic ? 0 : lSat + 5, 81),
+          '--md-surface-container-highest': cpHslToHex(nHue, isAchromatic ? 0 : lSat + 6, 73),
+          '--md-on-surface': cpHslToHex(nHue, isAchromatic ? 0 : Math.min(20, lSat + 4), 10),
+          '--md-on-surface-variant': cpHslToHex(nHue, isAchromatic ? 0 : Math.min(18, lSat + 4), 28),
+          '--md-outline': cpHslToHex(nHue, isAchromatic ? 0 : 14, 42),
+          '--md-outline-variant': cpHslToHex(nHue, isAchromatic ? 0 : 16, 68),
+          '--md-slider-track': cpHslToHex(nHue, isAchromatic ? 0 : Math.min(24, lSat + 6), 68),
           '--md-error-container': '#ffdad6',
           '--md-on-error-container': '#410002'
         };
@@ -427,14 +422,21 @@
     const titleFontSizeEl = $('titleFontSize');
     const titleFontSizeValEl = $('titleFontSizeVal');
 
-    function applyTitleTypography(fontCss, sizePx) {
+    function applyTitleTypography(fontCss, sizePx, persist = true) {
       const font = fontCss || DEFAULT_TITLE_FONT;
       const size = Math.min(38, Math.max(18, parseInt(sizePx, 10) || DEFAULT_TITLE_SIZE));
       document.documentElement.style.setProperty('--title-font', font);
       document.documentElement.style.setProperty('--title-size', size + 'px');
       if (titleFontSizeValEl) titleFontSizeValEl.textContent = size + 'px';
-      storageMod.safeSetStorage('sublater_title_font', font);
-      storageMod.safeSetStorage('sublater_title_size', String(size));
+      if (persist) {
+        storageMod.safeSetStorage('sublater_title_font', font);
+        storageMod.safeSetStorage('sublater_title_size', String(size));
+      }
+    }
+
+    if (storageMod.safeGetStorage('sublater_title_size_v30', '') !== '1') {
+      storageMod.safeSetStorage('sublater_title_size', String(DEFAULT_TITLE_SIZE));
+      storageMod.safeSetStorage('sublater_title_size_v30', '1');
     }
 
     const savedTitleFont = storageMod.safeGetStorage('sublater_title_font', DEFAULT_TITLE_FONT);
@@ -443,7 +445,7 @@
       const hasFontOpt = Array.from(titleFontFamilyEl.options).some((o) => o.value === savedTitleFont);
       titleFontFamilyEl.value = hasFontOpt ? savedTitleFont : DEFAULT_TITLE_FONT;
       titleFontFamilyEl.addEventListener('change', () => {
-        applyTitleTypography(titleFontFamilyEl.value, titleFontSizeEl ? titleFontSizeEl.value : savedTitleSize);
+        applyTitleTypography(titleFontFamilyEl.value, titleFontSizeEl ? titleFontSizeEl.value : savedTitleSize, true);
       });
     }
     if (titleFontSizeEl) {
@@ -451,10 +453,10 @@
       syncM3RangeSlider(titleFontSizeEl);
       titleFontSizeEl.addEventListener('input', () => {
         syncM3RangeSlider(titleFontSizeEl);
-        applyTitleTypography(titleFontFamilyEl ? titleFontFamilyEl.value : savedTitleFont, titleFontSizeEl.value);
+        applyTitleTypography(titleFontFamilyEl ? titleFontFamilyEl.value : savedTitleFont, titleFontSizeEl.value, true);
       });
     }
-    applyTitleTypography(titleFontFamilyEl ? titleFontFamilyEl.value : savedTitleFont, titleFontSizeEl ? titleFontSizeEl.value : savedTitleSize);
+    applyTitleTypography(titleFontFamilyEl ? titleFontFamilyEl.value : savedTitleFont, titleFontSizeEl ? titleFontSizeEl.value : savedTitleSize, false);
 
     /* ---- Обои и снежинки ---- */
     function applyWallpaperColor() {

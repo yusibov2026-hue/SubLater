@@ -83,7 +83,7 @@ body {
 .app-header h2 {
   font-family: var(--title-font, 'Plus Jakarta Sans', 'Inter', sans-serif);
   font-weight: 700;
-  font-size: var(--title-size, 24px);
+  font-size: var(--title-size, 30px);
   font-synthesis: none;
   letter-spacing: -0.025em;
   line-height: 1.1;
@@ -247,16 +247,23 @@ input[type="range"] {
   white-space: nowrap;
 }
 
+#hubPanelVideo .m3-model-trigger,
+#hubPanelVideo #translateLang,
+#hubPanelVideo .file-box {
+  margin: 0;
+}
+
 button#btn {
   display: block;
   width: 100%;
-  margin: 12px auto 6px;
-  padding: 15px 20px;
+  min-height: 56px;
+  margin: 10px auto 4px;
+  padding: 17px 22px;
   border-radius: 999px;
   font-family: inherit;
   font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 0.2px;
+  font-size: 16px;
+  letter-spacing: 0.25px;
   cursor: pointer;
   background: var(--accent);
   color: var(--on-accent, #041016);
@@ -483,16 +490,33 @@ button#btn.cancel-mode:active { transform: scale(0.97); }
 .hidden { display: none !important; }
 
 /* Светлый режим базовых элементов */
-body[data-m3-mode="light"] { color: #161922; }
-body[data-m3-mode="light"] #appTopSection { box-shadow: 0 6px 24px rgba(15, 23, 42, 0.06); }
+body[data-m3-mode="light"] { color: #111520; }
+body[data-m3-mode="light"] #appTopSection {
+  box-shadow: 0 8px 26px rgba(15, 23, 42, 0.09);
+  border-color: var(--border-soft);
+}
 body[data-m3-mode="light"] .app-header h2 { text-shadow: none; }
-body[data-m3-mode="light"] #settingsToggle { background: var(--bg-elevated); box-shadow: none; }
+body[data-m3-mode="light"] #settingsToggle {
+  background: var(--bg-elevated);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: none;
+}
 body[data-m3-mode="light"] input:not([type="color"]):not([type="range"]):not([type="checkbox"]),
-body[data-m3-mode="light"] select { color: #161922; box-shadow: none; }
+body[data-m3-mode="light"] select {
+  color: #111520;
+  border: 1px solid rgba(15, 23, 42, 0.13);
+  box-shadow: none;
+}
+body[data-m3-mode="light"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232c3648' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+body[data-m3-mode="light"] .file-box {
+  border: 1px solid rgba(15, 23, 42, 0.13);
+}
 body[data-m3-mode="light"] #model option,
-body[data-m3-mode="light"] #translateLang option { background-color: #ffffff; color: #161922; }
+body[data-m3-mode="light"] #translateLang option { background-color: #ffffff; color: #111520; }
 body[data-m3-mode="light"] #fileName,
-body[data-m3-mode="light"] #status { color: #334155; }
+body[data-m3-mode="light"] #status { color: #222c3c; }
 body[data-m3-mode="light"] .status-settings-btn {
   background: color-mix(in srgb, var(--accent) 14%, var(--bg-elevated));
   color: var(--accent);

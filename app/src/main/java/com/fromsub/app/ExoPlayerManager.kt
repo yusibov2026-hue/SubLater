@@ -66,6 +66,7 @@ class ExoPlayerManager(
     }
 
     val keyVault = SecureKeyVault(context)
+    val voiceRecorder = NativeVoiceRecorder(context)
 
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private var loudnessSessionId: Int = C.AUDIO_SESSION_ID_UNSET
@@ -89,6 +90,9 @@ class ExoPlayerManager(
 
     @Volatile
     private var released: Boolean = false
+
+    @Volatile
+    private var fgCancelLabel: String = "Cancel"
 
     val isVideoReady = mutableStateOf(false)
     val resizeModeState = mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT)
@@ -263,9 +267,15 @@ class ExoPlayerManager(
             val intent = Intent(context, SubtitleForegroundService::class.java).apply {
                 action = SubtitleForegroundService.ACTION_START_OR_UPDATE
                 putExtra(SubtitleForegroundService.EXTRA_STATUS_TEXT, statusText)
+                putExtra(SubtitleForegroundService.EXTRA_CANCEL_LABEL, fgCancelLabel)
             }
             ContextCompat.startForegroundService(context, intent)
         } catch (_: Exception) {}
+    }
+
+    fun startForegroundServiceLocalized(statusText: String, cancelLabel: String) {
+        fgCancelLabel = cancelLabel.takeIf { it.isNotBlank() } ?: "Cancel"
+        startForegroundService(statusText)
     }
 
     fun updateForegroundNotification(statusText: String) {
@@ -278,6 +288,7 @@ class ExoPlayerManager(
                 action = SubtitleForegroundService.ACTION_START_OR_UPDATE
                 putExtra(SubtitleForegroundService.EXTRA_STATUS_TEXT, statusText)
                 putExtra(SubtitleForegroundService.EXTRA_PROGRESS, progress.coerceIn(-1, 100))
+                putExtra(SubtitleForegroundService.EXTRA_CANCEL_LABEL, fgCancelLabel)
             }
             ContextCompat.startForegroundService(context, intent)
         } catch (_: Exception) {}
@@ -362,6 +373,14 @@ class ExoPlayerManager(
     fun isSystemDarkMode(): Boolean {
         val nightFlags = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         return nightFlags == Configuration.UI_MODE_NIGHT_YES
+    }
+
+    fun getSystemLanguageTag(): String {
+        return try {
+            java.util.Locale.getDefault().toLanguageTag()
+        } catch (_: Exception) {
+            "en"
+        }
     }
 
     fun toggleLandscape(landscape: Boolean) {
@@ -753,12 +772,19 @@ class ExoPlayerManager(
     fun startNativeAudioExtractionMode(startSec: Double, batchMode: Boolean): Boolean =
         audioChunkExtractor.startExtraction("", startSec, batchMode)
 
+    fun hasMicPermission(): Boolean = voiceRecorder.hasPermission()
+    fun requestMicPermission() { activity?.requestNativeMicPermission() }
+    fun startNativeVoiceRecording(): String = voiceRecorder.start()
+    fun stopNativeVoiceRecording(): String = voiceRecorder.stop()
+    fun cancelNativeVoiceRecording() = voiceRecorder.cancel()
+
     fun release() {
         released = true
         pollerRunning = false
         SubtitleForegroundService.onCancelRequested = null
         mainHandler.removeCallbacks(positionPoller)
         audioChunkExtractor.release()
+        voiceRecorder.cancel()
         stopForegroundService()
         ioExecutor.shutdownNow()
         keyVault.release()

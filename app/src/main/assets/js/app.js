@@ -11,6 +11,17 @@
   const themeMod = root.theme;
   const playerMod = root.player;
   const pipelineMod = root.audioPipeline;
+  const i18nMod = root.i18n || {
+    getLang: () => 'en',
+    setLang: () => 'en',
+    t: (k) => k,
+    getAiOutputLanguageName: (l) => l || 'English',
+    applyTranslations: () => {},
+    onChange: () => () => {}
+  };
+  const t = i18nMod.t;
+
+  const studioMod = root.studio;
 
   const $ = (id) => document.getElementById(id);
 
@@ -195,7 +206,7 @@
     keysCountBadge.style.color = '';
     keysCountBadge.classList.toggle('keys-empty', count === 0);
     keysCountBadge.classList.toggle('keys-ready', count > 0);
-    keysCountBadge.textContent = count === 0 ? '0 keys' : (count === 1 ? '1 key' : `${count} keys`);
+    keysCountBadge.textContent = count === 0 ? t('keys.zero') : (count === 1 ? t('keys.one') : t('keys.many', { n: count }));
   }
 
   function getApiKeys() {
@@ -210,8 +221,8 @@
   function showMissingApiStatus(fromGenerate = false) {
     if (!statusEl) return;
     const msg = fromGenerate
-      ? 'Groq API key is missing — add it in Settings (API Keys section).'
-      : 'No Groq API key yet — open Settings to add your API key.';
+      ? t('status.missingApiGen')
+      : t('status.missingApiIdle');
     statusEl.innerHTML = '';
     const wrap = document.createElement('span');
     wrap.className = 'status-api-hint';
@@ -220,7 +231,7 @@
     const goBtn = document.createElement('button');
     goBtn.type = 'button';
     goBtn.className = 'status-settings-btn';
-    goBtn.textContent = 'Open Settings';
+    goBtn.textContent = t('status.openSettings');
     goBtn.addEventListener('click', openApiSettingsFocus);
     wrap.appendChild(txt);
     wrap.appendChild(goBtn);
@@ -277,6 +288,17 @@
     progressBar.style.width = '0%';
   }
 
+  function syncForegroundStatus(text) {
+    if (!activeAbortCtrl) return;
+    const b = bridgeMod.getBridge();
+    if (b && typeof b.updateForegroundProgress === 'function') {
+      try {
+        const msg = text || (statusEl && statusEl.innerText) || t('status.generating');
+        b.updateForegroundProgress(msg, Math.max(0, Math.round(progressMaxReached)));
+      } catch (_) {}
+    }
+  }
+
   function setProgress(pct) {
     if (pct === null) {
       progressWrap.style.display = 'none';
@@ -296,7 +318,7 @@
       const b = bridgeMod.getBridge();
       if (b && typeof b.updateForegroundProgress === 'function') {
         try {
-          const msg = (statusEl && statusEl.innerText) ? statusEl.innerText : 'Generating subtitles...';
+          const msg = (statusEl && statusEl.innerText) ? statusEl.innerText : t('status.generating');
           b.updateForegroundProgress(msg, Math.round(progressMaxReached));
         } catch (_) {}
       }
@@ -340,7 +362,7 @@
     if (b && typeof b.saveSubtitleFile === 'function') {
       const ok = b.saveSubtitleFile(`${currentFileName}.${fmt}`, content, fmt);
       if (ok) {
-        statusEl.innerText = `✅ File ${currentFileName}.${fmt} saved to Downloads!`;
+        statusEl.innerText = t('status.savedDownloads', { name: `${currentFileName}.${fmt}` });
         return;
       }
     }
@@ -359,7 +381,7 @@
     updateExportPreview();
     const content = exportData[fmt];
     if (!content) {
-      statusEl.innerText = 'Generate subtitles first!';
+      statusEl.innerText = t('status.genFirst');
       return;
     }
     const safeFileName = `${currentFileName}.${fmt}`;
@@ -385,8 +407,25 @@
     downloadSubtitle(fmt);
   }
 
-  /* ---- Контроллер плеера ---- */
+  /* ---- Контроллер плеера и Studio (1, 2, 3) ---- */
   let playerCtrl = null;
+  let studioCtrl = null;
+  let origCuesCache = { ref: null, len: -1, smart: null, list: [] };
+  function getOriginalCues() {
+    const raw = cachedWhisper.rawSegments || [];
+    const smart = Boolean(smartSplitToggleEl && smartSplitToggleEl.checked);
+    if (!raw.length) {
+      origCuesCache = { ref: raw, len: 0, smart, list: [] };
+      return origCuesCache.list;
+    }
+    if (origCuesCache.ref === raw && origCuesCache.len === raw.length && origCuesCache.smart === smart) {
+      return origCuesCache.list;
+    }
+    const built = subtitlesMod.buildCues(raw, cachedWhisper.rawWords || [], smart);
+    origCuesCache = { ref: raw, len: raw.length, smart, list: built };
+    return built;
+  }
+
   function applySettings() {
     const size = Math.min(48, Math.max(12, parseInt(sizeEl.value, 10) || 18));
     const width = Math.min(100, Math.max(30, parseInt(widthEl.value, 10) || 85));
@@ -488,6 +527,19 @@
     audioTrackSelect,
     audioTrackVal,
     getCues: () => cues,
+    getOriginalCues: () => {
+      const dualLang = (studioCtrl && typeof studioCtrl.getDualSubLang === 'function')
+        ? studioCtrl.getDualSubLang()
+        : 'original';
+      if (!dualLang || dualLang === 'original') return getOriginalCues();
+      return (cachedWhisper.translations && cachedWhisper.translations[dualLang]) || [];
+    },
+    getDualSubEnabled: () => (studioCtrl ? studioCtrl.isDualSubEnabled() : false),
+    onWordTap: (info) => {
+      if (studioCtrl) studioCtrl.openWordLookup(info);
+    },
+    subMenuBtn: $('subMenuBtn'),
+    subMenu: $('subMenu'),
     getAudioBoost: () => audioBoost,
     setAudioBoost: (v) => { audioBoost = v; },
     applySettings,
@@ -497,6 +549,192 @@
     releaseWakeLock
   });
 
+  let dualAbortCtrl = null;
+  async function ensureDualSubTrackReady(dualLang, statusElRef) {
+    const sourceCues = getOriginalCues().length ? getOriginalCues() : cues;
+    if (!dualLang || dualLang === 'original' || !sourceCues.length) {
+      if (statusElRef) statusElRef.textContent = '';
+      if (playerCtrl && playerCtrl.isPlayerActive()) playerCtrl.updateSubtitleFrame();
+      return;
+    }
+    if (cachedWhisper.translations && cachedWhisper.translations[dualLang]) {
+      if (statusElRef) statusElRef.textContent = '';
+      if (playerCtrl && playerCtrl.isPlayerActive()) playerCtrl.updateSubtitleFrame();
+      return;
+    }
+    if (!getApiKeys().length) {
+      if (statusElRef) statusElRef.textContent = t('status.missingApiGen');
+      return;
+    }
+    if (dualAbortCtrl) {
+      try { dualAbortCtrl.abort(); } catch (_) {}
+    }
+    dualAbortCtrl = new AbortController();
+    if (statusElRef) statusElRef.textContent = t('subMenu.translating');
+    try {
+      const cloned = subtitlesMod.cloneCues(sourceCues);
+      const failed = await groqMod.translateSegments(
+        cloned,
+        dualLang,
+        null,
+        dualAbortCtrl.signal,
+        10,
+        { keyPool, primaryModel: (llmModelEl && llmModelEl.value) || 'openai/gpt-oss-120b' }
+      );
+      cachedWhisper.translations[dualLang] = cloned;
+      if (statusElRef) statusElRef.textContent = failed > 0 ? `Partial (${failed})` : '';
+      if (playerCtrl && playerCtrl.isPlayerActive()) playerCtrl.updateSubtitleFrame();
+    } catch (e) {
+      if (e && e.message === 'Cancelled by user.') return;
+      diag.logWarn('dualSub.translate', e);
+      if (statusElRef) statusElRef.textContent = e && e.message ? e.message : String(e);
+    }
+  }
+
+  function getProjectExportCues(project) {
+    if (!project || typeof project !== 'object') return [];
+    const smartSplit = Boolean(smartSplitToggleEl && smartSplitToggleEl.checked);
+    if (Array.isArray(project.cues) && project.cues.length) return project.cues;
+    if (project.activeLang && project.translations && Array.isArray(project.translations[project.activeLang]) && project.translations[project.activeLang].length) {
+      return project.translations[project.activeLang];
+    }
+    if (Array.isArray(project.rawSegments) && project.rawSegments.length) {
+      return subtitlesMod.buildCues(project.rawSegments, project.rawWords || [], smartSplit);
+    }
+    return [];
+  }
+
+  async function openHistoryProject(project) {
+    if (!project || typeof project !== 'object') return;
+    genCtrl.cancelActiveGeneration();
+    resetGenerationResults();
+
+    const displayName = project.fileName || currentFileName || 'subtitles';
+    currentFileName = String(displayName).replace(/\.[^/.]+$/, '') || 'subtitles';
+    if ($('fileName')) $('fileName').innerText = displayName;
+
+    const smartSplit = Boolean(smartSplitToggleEl && smartSplitToggleEl.checked);
+    const activeMedia = getActiveMedia();
+    const mediaMatches = Boolean(activeMedia && project.fileSig && getFileSignature(activeMedia) === project.fileSig);
+
+    if (!mediaMatches && project.fileUri) {
+      externalMedia = {
+        name: displayName,
+        size: Number(project.fileSize) || 0,
+        mime: project.fileMime || 'video/*',
+        lastModified: 0,
+        uri: project.fileUri,
+        isStream: Boolean(project.isStream)
+      };
+      externalMedia.file = __virtualExternalFile(externalMedia);
+      const pickedInput = $('mediaFile');
+      if (pickedInput) pickedInput.value = '';
+      window.externalMediaUri = project.fileUri;
+    }
+
+    if (project.isComplete !== false && ((Array.isArray(project.rawSegments) && project.rawSegments.length) || (Array.isArray(project.cues) && project.cues.length))) {
+      cachedWhisper = {
+        fileSig: project.fileSig || '',
+        model: project.model || getActiveWhisperModel(),
+        rawSegments: project.rawSegments || [],
+        rawWords: project.rawWords || [],
+        translations: project.translations || {},
+        activeLang: project.activeLang || null,
+        aiSummary: project.aiSummary || null
+      };
+      const translateEl = $('translateLang');
+      if (translateEl && project.activeLang && Array.from(translateEl.options).some((o) => o.value === project.activeLang)) {
+        translateEl.value = project.activeLang;
+      }
+      const selectedLang = translateEl ? translateEl.value : '';
+      if (selectedLang && cachedWhisper.translations[selectedLang]) {
+        cues = subtitlesMod.cloneCues(cachedWhisper.translations[selectedLang]);
+      } else if (project.activeLang && cachedWhisper.translations[project.activeLang]) {
+        cues = subtitlesMod.cloneCues(cachedWhisper.translations[project.activeLang]);
+      } else if (cachedWhisper.rawSegments.length) {
+        cues = subtitlesMod.buildCues(cachedWhisper.rawSegments, cachedWhisper.rawWords, smartSplit);
+      } else {
+        cues = subtitlesMod.cloneCues(project.cues || []);
+      }
+
+      refreshAllExports();
+      actionRow.style.display = 'flex';
+      const targetMedia = mediaMatches ? activeMedia : (project.fileUri ? getActiveMedia() : null);
+      if (targetMedia) {
+        playerCtrl.setupPlayer(targetMedia);
+      } else if (vttPanel) {
+        vttPanel.classList.remove('hidden');
+        if (openBtn) openBtn.innerText = t('btn.hide');
+      }
+      if (statusEl) statusEl.innerText = t('history.opened', { name: currentFileName });
+    } else if (project.isComplete === false && project.partialChunks && Object.keys(project.partialChunks).length) {
+      cachedPartialChunks = {
+        fileSig: project.fileSig || '',
+        model: project.model || getActiveWhisperModel(),
+        chunks: project.partialChunks
+      };
+      const targetMedia = mediaMatches ? activeMedia : (project.fileUri ? getActiveMedia() : null);
+      if (targetMedia) playerCtrl.setupPlayer(targetMedia);
+      if (statusEl) statusEl.innerText = t('status.unfinishedHistory');
+    }
+    updateButtonLabel();
+  }
+
+  function exportHistoryProject(project, fmt = 'srt') {
+    const projectCues = getProjectExportCues(project);
+    if (!projectCues.length) return;
+    const ext = String(fmt || 'srt').toLowerCase();
+    let content = '';
+    if (ext === 'vtt') content = subtitlesMod.generateVTT(projectCues);
+    else if (ext === 'ass') content = subtitlesMod.generateASS(projectCues, buildAssStyleOpts());
+    else if (ext === 'txt') content = subtitlesMod.generateTXT(projectCues);
+    else content = subtitlesMod.generateSRT(projectCues);
+    if (!content) return;
+
+    const baseName = String((project && (project.fileName || project.fileSig)) || 'subtitles').replace(/\.[^/.]+$/, '') || 'subtitles';
+    const fileName = `${baseName}.${ext}`;
+    const b = bridgeMod.getBridge();
+    const hStatus = $('historyStatus') || statusEl;
+    if (b && typeof b.saveSubtitleFile === 'function') {
+      const ok = b.saveSubtitleFile(fileName, content, ext);
+      if (ok) {
+        if (hStatus) hStatus.textContent = t('status.savedDownloads', { name: fileName });
+        return;
+      }
+    }
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    if (hStatus) hStatus.textContent = t('status.savedDownloads', { name: fileName });
+  }
+
+  studioCtrl = studioMod ? studioMod.createStudioController({
+    keyPool,
+    getApiKeys,
+    getGeminiKeys: () => {
+      const k = (geminiKeyInput && geminiKeyInput.value.trim()) || storageMod.getGeminiKeyFromKeystore();
+      return k ? [k] : [];
+    },
+    getActiveWhisperModel,
+    getActiveLlmModel: () => (llmModelEl ? llmModelEl.value : 'openai/gpt-oss-120b'),
+    getActiveGeminiModel: () => (geminiModelSelect ? geminiModelSelect.value : 'gemini-2.5-flash'),
+    getTranslateLang: () => ($('translateLang') && $('translateLang').value) || '',
+    getAiOutputLang: () => i18nMod.getAiOutputLanguageName($('translateLang') && $('translateLang').value),
+    getCues: () => cues,
+    getCurrentFileName: () => currentFileName,
+    getPlayerCtrl: () => playerCtrl,
+    onDualSubLangChanged: ensureDualSubTrackReady,
+    onOpenHistoryProject: openHistoryProject,
+    onExportHistoryProject: exportHistoryProject,
+    showMissingApiStatus,
+    openApiSettingsFocus,
+    formatTime: playerCtrl.formatTime
+  }) : null;
+
   /* ---- Контроллер AI видео ---- */
   const geminiCtrl = geminiMod.createController({
     aiChatList: $('aiChatList'),
@@ -505,11 +743,14 @@
     clearAiChatBtn: $('clearAiChatBtn'),
     aiQuickPrompts: $('aiQuickPrompts'),
     aiSummaryBox,
+    aiActiveModelBadge,
     geminiKeyInput,
     geminiModelSelect,
     videoEl,
     playerBox,
     getCues: () => cues,
+    getAiOutputLang: () => i18nMod.getAiOutputLanguageName($('translateLang') && $('translateLang').value),
+    t,
     formatTime: playerCtrl.formatTime,
     syncTimeUI: playerCtrl.syncTimeUI,
     updateSubtitleFrame: playerCtrl.updateSubtitleFrame,
@@ -611,16 +852,16 @@
 
     if (f && cachedWhisper.fileSig === sig && cachedWhisper.model === model && cachedWhisper.rawSegments.length) {
       if (!tLang) {
-        btn.innerText = cachedWhisper.activeLang === '' ? '✨ AI Video (ask about video)' : 'Restore original from cache';
+        btn.innerText = cachedWhisper.activeLang === '' ? t('btn.aiVideo') : t('btn.restoreOrig');
       } else if (cachedWhisper.activeLang === tLang) {
-        btn.innerText = '✨ AI Video (ask about video)';
+        btn.innerText = t('btn.aiVideo');
       } else if (cachedWhisper.translations[tLang]) {
-        btn.innerText = 'Open cached translation';
+        btn.innerText = t('btn.openCachedTrans');
       } else {
-        btn.innerText = 'Quick translate from cache';
+        btn.innerText = t('btn.quickTranslate');
       }
     } else {
-      btn.innerText = 'Generate subtitles';
+      btn.innerText = t('btn.generate');
     }
   }
 
@@ -663,7 +904,9 @@
     generateVideoAiInsights: geminiCtrl.generateVideoAiInsights,
     requestWakeLock,
     releaseWakeLock,
-    formatTime: playerCtrl.formatTime
+    formatTime: playerCtrl.formatTime,
+    t,
+    syncForegroundStatus
   });
 
   btn.addEventListener('click', genCtrl.generateSubtitles);
@@ -672,7 +915,7 @@
     if (activeAbortCtrl) {
       genCtrl.cancelActiveGeneration();
       setProgress(null);
-      if (statusEl) statusEl.innerText = '⏹ Cancelled by user.';
+      if (statusEl) statusEl.innerText = t('status.cancelled');
     }
   };
 
@@ -694,7 +937,9 @@
     actionRow.style.display = 'none';
     vttPanel.classList.add('hidden');
     aiSummaryBox.classList.remove('show');
-    aiSummaryText.textContent = '';
+    if (geminiCtrl && typeof geminiCtrl.resetChat === 'function') {
+      geminiCtrl.resetChat(true);
+    }
     aiChaptersList.innerHTML = '';
     setProgress(null);
     refreshAllExports();
@@ -727,7 +972,7 @@
         }
         refreshAllExports();
         actionRow.style.display = 'flex';
-        statusEl.innerText = '⚡ Subtitles instantly restored from local history!';
+        statusEl.innerText = t('status.restoredHistory');
         updateButtonLabel();
       } else if (saved && saved.isComplete === false && saved.partialChunks && Object.keys(saved.partialChunks).length) {
         cachedPartialChunks = {
@@ -735,7 +980,7 @@
           model: saved.model || getActiveWhisperModel(),
           chunks: saved.partialChunks
         };
-        statusEl.innerText = '⏸ Unfinished progress found — tap "Generate subtitles" to resume.';
+        statusEl.innerText = t('status.unfinishedHistory');
       }
     } catch (e) {
       diag.logWarn('history.restore', e);
@@ -773,8 +1018,8 @@
     if (media) playerCtrl.setupPlayer(media);
     if (statusEl) {
       statusEl.innerText = externalMedia.isStream
-        ? '📡 Stream opened. Tap "Generate subtitles" — audio will be processed via player.'
-        : '📂 File opened from another app. Tap "Generate subtitles".';
+        ? t('status.streamOpened')
+        : t('status.externalOpened');
     }
     updateButtonLabel();
     if (media) await restoreHistoryForMedia(media);
@@ -783,12 +1028,12 @@
   async function updateFileName() {
     const wasGenerating = genCtrl.cancelActiveGeneration();
     if (wasGenerating) {
-      statusEl.innerText = '⏹ Generation stopped: another file selected.';
+      statusEl.innerText = t('status.fileStopped');
     }
     resetGenerationResults();
 
     const f = getActiveMedia();
-    $('fileName').innerText = f ? f.name : 'Not selected';
+    $('fileName').innerText = f ? f.name : t('file.notSelected');
     if (f) {
       currentFileName = f.name.replace(/\.[^/.]+$/, '');
       applySettings();
@@ -813,7 +1058,7 @@
     const text = await subF.text();
     const parsedCues = subtitlesMod.parseSubtitleText(text);
     if (!parsedCues.length) {
-      statusEl.innerText = 'Could not read subtitles from file.';
+      statusEl.innerText = t('status.subLoadErr');
       return;
     }
     cues = parsedCues;
@@ -822,11 +1067,35 @@
     closeSettings();
 
     const mediaF = getActiveMedia();
+    const displayName = (mediaF && mediaF.name) || subF.name || currentFileName || 'subtitles';
+    if (!mediaF) {
+      currentFileName = String(displayName).replace(/\.[^/.]+$/, '') || 'subtitles';
+      if ($('fileName')) $('fileName').innerText = displayName;
+    }
+
+    storageMod.saveProjectToHistory({
+      fileSig: mediaF ? getFileSignature(mediaF) : `sub_${subF.name}_${subF.size || 0}_${subF.lastModified || 0}`,
+      fileName: displayName,
+      fileSize: (mediaF && mediaF.size) || subF.size || 0,
+      fileUri: (mediaF && mediaF.uri) || '',
+      fileMime: (mediaF && mediaF.type) || '',
+      isStream: Boolean(mediaF && mediaF.isStream),
+      updatedAt: Date.now(),
+      model: 'subtitles',
+      isComplete: true,
+      partialChunks: null,
+      rawSegments: parsedCues.map((c) => ({ start: c.start, end: c.end, text: c.text })),
+      rawWords: [],
+      translations: {},
+      activeLang: '',
+      cues: parsedCues
+    });
+
     if (mediaF) {
       playerCtrl.setupPlayer(mediaF);
-      statusEl.innerText = `Loaded subtitles (${cues.length} lines) into player!`;
+      statusEl.innerText = t('status.subLoadedPlay', { n: cues.length });
     } else {
-      statusEl.innerText = `Subtitles loaded (${cues.length} lines). Select a video file to watch.`;
+      statusEl.innerText = t('status.subLoadedNoVid', { n: cues.length });
     }
   });
 
@@ -878,14 +1147,219 @@
 
   openBtn.addEventListener('click', () => {
     const isHidden = vttPanel.classList.toggle('hidden');
-    openBtn.innerText = isHidden ? 'Text' : 'Hide';
+    openBtn.innerText = isHidden ? t('btn.text') : t('btn.hide');
   });
+
+  /* ---- Кастомный Material You выбор Speech-модели ---- */
+  const modelSelectEl = $('model');
+  const modelPickerBtn = $('modelPickerBtn');
+  const voiceModelBtn = $('voiceModelBtn');
+  const modelPickerBackdrop = $('modelPickerBackdrop');
+  const modelPickerSheet = $('modelPickerSheet');
+  const closeModelPickerBtn = $('closeModelPickerBtn');
+  const modelPickerLabel = $('modelPickerLabel');
+  const modelPickerBadge = $('modelPickerBadge');
+  const voiceModelLabel = $('voiceModelLabel');
+  const voiceModelBadge = $('voiceModelBadge');
+
+  const MODEL_META = {
+    'auto': { titleKey: 'model.auto.title', badgeKey: 'model.auto.badge' },
+    'whisper-large-v3-turbo': { titleKey: 'model.turbo.title', badgeKey: 'model.turbo.badge' },
+    'whisper-large-v3': { titleKey: 'model.v3.title', badgeKey: 'model.v3.badge' },
+    'local-whisper-base': { titleKey: 'model.base.title', badgeKey: 'model.base.badge' },
+    'local-whisper-small': { titleKey: 'model.small.title', badgeKey: 'model.small.badge' }
+  };
+
+  function syncLocalModelCardsUI() {
+    const lw = root.localWhisper;
+    document.querySelectorAll('#modelPickerList .m3-model-local').forEach((card) => {
+      const mId = card.dataset.model;
+      const meta = MODEL_META[mId];
+      const downloaded = Boolean(lw && lw.isModelDownloaded(mId));
+      const badgeEl = card.querySelector('.m3-model-opt-badge');
+      const dlBtn = card.querySelector('.m3-model-dl-btn');
+      const delBtn = card.querySelector('.m3-model-del-btn');
+      if (badgeEl && meta) {
+        badgeEl.textContent = downloaded ? t('model.downloaded') : t(meta.badgeKey);
+      }
+      if (dlBtn) {
+        if (!dlBtn.dataset.downloading) {
+          dlBtn.textContent = downloaded ? t('model.downloaded') : t('model.download');
+          dlBtn.disabled = downloaded;
+        }
+      }
+      if (delBtn) {
+        delBtn.style.display = downloaded ? 'inline-flex' : 'none';
+      }
+    });
+  }
+
+  function syncModelPickerUI() {
+    if (!modelSelectEl) return;
+    const val = MODEL_META[modelSelectEl.value] ? modelSelectEl.value : 'auto';
+    const meta = MODEL_META[val];
+    const lw = root.localWhisper;
+    const titleTxt = t(meta.titleKey);
+    const isLocalDone = Boolean(lw && lw.isLocalWhisperModel(val) && lw.isModelDownloaded(val));
+    const badgeTxt = isLocalDone ? t('model.downloaded') : t(meta.badgeKey);
+    if (modelPickerLabel) modelPickerLabel.textContent = titleTxt;
+    if (modelPickerBadge) modelPickerBadge.textContent = badgeTxt;
+    if (voiceModelLabel) voiceModelLabel.textContent = titleTxt;
+    if (voiceModelBadge) voiceModelBadge.textContent = badgeTxt;
+    document.querySelectorAll('#modelPickerList .m3-model-option').forEach((opt) => {
+      opt.classList.toggle('active', opt.dataset.model === val);
+    });
+    syncLocalModelCardsUI();
+  }
+
+  function openModelPicker() {
+    syncModelPickerUI();
+    if (modelPickerBackdrop) modelPickerBackdrop.classList.add('show');
+    if (modelPickerSheet) modelPickerSheet.classList.add('show');
+    if (modelPickerBtn) modelPickerBtn.setAttribute('aria-expanded', 'true');
+    if (voiceModelBtn) voiceModelBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeModelPicker() {
+    if (modelPickerBackdrop) modelPickerBackdrop.classList.remove('show');
+    if (modelPickerSheet) modelPickerSheet.classList.remove('show');
+    if (modelPickerBtn) modelPickerBtn.setAttribute('aria-expanded', 'false');
+    if (voiceModelBtn) voiceModelBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  if (modelSelectEl) {
+    const savedSpeechModel = storageMod.safeGetStorage('sublater_whisper_model', 'auto');
+    if (MODEL_META[savedSpeechModel]) modelSelectEl.value = savedSpeechModel;
+  }
+  if (modelPickerBtn) modelPickerBtn.addEventListener('click', openModelPicker);
+  if (voiceModelBtn) voiceModelBtn.addEventListener('click', openModelPicker);
+  if (modelPickerBackdrop) modelPickerBackdrop.addEventListener('click', closeModelPicker);
+  if (closeModelPickerBtn) closeModelPickerBtn.addEventListener('click', closeModelPicker);
+
+  document.querySelectorAll('#modelPickerList [data-local-dl]').forEach((btnEl) => {
+    btnEl.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const mId = btnEl.dataset.localDl;
+      const lw = root.localWhisper;
+      if (!lw || btnEl.dataset.downloading) return;
+      const card = btnEl.closest('.m3-model-option');
+      const bar = card ? card.querySelector('.m3-model-dl-bar') : null;
+      const fill = card ? card.querySelector('.m3-model-dl-fill') : null;
+      btnEl.dataset.downloading = '1';
+      btnEl.disabled = true;
+      btnEl.textContent = t('model.downloading', { pct: 0 });
+      if (bar) bar.style.display = 'block';
+      if (fill) fill.style.width = '4%';
+      try {
+        await lw.downloadModel(mId, ({ pct }) => {
+          const p = Math.max(0, Math.min(100, Number(pct) || 0));
+          btnEl.textContent = t('model.downloading', { pct: p });
+          if (fill) fill.style.width = `${Math.max(4, p)}%`;
+        });
+        if (modelSelectEl) {
+          modelSelectEl.value = mId;
+          storageMod.safeSetStorage('sublater_whisper_model', mId);
+          modelSelectEl.dispatchEvent(new Event('change'));
+        }
+      } catch (err) {
+        diag.logWarn('localWhisper.download', err);
+        if (statusEl) statusEl.textContent = err && err.message ? err.message : String(err);
+      } finally {
+        delete btnEl.dataset.downloading;
+        if (bar) bar.style.display = 'none';
+        if (fill) fill.style.width = '0%';
+        syncModelPickerUI();
+      }
+    });
+  });
+
+  document.querySelectorAll('#modelPickerList [data-local-del]').forEach((delEl) => {
+    delEl.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const mId = delEl.dataset.localDel;
+      const lw = root.localWhisper;
+      if (!lw) return;
+      await lw.deleteModel(mId);
+      syncModelPickerUI();
+    });
+  });
+
+  document.querySelectorAll('#modelPickerList .m3-model-option').forEach((opt) => {
+    const selectOption = (e) => {
+      if (e.target && e.target.closest && e.target.closest('.m3-model-dl-btn, .m3-model-del-btn')) return;
+      const m = opt.dataset.model || 'auto';
+      if (modelSelectEl) {
+        modelSelectEl.value = m;
+        storageMod.safeSetStorage('sublater_whisper_model', m);
+        modelSelectEl.dispatchEvent(new Event('change'));
+      }
+      syncModelPickerUI();
+      closeModelPicker();
+    };
+    opt.addEventListener('click', selectOption);
+    opt.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        selectOption(e);
+      }
+    });
+  });
+
+  /* ---- Выбор языка интерфейса (Auto по системе + 54 языка) ---- */
+  const appLangSelect = $('appLangSelect');
+
+  function populateAppLanguageSelect() {
+    if (!appLangSelect) return;
+    const langs = Array.isArray(i18nMod.LANGUAGES) ? i18nMod.LANGUAGES : [];
+    const sysCode = typeof i18nMod.detectSystemLang === 'function' ? i18nMod.detectSystemLang() : 'en';
+    const sysMeta = typeof i18nMod.getLangMeta === 'function' ? i18nMod.getLangMeta(sysCode) : { nativeName: 'English' };
+    const currentPref = typeof i18nMod.getPref === 'function' ? i18nMod.getPref() : 'auto';
+
+    appLangSelect.innerHTML = '';
+    const autoOpt = document.createElement('option');
+    autoOpt.value = 'auto';
+    autoOpt.textContent = t('settings.langAuto', { lang: (sysMeta && sysMeta.nativeName) || 'English' });
+    appLangSelect.appendChild(autoOpt);
+
+    langs.forEach((l) => {
+      const opt = document.createElement('option');
+      opt.value = l.code;
+      opt.textContent = l.nativeName === l.name ? l.nativeName : `${l.nativeName} (${l.name})`;
+      appLangSelect.appendChild(opt);
+    });
+    appLangSelect.value = currentPref;
+  }
+
+  function syncAppLanguageUI() {
+    populateAppLanguageSelect();
+    i18nMod.applyTranslations();
+    syncModelPickerUI();
+    syncKeysBadge(getApiKeys());
+    refreshMissingApiStatusHint();
+    updateButtonLabel();
+    const f = getActiveMedia();
+    if ($('fileName') && !f) $('fileName').innerText = t('file.notSelected');
+    if (openBtn) openBtn.innerText = vttPanel.classList.contains('hidden') ? t('btn.text') : t('btn.hide');
+    applySettings();
+    if (studioCtrl && typeof studioCtrl.onLanguageChanged === 'function') studioCtrl.onLanguageChanged();
+  }
+
+  if (appLangSelect) {
+    appLangSelect.addEventListener('change', async () => {
+      await i18nMod.setLang(appLangSelect.value || 'auto');
+      syncAppLanguageUI();
+    });
+  }
+  syncAppLanguageUI();
+  if (typeof i18nMod.init === 'function') {
+    i18nMod.init().then(syncAppLanguageUI).catch(() => {});
+  }
 
   vttPanel.addEventListener('click', () => {
     if (!vttPanel.innerText) return;
     navigator.clipboard?.writeText(vttPanel.innerText).then(() => {
       const prev = statusEl.innerText;
-      statusEl.innerText = 'Subtitle text copied to clipboard!';
+      statusEl.innerText = t('status.subCopied');
       setTimeout(() => { statusEl.innerText = prev; }, 2000);
     }).catch(() => {});
   });
@@ -919,9 +1393,9 @@
         }
       }
       if (copyResetTimer) clearTimeout(copyResetTimer);
-      copyDiagLogBtn.textContent = copied ? 'Copied!' : 'Copy failed';
+      copyDiagLogBtn.textContent = copied ? t('settings.copied') : t('settings.copyFailed');
       copyResetTimer = setTimeout(() => {
-        copyDiagLogBtn.textContent = 'Copy log';
+        copyDiagLogBtn.textContent = t('settings.copyLog');
       }, 1800);
     });
   }
@@ -937,18 +1411,26 @@
     document.body.classList.add('welcome-modal-open');
     if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
     if (welcomeOpenSettingsBtn) {
-      welcomeOpenSettingsBtn.textContent = getApiKeys().length > 0 ? 'Open Settings' : 'Add API Key in Settings';
+      welcomeOpenSettingsBtn.textContent = getApiKeys().length > 0 ? t('welcome.openSettingsBtn') : t('welcome.addKeyBtn');
     }
     welcomeBackdropEl.classList.add('show');
     welcomeModalEl.classList.add('show');
   }
 
   function closeWelcomeModal(markSeen = true) {
-    if (markSeen) storageMod.safeSetStorage('sublater_welcome_seen', '1');
+    if (markSeen) storageMod.safeSetStorage('sublater_welcome_seen_v2', '1');
     document.body.classList.remove('welcome-modal-open');
     if (welcomeBackdropEl) welcomeBackdropEl.classList.remove('show');
     if (welcomeModalEl) welcomeModalEl.classList.remove('show');
     if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
+  }
+
+  const openWelcomeGuideBtn = $('openWelcomeGuideBtn');
+  if (openWelcomeGuideBtn) {
+    openWelcomeGuideBtn.addEventListener('click', () => {
+      closeSettings();
+      openWelcomeModal();
+    });
   }
 
   if (welcomeStartBtn) welcomeStartBtn.addEventListener('click', () => closeWelcomeModal(true));
@@ -960,7 +1442,7 @@
     });
   }
 
-  if (storageMod.safeGetStorage('sublater_welcome_seen', '') !== '1') {
+  if (storageMod.safeGetStorage('sublater_welcome_seen_v2', '') !== '1') {
     setTimeout(openWelcomeModal, 120);
   }
 })();

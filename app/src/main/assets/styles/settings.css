@@ -711,6 +711,34 @@ body.player-fullscreen-open #settingsMenu,
   transform: translate(20px, -50%);
   background-color: var(--md-on-primary);
 }
+body[data-m3-mode="light"] .slider {
+  background-color: #b4bfd0;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+}
+body[data-m3-mode="light"] .slider:before {
+  background-color: #2b3545;
+}
+body[data-m3-mode="light"] .switch input:checked + .slider {
+  background-color: var(--md-primary);
+  border-color: var(--md-primary);
+}
+body[data-m3-mode="light"] .switch input:checked + .slider:before {
+  background-color: var(--md-on-primary);
+}
+body[data-m3-mode="light"] .gen-mode-group,
+body[data-m3-mode="light"] .m3-seg-group {
+  background: #cdd5e3;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+}
+body[data-m3-mode="light"] .gen-mode-btn,
+body[data-m3-mode="light"] .m3-seg-btn {
+  color: #222c3c;
+}
+body[data-m3-mode="light"] .gen-mode-btn.active,
+body[data-m3-mode="light"] .m3-seg-btn.active {
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+}
 
 /* Приветственное окно Material You */
 #welcomeBackdrop {
