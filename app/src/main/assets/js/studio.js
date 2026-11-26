@@ -1144,10 +1144,13 @@
       if (voiceSearchInput) voiceSearchInput.style.display = voiceNotes.length ? 'block' : 'none';
       listEl.innerHTML = '';
       if (!filtered.length) {
-        emptyEl.style.display = 'block';
-        emptyEl.textContent = voiceNotes.length
-          ? t('voice.emptyFiltered')
-          : t('voice.empty');
+        if (voiceNotes.length) {
+          emptyEl.style.display = 'block';
+          emptyEl.textContent = t('voice.emptyFiltered');
+        } else {
+          emptyEl.style.display = 'none';
+          emptyEl.textContent = '';
+        }
         return;
       }
       emptyEl.style.display = 'none';
@@ -1238,33 +1241,16 @@
     if (voiceSearchInput) voiceSearchInput.addEventListener('input', renderVoicePanel);
 
     async function processAudioBlobToVoiceNote(blob, filename, durationSec) {
-      const model = deps.getActiveWhisperModel ? deps.getActiveWhisperModel() : 'whisper-large-v3-turbo';
-      const lw = (typeof window !== 'undefined' && window.SubLyter && window.SubLyter.localWhisper) || null;
-      const isLocal = Boolean(lw && lw.isLocalWhisperModel(model));
+      const model = 'whisper-large-v3-turbo';
       const voiceTargetLang = (voiceTranslateLangEl && voiceTranslateLangEl.value) || '';
       const keys = deps.getApiKeys ? deps.getApiKeys() : [];
 
-      if ((!isLocal || Boolean(voiceTargetLang)) && !ensureGroqKey(voiceStatusEl)) return;
-      if (voiceStatusEl) {
-        voiceStatusEl.textContent = isLocal
-          ? t('status.offlineTranscribing', { model })
-          : t('voice.transcribing');
-      }
+      if (!ensureGroqKey(voiceStatusEl)) return;
+      if (voiceStatusEl) voiceStatusEl.textContent = t('voice.transcribing');
       try {
-        let sttRes;
-        if (isLocal) {
-          if (!lw.isModelDownloaded(model)) {
-            if (voiceStatusEl) voiceStatusEl.textContent = t('status.downloadingModel', { model });
-            await lw.downloadModel(model, ({ pct }) => {
-              if (voiceStatusEl) voiceStatusEl.textContent = t('status.downloadingModelPct', { model, pct: pct || 0 });
-            });
-          }
-          sttRes = await lw.transcribeBlob(model, blob);
-        } else {
-          sttRes = await groqMod.sendToGroq(blob, filename, model, '', null, Object.assign(getGroqCtx(), {
-            hallucinationFilter: true
-          }));
-        }
+        const sttRes = await groqMod.sendToGroq(blob, filename, model, '', null, Object.assign(getGroqCtx(), {
+          hallucinationFilter: true
+        }));
         const rawTranscript = (sttRes.segments || []).map((s) => String(s.text || '').trim()).filter(Boolean).join(' ').trim();
         if (!rawTranscript) {
           if (voiceStatusEl) voiceStatusEl.textContent = t('voice.noSpeech');
@@ -1414,11 +1400,7 @@
         }
       }
 
-      const activeModel = deps.getActiveWhisperModel ? deps.getActiveWhisperModel() : 'whisper-large-v3-turbo';
-      const lw = (typeof window !== 'undefined' && window.SubLyter && window.SubLyter.localWhisper) || null;
-      const isLocal = Boolean(lw && lw.isLocalWhisperModel(activeModel));
-      const voiceTargetLang = (voiceTranslateLangEl && voiceTranslateLangEl.value) || '';
-      if ((!isLocal || Boolean(voiceTargetLang)) && !ensureGroqKey(voiceStatusEl)) return;
+      if (!ensureGroqKey(voiceStatusEl)) return;
 
       if (hasNativeRec) {
         tryStartNativeRecorder(b);

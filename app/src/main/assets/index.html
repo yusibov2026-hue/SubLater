@@ -301,25 +301,18 @@
         <div class="m3-studio-row-desc" id="voiceRecordLabel" data-i18n="voice.tapToRecord">Tap to record</div>
       </div>
       <div class="m3-voice-controls">
-        <button type="button" id="voiceModelBtn" class="m3-model-trigger" aria-haspopup="dialog" aria-expanded="false">
-          <div class="m3-model-trigger-main">
-            <span class="m3-model-trigger-title" id="voiceModelLabel" data-i18n="model.auto.title">Choose model (Auto)</span>
-          </div>
-          <span class="m3-model-trigger-badge" id="voiceModelBadge" data-i18n="model.auto.badge">Auto</span>
-          <svg class="m3-model-chevron" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
         <select id="voiceTranslateLang" aria-label="Voice translation language"></select>
-        <label class="file-box m3-voice-file-box" for="voiceImportInput">
-          <span class="file-pill" data-i18n="file.pill">File</span>
-          <span id="voiceFileName" data-i18n="file.notSelected">Not selected</span>
-          <input type="file" id="voiceImportInput" accept="audio/*,.ogg,.opus,.m4a,.mp3,.wav" style="display:none" />
-        </label>
       </div>
       <div class="m3-status-line" id="voiceStatus"></div>
       <input type="search" id="voiceSearchInput" class="m3-search-input" data-i18n-placeholder="voice.searchPlaceholder" placeholder="Search transcripts &amp; action items..." autocomplete="off" />
     </div>
 
-    <div id="voiceEmpty" class="m3-empty-state" data-i18n="voice.empty">Tap the mic to record a memo or import any Telegram/WhatsApp voice file.</div>
+    <label class="file-box m3-voice-file-box" for="voiceImportInput">
+      <span class="file-pill" data-i18n="file.pill">File</span>
+      <span id="voiceFileName" data-i18n="file.notSelected">Not selected</span>
+      <input type="file" id="voiceImportInput" accept="audio/*,.ogg,.opus,.m4a,.mp3,.wav" style="display:none" />
+    </label>
+    <div id="voiceEmpty" class="m3-empty-state" style="display:none"></div>
     <div class="m3-cards-list" id="voiceList"></div>
   </div><!-- /#hubPanelVoice -->
   </div><!-- /#hubViewport -->

@@ -1153,14 +1153,11 @@
   /* ---- Кастомный Material You выбор Speech-модели ---- */
   const modelSelectEl = $('model');
   const modelPickerBtn = $('modelPickerBtn');
-  const voiceModelBtn = $('voiceModelBtn');
   const modelPickerBackdrop = $('modelPickerBackdrop');
   const modelPickerSheet = $('modelPickerSheet');
   const closeModelPickerBtn = $('closeModelPickerBtn');
   const modelPickerLabel = $('modelPickerLabel');
   const modelPickerBadge = $('modelPickerBadge');
-  const voiceModelLabel = $('voiceModelLabel');
-  const voiceModelBadge = $('voiceModelBadge');
 
   const MODEL_META = {
     'auto': { titleKey: 'model.auto.title', badgeKey: 'model.auto.badge' },
@@ -1204,8 +1201,6 @@
     const badgeTxt = isLocalDone ? t('model.downloaded') : t(meta.badgeKey);
     if (modelPickerLabel) modelPickerLabel.textContent = titleTxt;
     if (modelPickerBadge) modelPickerBadge.textContent = badgeTxt;
-    if (voiceModelLabel) voiceModelLabel.textContent = titleTxt;
-    if (voiceModelBadge) voiceModelBadge.textContent = badgeTxt;
     document.querySelectorAll('#modelPickerList .m3-model-option').forEach((opt) => {
       opt.classList.toggle('active', opt.dataset.model === val);
     });
@@ -1217,14 +1212,12 @@
     if (modelPickerBackdrop) modelPickerBackdrop.classList.add('show');
     if (modelPickerSheet) modelPickerSheet.classList.add('show');
     if (modelPickerBtn) modelPickerBtn.setAttribute('aria-expanded', 'true');
-    if (voiceModelBtn) voiceModelBtn.setAttribute('aria-expanded', 'true');
   }
 
   function closeModelPicker() {
     if (modelPickerBackdrop) modelPickerBackdrop.classList.remove('show');
     if (modelPickerSheet) modelPickerSheet.classList.remove('show');
     if (modelPickerBtn) modelPickerBtn.setAttribute('aria-expanded', 'false');
-    if (voiceModelBtn) voiceModelBtn.setAttribute('aria-expanded', 'false');
   }
 
   if (modelSelectEl) {
@@ -1232,7 +1225,6 @@
     if (MODEL_META[savedSpeechModel]) modelSelectEl.value = savedSpeechModel;
   }
   if (modelPickerBtn) modelPickerBtn.addEventListener('click', openModelPicker);
-  if (voiceModelBtn) voiceModelBtn.addEventListener('click', openModelPicker);
   if (modelPickerBackdrop) modelPickerBackdrop.addEventListener('click', closeModelPicker);
   if (closeModelPickerBtn) closeModelPickerBtn.addEventListener('click', closeModelPicker);
 

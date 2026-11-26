@@ -398,9 +398,44 @@ html[dir="rtl"] .m3-hub-panel {
   transition: width 0.2s ease;
 }
 
+#hubPanelLearn,
+#hubPanelHistory,
+#hubPanelVoice {
+  box-sizing: border-box;
+  padding: 12px;
+  border-radius: 26px;
+  border: 1px solid color-mix(in srgb, var(--md-primary) 18%, transparent);
+}
+
+#hubPanelLearn {
+  background:
+    radial-gradient(120% 70% at 92% 4%, color-mix(in srgb, var(--md-primary) 26%, transparent), transparent 62%),
+    radial-gradient(95% 65% at 6% 48%, color-mix(in srgb, var(--md-secondary-container) 54%, transparent), transparent 65%),
+    color-mix(in srgb, var(--md-primary-container) 18%, var(--md-surface-container-low));
+}
+
+#hubPanelHistory {
+  background:
+    radial-gradient(115% 65% at 12% 6%, color-mix(in srgb, var(--md-secondary-container) 52%, transparent), transparent 62%),
+    radial-gradient(95% 60% at 92% 76%, color-mix(in srgb, var(--md-primary-container) 42%, transparent), transparent 65%),
+    color-mix(in srgb, var(--md-secondary-container) 18%, var(--md-surface-container-low));
+}
+
+#hubPanelVoice {
+  background:
+    radial-gradient(110% 58% at 50% 8%, color-mix(in srgb, var(--md-primary) 30%, transparent), transparent 64%),
+    radial-gradient(92% 55% at 10% 88%, color-mix(in srgb, var(--md-primary-container) 48%, transparent), transparent 65%),
+    color-mix(in srgb, var(--md-primary-container) 22%, var(--md-surface-container-low));
+}
+
 .m3-studio-card {
-  background: var(--md-surface-container-low);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--md-primary-container) 28%, var(--md-surface-container)),
+    color-mix(in srgb, var(--md-secondary-container) 18%, var(--md-surface-container-low))
+  );
   color: var(--md-on-surface);
+  border: 1px solid color-mix(in srgb, var(--md-primary) 16%, transparent);
   border-radius: 22px;
   padding: 14px;
   display: flex;
@@ -661,7 +696,12 @@ html[dir="rtl"] .m3-hub-panel {
 
 .m3-vocab-item,
 .m3-note-card {
-  background: var(--md-surface-container);
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--md-primary-container) 22%, var(--md-surface-container)),
+    color-mix(in srgb, var(--md-secondary-container) 12%, var(--md-surface-container))
+  );
+  border: 1px solid color-mix(in srgb, var(--md-primary) 15%, transparent);
   border-radius: 18px;
   padding: 12px 13px;
   display: flex;
@@ -819,9 +859,12 @@ html[dir="rtl"] .m3-hub-panel {
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  padding: 16px 12px;
+  padding: 18px 12px;
   border-radius: 22px;
-  background: var(--md-surface-container);
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--md-primary) 24%, transparent), transparent 72%),
+    color-mix(in srgb, var(--md-primary-container) 34%, var(--md-surface-container));
+  border: 1px solid color-mix(in srgb, var(--md-primary) 20%, transparent);
 }
 
 .m3-voice-controls {
@@ -830,10 +873,16 @@ html[dir="rtl"] .m3-hub-panel {
   gap: 7px;
 }
 
-.m3-voice-controls .m3-model-trigger,
-.m3-voice-controls #voiceTranslateLang,
-.m3-voice-controls .m3-voice-file-box {
+.m3-voice-controls #voiceTranslateLang {
   margin: 0;
+}
+
+.m3-voice-file-box {
+  margin: 0;
+  padding: 11px 13px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--md-secondary-container) 40%, var(--md-surface-container));
+  border: 1px solid color-mix(in srgb, var(--md-primary) 18%, transparent);
 }
 
 #voiceFileName {
@@ -843,11 +892,6 @@ html[dir="rtl"] .m3-hub-panel {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-body[data-m3-mode="light"] .m3-voice-controls .m3-model-trigger {
-  background: var(--bg-elevated);
-  border: 1px solid rgba(15, 23, 42, 0.14);
 }
 
 .m3-mic-btn {
@@ -1171,7 +1215,12 @@ body[data-m3-mode="light"] #wordLookupSheet {
 
 /* Subtitle History Cards (Material You) */
 .m3-hist-card {
-  background: var(--md-surface-container);
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--md-primary-container) 22%, var(--md-surface-container)),
+    color-mix(in srgb, var(--md-secondary-container) 14%, var(--md-surface-container))
+  );
+  border: 1px solid color-mix(in srgb, var(--md-primary) 16%, transparent);
   border-radius: 20px;
   padding: 14px;
   display: flex;
@@ -1338,16 +1387,62 @@ body[data-m3-mode="light"] .m3-model-option.active,
 body[data-m3-mode="light"] .m3-submode-opt.active {
   border-color: var(--md-primary);
 }
-body[data-m3-mode="light"] .m3-studio-card,
+body[data-m3-mode="light"] #hubPanelLearn {
+  background:
+    radial-gradient(120% 70% at 92% 4%, color-mix(in srgb, var(--md-primary-container) 62%, transparent), transparent 62%),
+    radial-gradient(95% 65% at 6% 48%, color-mix(in srgb, var(--md-secondary-container) 58%, transparent), transparent 65%),
+    color-mix(in srgb, var(--md-primary-container) 26%, #f8fafc);
+  border: 1px solid color-mix(in srgb, var(--md-primary) 18%, transparent);
+}
+body[data-m3-mode="light"] #hubPanelHistory {
+  background:
+    radial-gradient(115% 65% at 12% 6%, color-mix(in srgb, var(--md-secondary-container) 60%, transparent), transparent 62%),
+    radial-gradient(95% 60% at 92% 76%, color-mix(in srgb, var(--md-primary-container) 52%, transparent), transparent 65%),
+    color-mix(in srgb, var(--md-secondary-container) 26%, #f8fafc);
+  border: 1px solid color-mix(in srgb, var(--md-primary) 18%, transparent);
+}
+body[data-m3-mode="light"] #hubPanelVoice {
+  background:
+    radial-gradient(110% 58% at 50% 8%, color-mix(in srgb, var(--md-primary-container) 66%, transparent), transparent 64%),
+    radial-gradient(92% 55% at 10% 88%, color-mix(in srgb, var(--md-secondary-container) 52%, transparent), transparent 65%),
+    color-mix(in srgb, var(--md-primary-container) 28%, #f8fafc);
+  border: 1px solid color-mix(in srgb, var(--md-primary) 18%, transparent);
+}
+body[data-m3-mode="light"] .m3-studio-card {
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--md-primary-container) 24%, #ffffff),
+    color-mix(in srgb, var(--md-secondary-container) 16%, #ffffff)
+  );
+  border: 1px solid color-mix(in srgb, var(--md-primary) 18%, transparent);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--md-primary) 10%, transparent);
+}
 body[data-m3-mode="light"] .m3-studio-field,
 body[data-m3-mode="light"] .m3-submode-lang-box {
   border: 1px solid rgba(15, 23, 42, 0.12);
 }
-body[data-m3-mode="light"] .m3-studio-row,
+body[data-m3-mode="light"] .m3-voice-stage {
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--md-primary-container) 56%, transparent), transparent 72%),
+    color-mix(in srgb, var(--md-primary-container) 32%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--md-primary) 20%, transparent);
+}
+body[data-m3-mode="light"] .m3-voice-file-box {
+  background: color-mix(in srgb, var(--md-secondary-container) 42%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--md-primary) 18%, transparent);
+}
 body[data-m3-mode="light"] .m3-note-card,
 body[data-m3-mode="light"] .m3-hist-card,
-body[data-m3-mode="light"] .m3-vocab-item,
-body[data-m3-mode="light"] .m3-voice-stage,
+body[data-m3-mode="light"] .m3-vocab-item {
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--md-primary-container) 22%, #ffffff),
+    color-mix(in srgb, var(--md-secondary-container) 14%, #ffffff)
+  );
+  border: 1px solid color-mix(in srgb, var(--md-primary) 16%, transparent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--md-primary) 8%, transparent);
+}
+body[data-m3-mode="light"] .m3-studio-row,
 body[data-m3-mode="light"] .m3-empty-state {
   border: 1px solid rgba(15, 23, 42, 0.10);
 }
