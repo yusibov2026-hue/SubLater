@@ -35,6 +35,21 @@
   --md-slider-track: #3b4254;
   --md-error-container: #93000a;
   --md-on-error-container: #ffdad6;
+  --m3-voice-card-a: #1a2436;
+  --m3-voice-card-b: #18202c;
+  --m3-voice-stage: #1d2b42;
+  --m3-voice-glow: #306eb8;
+  --m3-voice-border: #2e4263;
+  --m3-learn-card-a: #192633;
+  --m3-learn-card-b: #17202b;
+  --m3-learn-stage: #1d3042;
+  --m3-learn-glow: #2e7bb8;
+  --m3-learn-border: #2d4862;
+  --m3-history-card-a: #1c2238;
+  --m3-history-card-b: #191e2e;
+  --m3-history-stage: #222a47;
+  --m3-history-glow: #4665b8;
+  --m3-history-border: #333e66;
 }
 
 * {
@@ -516,6 +531,7 @@ body[data-m3-mode="light"] .file-box {
 body[data-m3-mode="light"] #model option,
 body[data-m3-mode="light"] #translateLang option { background-color: #ffffff; color: #111520; }
 body[data-m3-mode="light"] #fileName,
+body[data-m3-mode="light"] #voiceFileName,
 body[data-m3-mode="light"] #status { color: #222c3c; }
 body[data-m3-mode="light"] .status-settings-btn {
   background: color-mix(in srgb, var(--accent) 14%, var(--bg-elevated));

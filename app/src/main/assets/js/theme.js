@@ -285,10 +285,25 @@
       const baseL = themeCfg.baseL;
       const nSat = isAchromatic ? 0 : Math.min(18, Math.max(8, pSat * 0.16));
       const lSat = isAchromatic ? 0 : Math.min(26, Math.max(11, pSat * 0.26));
+      const voiceHue = isAchromatic ? 222 : (h + 16) % 360;
+      const voiceGlowHue = isAchromatic ? 204 : (h - 16 + 360) % 360;
+      const learnHue = isAchromatic ? 204 : (h - 26 + 360) % 360;
+      const learnGlowHue = isAchromatic ? 222 : h;
+      const histHue = isAchromatic ? 236 : (h + 36) % 360;
+      const histGlowHue = isAchromatic ? 220 : (h + 12) % 360;
 
       let tokens;
       if (!isLight) {
         const effectiveAccent = seedHex;
+        const cardSat = isAchromatic ? (isWhiteSeed ? 6 : 8) : cpClamp(pSat * 0.40, 22, 36);
+        const stageSat = isAchromatic ? (isWhiteSeed ? 8 : 10) : cpClamp(pSat * 0.48, 26, 44);
+        const glowSat = isAchromatic ? 10 : cpClamp(pSat * 0.72, 36, 66);
+        const borderSat = isAchromatic ? 10 : cpClamp(pSat * 0.46, 24, 44);
+        const cardL = cpClamp(baseL + 5, 13, 24);
+        const cardL2 = cpClamp(baseL + 3, 11, 21);
+        const stageL = cpClamp(baseL + 9, 17, 28);
+        const borderL = cpClamp(baseL + 22, 28, 40);
+        const glowL = isAchromatic ? 34 : 38;
         tokens = {
           '--accent': effectiveAccent,
           '--on-accent': getReadableOnAccent(effectiveAccent),
@@ -313,12 +328,31 @@
           '--md-outline-variant': cpHslToHex(nHue, isAchromatic ? 0 : 14, baseL + 21),
           '--md-slider-track': cpHslToHex(nHue, isAchromatic ? 0 : Math.min(18, nSat + 4), Math.min(42, baseL + 24)),
           '--md-error-container': '#93000a',
-          '--md-on-error-container': '#ffdad6'
+          '--md-on-error-container': '#ffdad6',
+          '--m3-voice-card-a': cpHslToHex(voiceHue, cardSat, cardL),
+          '--m3-voice-card-b': cpHslToHex(voiceGlowHue, Math.max(6, cardSat - 6), cardL2),
+          '--m3-voice-stage': cpHslToHex(voiceHue, stageSat, stageL),
+          '--m3-voice-glow': cpHslToHex(voiceGlowHue, glowSat, glowL),
+          '--m3-voice-border': cpHslToHex(voiceHue, borderSat, borderL),
+          '--m3-learn-card-a': cpHslToHex(learnHue, cardSat, cardL),
+          '--m3-learn-card-b': cpHslToHex(learnGlowHue, Math.max(6, cardSat - 6), cardL2),
+          '--m3-learn-stage': cpHslToHex(learnHue, stageSat, stageL),
+          '--m3-learn-glow': cpHslToHex(learnGlowHue, glowSat, glowL),
+          '--m3-learn-border': cpHslToHex(learnHue, borderSat, borderL),
+          '--m3-history-card-a': cpHslToHex(histHue, cardSat, cardL),
+          '--m3-history-card-b': cpHslToHex(histGlowHue, Math.max(6, cardSat - 6), cardL2),
+          '--m3-history-stage': cpHslToHex(histHue, stageSat, stageL),
+          '--m3-history-glow': cpHslToHex(histGlowHue, glowSat, glowL),
+          '--m3-history-border': cpHslToHex(histHue, borderSat, borderL)
         };
       } else {
         const effectiveAccent = isWhiteSeed
           ? '#1e222b'
           : (hsl.l > 54 ? cpHslToHex(h, Math.min(92, Math.max(38, hsl.s)), 42) : seedHex);
+        const cardSat = isAchromatic ? 10 : cpClamp(pSat * 0.50, 24, 48);
+        const stageSat = isAchromatic ? 12 : cpClamp(pSat * 0.56, 28, 54);
+        const glowSat = isAchromatic ? 14 : cpClamp(pSat * 0.74, 34, 66);
+        const borderSat = isAchromatic ? 14 : cpClamp(pSat * 0.44, 22, 42);
         tokens = {
           '--accent': effectiveAccent,
           '--on-accent': getReadableOnAccent(effectiveAccent),
@@ -343,7 +377,22 @@
           '--md-outline-variant': cpHslToHex(nHue, isAchromatic ? 0 : 16, 68),
           '--md-slider-track': cpHslToHex(nHue, isAchromatic ? 0 : Math.min(24, lSat + 6), 68),
           '--md-error-container': '#ffdad6',
-          '--md-on-error-container': '#410002'
+          '--md-on-error-container': '#410002',
+          '--m3-voice-card-a': cpHslToHex(voiceHue, cardSat, 93),
+          '--m3-voice-card-b': cpHslToHex(voiceGlowHue, Math.max(8, cardSat - 8), 96),
+          '--m3-voice-stage': cpHslToHex(voiceHue, stageSat, 88),
+          '--m3-voice-glow': cpHslToHex(voiceGlowHue, glowSat, 80),
+          '--m3-voice-border': cpHslToHex(voiceHue, borderSat, 78),
+          '--m3-learn-card-a': cpHslToHex(learnHue, cardSat, 93),
+          '--m3-learn-card-b': cpHslToHex(learnGlowHue, Math.max(8, cardSat - 8), 96),
+          '--m3-learn-stage': cpHslToHex(learnHue, stageSat, 88),
+          '--m3-learn-glow': cpHslToHex(learnGlowHue, glowSat, 80),
+          '--m3-learn-border': cpHslToHex(learnHue, borderSat, 78),
+          '--m3-history-card-a': cpHslToHex(histHue, cardSat, 93),
+          '--m3-history-card-b': cpHslToHex(histGlowHue, Math.max(8, cardSat - 8), 96),
+          '--m3-history-stage': cpHslToHex(histHue, stageSat, 88),
+          '--m3-history-glow': cpHslToHex(histGlowHue, glowSat, 80),
+          '--m3-history-border': cpHslToHex(histHue, borderSat, 78)
         };
       }
 
