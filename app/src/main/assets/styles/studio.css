@@ -399,32 +399,13 @@ html[dir="rtl"] .m3-hub-panel {
 }
 
 .m3-studio-card {
-  background: #162033;
+  background: var(--md-surface-container-low);
   color: var(--md-on-surface);
-  border: 1px solid #24334d;
   border-radius: 22px;
   padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-
-#hubPanelLearn .m3-studio-row,
-#hubPanelLearn .m3-studio-field,
-#hubPanelLearn .m3-empty-state,
-#hubPanelHistory .m3-empty-state {
-  background: #1c2942;
-  border: 1px solid #283a59;
-}
-
-#hubPanelHistory .m3-search-input,
-#hubPanelVoice .m3-search-input {
-  background: #131c2e !important;
-  border: 1px solid #24334d;
-}
-
-#hubPanelVoice #voiceTranslateLang {
-  background-color: #131c2e;
 }
 
 .m3-studio-card-head {
@@ -688,12 +669,6 @@ html[dir="rtl"] .m3-hub-panel {
   gap: 7px;
 }
 
-#hubPanelLearn .m3-vocab-item,
-#hubPanelVoice .m3-note-card {
-  background: #1c2942;
-  border: 1px solid #283a59;
-}
-
 .m3-vocab-item-top,
 .m3-note-head {
   display: flex;
@@ -844,10 +819,9 @@ html[dir="rtl"] .m3-hub-panel {
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  padding: 18px 12px;
+  padding: 16px 12px;
   border-radius: 22px;
-  background: #1c2942;
-  border: 1px solid #283a59;
+  background: var(--md-surface-container);
 }
 
 .m3-voice-controls {
@@ -1194,8 +1168,7 @@ body[data-m3-mode="light"] #wordLookupSheet {
 
 /* Subtitle History Cards (Material You) */
 .m3-hist-card {
-  background: #162033;
-  border: 1px solid #24334d;
+  background: var(--md-surface-container);
   border-radius: 20px;
   padding: 14px;
   display: flex;
@@ -1363,30 +1336,17 @@ body[data-m3-mode="light"] .m3-submode-opt.active {
   border-color: var(--md-primary);
 }
 body[data-m3-mode="light"] .m3-studio-card,
-body[data-m3-mode="light"] .m3-hist-card {
-  background: #eef3fa;
-  border: 1px solid #cfdced;
-  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.05);
-}
-body[data-m3-mode="light"] .m3-voice-stage,
-body[data-m3-mode="light"] #hubPanelLearn .m3-studio-row,
-body[data-m3-mode="light"] #hubPanelLearn .m3-studio-field,
-body[data-m3-mode="light"] #hubPanelLearn .m3-vocab-item,
-body[data-m3-mode="light"] #hubPanelVoice .m3-note-card,
-body[data-m3-mode="light"] #hubPanelLearn .m3-empty-state,
-body[data-m3-mode="light"] #hubPanelHistory .m3-empty-state {
-  background: #e4edf8;
-  border: 1px solid #c6d5e8;
-}
-body[data-m3-mode="light"] #hubPanelVoice #voiceTranslateLang,
-body[data-m3-mode="light"] #hubPanelVoice .m3-search-input,
-body[data-m3-mode="light"] #hubPanelHistory .m3-search-input {
-  background: #ffffff !important;
-  background-color: #ffffff;
-  border: 1px solid #c6d5e8;
-}
+body[data-m3-mode="light"] .m3-studio-field,
 body[data-m3-mode="light"] .m3-submode-lang-box {
   border: 1px solid rgba(15, 23, 42, 0.12);
+}
+body[data-m3-mode="light"] .m3-studio-row,
+body[data-m3-mode="light"] .m3-note-card,
+body[data-m3-mode="light"] .m3-hist-card,
+body[data-m3-mode="light"] .m3-vocab-item,
+body[data-m3-mode="light"] .m3-voice-stage,
+body[data-m3-mode="light"] .m3-empty-state {
+  border: 1px solid rgba(15, 23, 42, 0.10);
 }
 body[data-m3-mode="light"] .m3-hist-preview {
   border: 1px solid rgba(15, 23, 42, 0.08);
