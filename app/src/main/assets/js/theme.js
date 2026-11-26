@@ -289,9 +289,12 @@
       let tokens;
       if (!isLight) {
         const effectiveAccent = seedHex;
+        const onAccent = getReadableOnAccent(effectiveAccent);
+        const chevronStroke = onAccent === '#ffffff' ? '%23ffffff' : '%230a0f18';
         tokens = {
           '--accent': effectiveAccent,
-          '--on-accent': getReadableOnAccent(effectiveAccent),
+          '--on-accent': onAccent,
+          '--on-accent-chevron': "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='" + chevronStroke + "' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")",
           '--bg-main': themeCfg.main,
           '--bg-surface': themeCfg.surface,
           '--bg-elevated': themeCfg.elevated,
@@ -319,9 +322,12 @@
         const effectiveAccent = isWhiteSeed
           ? '#1e222b'
           : (hsl.l > 54 ? cpHslToHex(h, Math.min(92, Math.max(38, hsl.s)), 42) : seedHex);
+        const onAccent = getReadableOnAccent(effectiveAccent);
+        const chevronStroke = onAccent === '#ffffff' ? '%23ffffff' : '%230a0f18';
         tokens = {
           '--accent': effectiveAccent,
-          '--on-accent': getReadableOnAccent(effectiveAccent),
+          '--on-accent': onAccent,
+          '--on-accent-chevron': "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='" + chevronStroke + "' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")",
           '--bg-main': isAchromatic ? '#e8ecf2' : cpHslToHex(nHue, Math.min(18, lSat + 4), 91),
           '--bg-surface': '#ffffff',
           '--bg-elevated': isAchromatic ? '#dfe4ec' : cpHslToHex(nHue, Math.min(20, lSat + 5), 87),

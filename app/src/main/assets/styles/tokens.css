@@ -9,6 +9,7 @@
   --bg-opacity: 62;
   --accent: #1b8ef2;
   --on-accent: #041016;
+  --on-accent-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230a0f18' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   --wallpaper-color: var(--accent);
   --wall-col: var(--wallpaper-color, var(--accent));
   --bg-main: #161922;
@@ -65,7 +66,7 @@ body {
 
 #appTopSection {
   background: var(--bg-surface);
-  border: 1px solid var(--border-soft);
+  border: none;
   border-radius: 28px;
   padding: 18px 16px 16px;
   margin-bottom: 14px;
@@ -492,8 +493,8 @@ button#btn.cancel-mode:active { transform: scale(0.97); }
 /* Светлый режим базовых элементов */
 body[data-m3-mode="light"] { color: #111520; }
 body[data-m3-mode="light"] #appTopSection {
-  box-shadow: 0 8px 26px rgba(15, 23, 42, 0.09);
-  border-color: var(--border-soft);
+  box-shadow: 0 8px 26px rgba(15, 23, 42, 0.08);
+  border: none;
 }
 body[data-m3-mode="light"] .app-header h2 { text-shadow: none; }
 body[data-m3-mode="light"] #settingsToggle {

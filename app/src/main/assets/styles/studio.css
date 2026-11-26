@@ -832,6 +832,21 @@ html[dir="rtl"] .m3-hub-panel {
 
 .m3-voice-controls #voiceTranslateLang {
   margin: 0;
+  background-color: var(--accent);
+  color: var(--on-accent, #ffffff);
+  font-weight: 700;
+  border: none;
+  background-image: var(--on-accent-chevron);
+}
+
+.m3-voice-controls #voiceTranslateLang:hover {
+  filter: brightness(1.06);
+}
+
+.m3-voice-controls #voiceTranslateLang option {
+  background-color: var(--bg-elevated);
+  color: #f8fafc;
+  font-weight: 500;
 }
 
 .m3-voice-file-box {
@@ -1365,4 +1380,14 @@ body[data-m3-mode="light"] .m3-icon-mini,
 body[data-m3-mode="light"] .m3-filter-chip,
 body[data-m3-mode="light"] .m3-model-del-btn {
   border: 1px solid rgba(15, 23, 42, 0.12);
+}
+body[data-m3-mode="light"] .m3-voice-controls #voiceTranslateLang {
+  background-color: var(--accent);
+  color: var(--on-accent, #ffffff);
+  border: none;
+  background-image: var(--on-accent-chevron);
+}
+body[data-m3-mode="light"] .m3-voice-controls #voiceTranslateLang option {
+  background-color: #ffffff;
+  color: #111520;
 }
