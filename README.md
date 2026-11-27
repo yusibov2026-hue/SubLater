@@ -60,28 +60,31 @@ There is **no other Android app like SubLyter (`com.fromsub.app`)**. Most subtit
 <table>
   <tr>
     <td align="center" width="50%">
-      <img src="screenshots/1.jpg" alt="SubLyter Main Screen" width="250" /><br />
-      <sub><strong>Main Studio &amp; Snowfall Wallpaper</strong><br/>Borderless Material You card, custom Speech Model bottom sheet, translation picker &amp; one-tap subtitle generation</sub>
+      <img src="screenshots/1.jpg" alt="SubLyter Screenshot 1" width="250" />
     </td>
     <td align="center" width="50%">
-      <img src="screenshots/2.jpg" alt="Material You & Theme Settings" width="250" /><br />
-      <sub><strong>Deep Material You (M3) Customization</strong><br/>Dark/Light/Auto appearance, 12-swatch tonal accent grid, 4 background surfaces, 30 GPU wallpapers &amp; opacity slider</sub>
+      <img src="screenshots/2.jpg" alt="SubLyter Screenshot 2" width="250" />
     </td>
   </tr>
   <tr>
     <td align="center" width="50%">
-      <img src="screenshots/3.jpg" alt="Title Typography & Multi-Key Groq Pool" width="250" /><br />
-      <sub><strong>Typography, Playback &amp; Multi-Key Pool</strong><br/>24 offline title fonts with live preview + multi-key Groq &amp; Gemini vaults with live status badge and <code>Get API</code> shortcuts</sub>
+      <img src="screenshots/3.jpg" alt="SubLyter Screenshot 3" width="250" />
     </td>
     <td align="center" width="50%">
-      <img src="screenshots/4.jpg" alt="AI Models, Generation Pipeline & Diagnostics" width="250" /><br />
-      <sub><strong>AI Models, Speed Engine &amp; Diagnostics</strong><br/>Gemini 4 Hydrogen, GPT-OSS 120B, Qwen 3.6 27B, 54 UI languages, Progressive/All at once mode, SRT/VTT import &amp; <code>Copy log</code></sub>
+      <img src="screenshots/4.jpg" alt="SubLyter Screenshot 4" width="250" />
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="screenshots/5.jpg" alt="SubLyter Screenshot 5" width="250" />
+    </td>
+    <td align="center" width="50%">
+      <img src="screenshots/6.jpg" alt="SubLyter Screenshot 6" width="250" />
     </td>
   </tr>
   <tr>
     <td align="center" colspan="2">
-      <img src="screenshots/5.jpg" alt="Borderless Fullscreen Live Subtitles" width="540" /><br />
-      <sub><strong>Borderless Fullscreen Live Subtitles (Landscape)</strong><br/>Crisp word-by-word &amp; dual subtitle overlay during fullscreen playback without black bars</sub>
+      <img src="screenshots/7.jpg" alt="SubLyter Screenshot 7" width="250" />
     </td>
   </tr>
 </table>

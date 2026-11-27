@@ -60,28 +60,31 @@
 <table>
   <tr>
     <td align="center" width="50%">
-      <img src="screenshots/1.jpg" alt="Главный экран SubLyter" width="250" /><br />
-      <sub><strong>Главный экран и обои «Снегопад»</strong><br/>Безрамочная карточка Material You, выбор модели Whisper, перевод на 53 языка и запуск в одно касание</sub>
+      <img src="screenshots/1.jpg" alt="Скриншот SubLyter 1" width="250" />
     </td>
     <td align="center" width="50%">
-      <img src="screenshots/2.jpg" alt="Настройки Material You и тем" width="250" /><br />
-      <sub><strong>Глубокая кастомизация Material You (M3)</strong><br/>Режимы Dark/Light/Auto, палитра из 12 акцентов, 4 фоновых темы, 30 живых GPU-обоев и прозрачность</sub>
+      <img src="screenshots/2.jpg" alt="Скриншот SubLyter 2" width="250" />
     </td>
   </tr>
   <tr>
     <td align="center" width="50%">
-      <img src="screenshots/3.jpg" alt="Шрифты заголовка и пул API-ключей Groq/Gemini" width="250" /><br />
-      <sub><strong>Типографика и пул ключей Groq + Gemini</strong><br/>24 офлайн-шрифта с превью, мультиключевое хранилище Groq с бейджем и кнопками <code>Get API</code></sub>
+      <img src="screenshots/3.jpg" alt="Скриншот SubLyter 3" width="250" />
     </td>
     <td align="center" width="50%">
-      <img src="screenshots/4.jpg" alt="AI-модели, параметры генерации и диагностика" width="250" /><br />
-      <sub><strong>AI-модели, движок генерации и диагностика</strong><br/>Gemini 4 Hydrogen, GPT-OSS 120B, Qwen 3.6 27B, 54 языка интерфейса, режимы Progressive/All at once и <code>Copy log</code></sub>
+      <img src="screenshots/4.jpg" alt="Скриншот SubLyter 4" width="250" />
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="screenshots/5.jpg" alt="Скриншот SubLyter 5" width="250" />
+    </td>
+    <td align="center" width="50%">
+      <img src="screenshots/6.jpg" alt="Скриншот SubLyter 6" width="250" />
     </td>
   </tr>
   <tr>
     <td align="center" colspan="2">
-      <img src="screenshots/5.jpg" alt="Безрамочный полноэкранный плеер в горизонтальном режиме" width="540" /><br />
-      <sub><strong>Безрамочный полноэкранный плеер (горизонтальный режим)</strong><br/>Чёткие пословные и двойные субтитры поверх видео без чёрных полос</sub>
+      <img src="screenshots/7.jpg" alt="Скриншот SubLyter 7" width="250" />
     </td>
   </tr>
 </table>
