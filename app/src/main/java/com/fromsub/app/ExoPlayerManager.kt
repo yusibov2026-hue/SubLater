@@ -1,5 +1,6 @@
 package com.fromsub.app
 
+import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -10,6 +11,7 @@ import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
@@ -29,6 +31,7 @@ import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -40,6 +43,7 @@ import java.io.ByteArrayOutputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 data class VideoBounds(
     val leftRatio: Float = 0f,
@@ -94,7 +98,17 @@ class ExoPlayerManager(
     @Volatile
     private var fgCancelLabel: String = "Cancel"
 
+    @Volatile
+    private var foregroundServiceActive: Boolean = false
+
+    @Volatile
+    private var lastFgUpdateMs: Long = 0L
+
+    private var lastFgText: String = ""
+    private var lastFgProgress: Int = -2
+
     val isVideoReady = mutableStateOf(false)
+    val isPlayerReadyForAttach = mutableStateOf(false)
     val resizeModeState = mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT)
     val videoBoundsState = mutableStateOf(VideoBounds())
     val hostSurfaceColorState = mutableIntStateOf(0xFF161922.toInt())
@@ -107,6 +121,9 @@ class ExoPlayerManager(
 
     @Volatile
     private var cachedIsPlaying: Boolean = false
+
+    @Volatile
+    private var cachedPlaybackSpeed: Float = 1f
 
     @Volatile
     private var cachedVideoWidth: Int = 0
@@ -142,7 +159,14 @@ class ExoPlayerManager(
         val extractorsFactory = DefaultExtractorsFactory()
             .setConstantBitrateSeekingEnabled(true)
 
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(5_000, 15_000, 1_500, 3_000)
+            .setTargetBufferBytes(16 * 1024 * 1024)
+            .setPrioritizeTimeOverSizeThresholds(false)
+            .build()
+
         ExoPlayer.Builder(context, renderersFactory)
+            .setLoadControl(loadControl)
             .setMediaSourceFactory(DefaultMediaSourceFactory(context, extractorsFactory))
             .build()
             .apply {
@@ -169,6 +193,12 @@ class ExoPlayerManager(
                         newPosition: Player.PositionInfo,
                         reason: Int
                     ) {
+                        syncStateOnMainThread()
+                        notifyPlaybackStateToJs()
+                    }
+
+                    override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
+                        cachedPlaybackSpeed = playbackParameters.speed
                         syncStateOnMainThread()
                         notifyPlaybackStateToJs()
                     }
@@ -203,7 +233,8 @@ class ExoPlayerManager(
                 return
             }
             syncStateOnMainThread()
-            mainHandler.postDelayed(this, 30L)
+            notifyPlaybackStateToJs()
+            mainHandler.postDelayed(this, 120L)
         }
     }
 
@@ -228,7 +259,8 @@ class ExoPlayerManager(
         val posSec = cachedPositionMs / 1000.0
         val durSec = cachedDurationMs / 1000.0
         val playing = cachedIsPlaying
-        postJs("if (window.__onNativePlaybackStateChanged) window.__onNativePlaybackStateChanged($playing, $posSec, $durSec);")
+        val spd = cachedPlaybackSpeed
+        postJs("if (window.__onNativePlaybackStateChanged) window.__onNativePlaybackStateChanged($playing, $posSec, $durSec, $spd);")
     }
 
     private fun postJs(jsCode: String) {
@@ -260,9 +292,36 @@ class ExoPlayerManager(
         cachedVideoHeight = 0
     }
 
+    fun setMediaUri(uriString: String, mimeHint: String? = null): Boolean {
+        val clean = uriString.trim()
+        if (clean.isEmpty()) return false
+        val uri = try {
+            Uri.parse(clean)
+        } catch (_: Exception) {
+            return false
+        }
+        val scheme = uri.scheme?.lowercase() ?: ""
+        val hint = mimeHint?.takeIf { it.isNotBlank() }
+        if (scheme == "http" || scheme == "https") {
+            storeMediaUri(uri, hint)
+            return true
+        }
+        val readable = try {
+            context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { true } ?: false
+        } catch (_: Exception) {
+            false
+        }
+        if (!readable) return false
+        storeMediaUri(uri, hint)
+        return true
+    }
+
     fun getStoredMediaUri(): String = currentVideoUri?.toString() ?: ""
 
+    fun isGenerationActive(): Boolean = foregroundServiceActive || audioChunkExtractor.isActive()
+
     fun startForegroundService(statusText: String = "Generating subtitles...") {
+        foregroundServiceActive = true
         try {
             val intent = Intent(context, SubtitleForegroundService::class.java).apply {
                 action = SubtitleForegroundService.ACTION_START_OR_UPDATE
@@ -279,15 +338,30 @@ class ExoPlayerManager(
     }
 
     fun updateForegroundNotification(statusText: String) {
-        startForegroundService(statusText)
+        updateForegroundProgress(statusText, -1)
     }
 
     fun updateForegroundProgress(statusText: String, progress: Int) {
+        val clamped = progress.coerceIn(-1, 100)
+        val now = System.currentTimeMillis()
+        val isTerminal = clamped >= 100 || clamped == 0
+        if (SubtitleForegroundService.isRunning) {
+            if (!isTerminal && statusText == lastFgText && clamped == lastFgProgress) return
+            if (!isTerminal && now - lastFgUpdateMs < 650L) return
+        }
+        lastFgUpdateMs = now
+        lastFgText = statusText
+        lastFgProgress = clamped
+
+        if (SubtitleForegroundService.updateNotificationIfRunning(context, statusText, clamped, fgCancelLabel)) {
+            return
+        }
+        foregroundServiceActive = true
         try {
             val intent = Intent(context, SubtitleForegroundService::class.java).apply {
                 action = SubtitleForegroundService.ACTION_START_OR_UPDATE
                 putExtra(SubtitleForegroundService.EXTRA_STATUS_TEXT, statusText)
-                putExtra(SubtitleForegroundService.EXTRA_PROGRESS, progress.coerceIn(-1, 100))
+                putExtra(SubtitleForegroundService.EXTRA_PROGRESS, clamped)
                 putExtra(SubtitleForegroundService.EXTRA_CANCEL_LABEL, fgCancelLabel)
             }
             ContextCompat.startForegroundService(context, intent)
@@ -295,6 +369,10 @@ class ExoPlayerManager(
     }
 
     fun stopForegroundService() {
+        foregroundServiceActive = false
+        lastFgUpdateMs = 0L
+        lastFgText = ""
+        lastFgProgress = -2
         try {
             val intent = Intent(context, SubtitleForegroundService::class.java).apply {
                 action = SubtitleForegroundService.ACTION_STOP
@@ -313,6 +391,7 @@ class ExoPlayerManager(
         }
         mainHandler.post {
             try {
+                isPlayerReadyForAttach.value = true
                 val mime = currentMimeHint
                 val mediaItem = MediaItem.Builder()
                     .setUri(uri)
@@ -324,6 +403,12 @@ class ExoPlayerManager(
                     .build()
                 exoPlayer.setMediaItem(mediaItem)
                 exoPlayer.prepare()
+                if (cachedPlaybackSpeed != 1f) {
+                    exoPlayer.playbackParameters = PlaybackParameters(cachedPlaybackSpeed)
+                }
+                if (volumePercent != 100 || boostPercent != 100) {
+                    applyAudioGain()
+                }
                 isVideoReady.value = true
                 syncStateOnMainThread()
             } catch (e: Exception) {
@@ -473,6 +558,7 @@ class ExoPlayerManager(
     }
 
     private fun applyAudioGain() {
+        if (!playerInitialized) return
         val volume = volumePercent
         val boost = boostPercent
         mainHandler.post {
@@ -503,6 +589,8 @@ class ExoPlayerManager(
 
     fun setSpeed(speed: Float) {
         val safeSpeed = speed.coerceIn(0.25f, 3.0f)
+        cachedPlaybackSpeed = safeSpeed
+        if (!playerInitialized) return
         mainHandler.post {
             exoPlayer.playbackParameters = PlaybackParameters(safeSpeed)
         }
@@ -631,7 +719,10 @@ class ExoPlayerManager(
 
     fun setPlayerVisibility(visible: Boolean) {
         mainHandler.post {
-            videoBoundsState.value = videoBoundsState.value.copy(isVisible = visible)
+            val cur = videoBoundsState.value
+            if (cur.isVisible != visible) {
+                videoBoundsState.value = cur.copy(isVisible = visible)
+            }
             updatePositionPollerState()
         }
     }
@@ -647,14 +738,24 @@ class ExoPlayerManager(
     ) {
         if (viewportW <= 0f || viewportH <= 0f) return
         mainHandler.post {
-            videoBoundsState.value = VideoBounds(
+            val cur = videoBoundsState.value
+            val next = VideoBounds(
                 leftRatio = (leftCss / viewportW).coerceIn(-1f, 2f),
                 topRatio = (topCss / viewportH).coerceIn(-3f, 3f),
                 widthRatio = (widthCss / viewportW).coerceIn(0.05f, 1f),
                 heightRatio = (heightCss / viewportH).coerceIn(0.05f, 1f),
                 isFullscreen = isFullscreen,
-                isVisible = videoBoundsState.value.isVisible
+                isVisible = cur.isVisible
             )
+            val changed = cur.isVisible != next.isVisible ||
+                cur.isFullscreen != next.isFullscreen ||
+                abs(cur.leftRatio - next.leftRatio) >= 0.001f ||
+                abs(cur.topRatio - next.topRatio) >= 0.001f ||
+                abs(cur.widthRatio - next.widthRatio) >= 0.001f ||
+                abs(cur.heightRatio - next.heightRatio) >= 0.001f
+            if (changed) {
+                videoBoundsState.value = next
+            }
         }
     }
 
@@ -669,7 +770,16 @@ class ExoPlayerManager(
                 retriever.setDataSource(context, uri)
             }
             val timeUs = if (cachedPositionMs > 100L) cachedPositionMs * 1000L else 1000000L
-            val rawBitmap = retriever.getFrameAtTime(
+            val rawBitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                retriever.getScaledFrameAtTime(
+                    timeUs,
+                    MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
+                    512,
+                    512
+                )
+            } else {
+                null
+            } ?: retriever.getFrameAtTime(
                 timeUs,
                 MediaMetadataRetriever.OPTION_CLOSEST_SYNC
             ) ?: retriever.getFrameAtTime(0L) ?: retriever.getFrameAtTime() ?: return ""
@@ -694,6 +804,25 @@ class ExoPlayerManager(
             ""
         } finally {
             try { retriever.release() } catch (_: Exception) {}
+        }
+    }
+
+    fun onTrimMemory(level: Int) {
+        if (boostPercent <= 100 && volumePercent <= 100) {
+            try { loudnessEnhancer?.release() } catch (_: Exception) {}
+            loudnessEnhancer = null
+            loudnessSessionId = C.AUDIO_SESSION_ID_UNSET
+        }
+        if (playerInitialized && !cachedIsPlaying && !videoBoundsState.value.isVisible &&
+            level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW
+        ) {
+            mainHandler.post {
+                try {
+                    if (!cachedIsPlaying && !videoBoundsState.value.isVisible) {
+                        exoPlayer.stop()
+                    }
+                } catch (_: Exception) {}
+            }
         }
     }
 

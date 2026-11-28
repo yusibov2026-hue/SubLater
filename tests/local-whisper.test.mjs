@@ -6,7 +6,9 @@ const {
   isLocalWhisperModel,
   getLocalModelConfig,
   decodeWavToFloat32,
-  normalizeWhisperChunksToSegments
+  normalizeWhisperChunksToSegments,
+  disposeModel,
+  disposeAllPipelines
 } = localWhisper;
 
 function makeTestWavBuffer(sampleRate, samples) {
@@ -63,4 +65,9 @@ test('normalizeWhisperChunksToSegments converts chunks and null end timestamps m
   assert.equal(res.segments[1].start, 2.5);
   assert.ok(res.segments[1].end > 2.5);
   assert.equal(res.segments[1].text, 'Second line here');
+});
+
+test('disposeModel and disposeAllPipelines handle idle empty state safely', async () => {
+  assert.equal(await disposeModel('local-whisper-base'), false);
+  assert.equal(await disposeAllPipelines(), true);
 });

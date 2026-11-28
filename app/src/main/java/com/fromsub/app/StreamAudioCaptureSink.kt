@@ -73,12 +73,22 @@ class StreamAudioCaptureSink(
     private var chunkIndex = 0
     private var totalWrittenMonoSamples = 0L
     private var currentChunkStartSample = 0L
+    private var currentChunkStartSec = baseStartSec
+    private var currentChunkPtsAnchored = false
+    private var lastEmittedPtsSec = baseStartSec
+    private var currentBufStartSec = -1.0
+    private var currentBufOutIdx = 0
+    private var chunkPeak = 0
     private var currentFile: File? = null
     private var currentOut: BufferedOutputStream? = null
     private var currentChunkPcmBytes = 0
     private var emittedChunks = 0
     private val ioChunkBuf = ByteArray(65536)
     private var ioChunkBufUsed = 0
+    private var channelWeights = FloatArray(0)
+    private var monoScratch = FloatArray(0)
+    private var combinedScratch = FloatArray(0)
+    private var outScratch = ShortArray(0)
     private val pendingChunks = ArrayDeque<Pair<JSONObject, Boolean>>()
     private var pendingDoneCount: Int? = null
     private var pendingError: String? = null
@@ -146,6 +156,7 @@ class StreamAudioCaptureSink(
             sourceSampleRate = if (format.sampleRate > 0) format.sampleRate else 44100
             channelCount = if (format.channelCount > 0) format.channelCount else 2
             pcmEncoding = if (format.pcmEncoding != Format.NO_VALUE) format.pcmEncoding else C.ENCODING_PCM_16BIT
+            channelWeights = FloatArray(channelCount) { ch -> WavChunkWriter.channelWeight(ch, channelCount) }
             resamplePos = 0.0
             leftoverSamples = FloatArray(0)
             configured = true
@@ -160,6 +171,12 @@ class StreamAudioCaptureSink(
                 emittedChunks = 0
                 totalWrittenMonoSamples = 0L
                 currentChunkStartSample = 0L
+                currentChunkStartSec = baseStartSec
+                currentChunkPtsAnchored = false
+                lastEmittedPtsSec = baseStartSec
+                currentBufStartSec = -1.0
+                currentBufOutIdx = 0
+                chunkPeak = 0
                 overlapFilled = 0
                 overlapWritePos = 0
                 ioChunkBufUsed = 0
@@ -182,6 +199,8 @@ class StreamAudioCaptureSink(
                 if (presentationTimeUs != 0L && presentationTimeUs != lastPresentationTimeUs) {
                     lastPresentationTimeUs = presentationTimeUs
                 }
+                currentBufStartSec = if (presentationTimeUs > 0L) presentationTimeUs.toDouble() / 1_000_000.0 else -1.0
+                currentBufOutIdx = 0
                 if (!configured || buffer.remaining() <= 0) {
                     if ((flags and C.BUFFER_FLAG_END_OF_STREAM) != 0) {
                         finishLocked(true)
@@ -293,12 +312,18 @@ class StreamAudioCaptureSink(
         val frames = src.remaining() / frameSize
         if (frames <= 0) return
 
-        val mono = FloatArray(frames)
+        if (monoScratch.size < frames) monoScratch = FloatArray(frames)
+        val mono = monoScratch
+        val weights = if (channelWeights.size == channelCount) {
+            channelWeights
+        } else {
+            FloatArray(channelCount) { ch -> WavChunkWriter.channelWeight(ch, channelCount) }.also { channelWeights = it }
+        }
         for (frame in 0 until frames) {
             val frameStart = base + frame * frameSize
             var sum = 0f
             for (ch in 0 until channelCount) {
-                val weight = WavChunkWriter.channelWeight(ch, channelCount)
+                val weight = weights[ch]
                 if (weight == 0f) continue
                 val idx = frameStart + ch * bytesPerSample
                 sum += readSample(src, idx, bytesPerSample) * weight
@@ -306,21 +331,25 @@ class StreamAudioCaptureSink(
             mono[frame] = sum.coerceIn(-1f, 1f)
         }
 
-        val combined = if (leftoverSamples.isEmpty()) {
+        val leftoverLen = leftoverSamples.size
+        val combinedLen = leftoverLen + frames
+        val combined = if (leftoverLen == 0) {
             mono
         } else {
-            val joined = FloatArray(leftoverSamples.size + mono.size)
-            System.arraycopy(leftoverSamples, 0, joined, 0, leftoverSamples.size)
-            System.arraycopy(mono, 0, joined, leftoverSamples.size, mono.size)
-            joined
+            if (combinedScratch.size < combinedLen) combinedScratch = FloatArray(combinedLen)
+            System.arraycopy(leftoverSamples, 0, combinedScratch, 0, leftoverLen)
+            System.arraycopy(mono, 0, combinedScratch, leftoverLen, frames)
+            combinedScratch
         }
 
         val step = sourceSampleRate.toDouble() / targetSampleRate.toDouble()
         if (step <= 0.0) return
         var pos = resamplePos
-        val out = ShortArray(((combined.size.toDouble() - pos) / step).toInt().coerceAtLeast(0) + 2)
+        val neededOut = ((combinedLen.toDouble() - pos) / step).toInt().coerceAtLeast(0) + 2
+        if (outScratch.size < neededOut) outScratch = ShortArray(neededOut)
+        val out = outScratch
         var outCount = 0
-        while (pos + 1.0 < combined.size.toDouble()) {
+        while (pos + 1.0 < combinedLen.toDouble()) {
             val i = floor(pos).toInt()
             val frac = (pos - i).toFloat()
             val sample = combined[i] + (combined[i + 1] - combined[i]) * frac
@@ -328,8 +357,8 @@ class StreamAudioCaptureSink(
             pos += step
         }
 
-        val keepFrom = floor(pos).toInt().coerceIn(0, combined.size - 1)
-        leftoverSamples = combined.copyOfRange(keepFrom, combined.size)
+        val keepFrom = floor(pos).toInt().coerceIn(0, combinedLen - 1)
+        leftoverSamples = combined.copyOfRange(keepFrom, combinedLen)
         resamplePos = pos - keepFrom
 
         for (i in 0 until outCount) {
@@ -365,6 +394,7 @@ class StreamAudioCaptureSink(
         currentOut = BufferedOutputStream(FileOutputStream(file), 131072)
         currentOut?.write(ByteArray(44))
         currentChunkPcmBytes = 0
+        chunkPeak = 0
     }
 
     private fun flushIoBufLocked() {
@@ -377,6 +407,23 @@ class StreamAudioCaptureSink(
 
     private fun pushMonoSampleLocked(sample: Short) {
         if (aborted) return
+        val samplePts = if (currentBufStartSec >= 0.0) {
+            currentBufStartSec + currentBufOutIdx.toDouble() / targetSampleRate.toDouble()
+        } else {
+            baseStartSec + totalWrittenMonoSamples.toDouble() / targetSampleRate.toDouble()
+        }
+        currentBufOutIdx++
+        if (totalWrittenMonoSamples == 0L && currentBufStartSec >= 0.0) {
+            currentChunkStartSec = samplePts
+            currentChunkPtsAnchored = true
+        } else if (currentBufStartSec >= 0.0) {
+            currentChunkPtsAnchored = true
+        }
+        lastEmittedPtsSec = samplePts
+
+        val absVal = if (sample < 0) -sample.toInt() else sample.toInt()
+        if (absVal > chunkPeak) chunkPeak = absVal
+
         val lo = (sample.toInt() and 0xFF).toByte()
         val hi = ((sample.toInt() ushr 8) and 0xFF).toByte()
         ioChunkBuf[ioChunkBufUsed++] = lo
@@ -401,6 +448,9 @@ class StreamAudioCaptureSink(
         startNewChunk()
         val overlapSamples = overlapFilled / 2
         currentChunkStartSample = (totalWrittenMonoSamples - overlapSamples).coerceAtLeast(0L)
+        if (currentChunkPtsAnchored) {
+            currentChunkStartSec = (lastEmittedPtsSec - overlapSamples.toDouble() / targetSampleRate.toDouble()).coerceAtLeast(0.0)
+        }
         if (overlapFilled > 0) {
             if (overlapFilled < overlapBytesCount) {
                 currentOut?.write(overlapRing, 0, overlapFilled)
@@ -410,7 +460,26 @@ class StreamAudioCaptureSink(
                 if (overlapWritePos > 0) currentOut?.write(overlapRing, 0, overlapWritePos)
             }
             currentChunkPcmBytes += overlapFilled
+            chunkPeak = maxPeakInRing(overlapRing, overlapFilled, overlapWritePos, overlapBytesCount)
         }
+    }
+
+    private fun maxPeakInRing(ring: ByteArray, filled: Int, writePos: Int, capacity: Int): Int {
+        var peak = 0
+        if (filled <= 0) return 0
+        val start = if (filled < capacity) 0 else writePos
+        var i = 0
+        while (i + 1 < filled) {
+            val idx0 = (start + i) % capacity
+            val idx1 = (start + i + 1) % capacity
+            val lo = ring[idx0].toInt() and 0xFF
+            val hi = ring[idx1].toInt()
+            val sample = ((hi shl 8) or lo).toShort()
+            val absVal = if (sample < 0) -sample.toInt() else sample.toInt()
+            if (absVal > peak) peak = absVal
+            i += 2
+        }
+        return peak
     }
 
     private fun finishChunkLocked(isLast: Boolean) {
@@ -436,7 +505,11 @@ class StreamAudioCaptureSink(
             pendingError = e.message ?: "Failed to finalize WAV chunk header"
             return
         }
-        val startSec = baseStartSec + currentChunkStartSample.toDouble() / targetSampleRate.toDouble()
+        val startSec = if (currentChunkPtsAnchored) {
+            currentChunkStartSec
+        } else {
+            baseStartSec + currentChunkStartSample.toDouble() / targetSampleRate.toDouble()
+        }
         val durationSec = (currentChunkPcmBytes / 2).toDouble() / targetSampleRate.toDouble()
         val endSec = startSec + durationSec
         val cutoffSec = if (chunkIndex == 0) baseStartSec else startSec + overlapSec / 2.0
@@ -454,6 +527,7 @@ class StreamAudioCaptureSink(
             put("cutoffSec", cutoffSec)
             put("nextCutoff", nextCutoffSec)
             put("nextCutoffSec", nextCutoffSec)
+            put("peak", chunkPeak)
             put("isLast", isLast)
         }
         emittedChunks++

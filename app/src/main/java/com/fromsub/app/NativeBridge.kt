@@ -11,6 +11,9 @@ class NativeBridge(private val manager: ExoPlayerManager) {
     fun getStoredMediaUri(): String = manager.getStoredMediaUri()
 
     @JavascriptInterface
+    fun setMediaUri(uriString: String, mimeHint: String): Boolean = manager.setMediaUri(uriString, mimeHint)
+
+    @JavascriptInterface
     fun startForegroundService(statusText: String = "Generating subtitles...") =
         manager.startForegroundService(statusText)
 

@@ -128,3 +128,21 @@ test('findOriginalCueForTime aligns original subtitle cue to translated playback
   assert.equal(findOriginalCueForTime(orig, 6.1).text, 'Welcome back');
   assert.equal(findOriginalCueForTime(orig, 4.0), null);
 });
+
+test('history summary helpers work with lightweight metadata-only records', () => {
+  const summaryOnly = {
+    id: 'p1',
+    fileName: 'lecture.mp4',
+    updatedAt: 1700000000000,
+    durationSec: 124,
+    languages: ['en', 'ru'],
+    preview: 'First line · Second line',
+    searchSnippet: 'First line · Second line lecture.mp4',
+    cueCount: 12
+  };
+  assert.equal(buildHistoryPreview(summaryOnly), 'First line · Second line');
+  assert.equal(getHistoryDurationSec(summaryOnly), 124);
+  assert.deepEqual(getHistoryLanguages(summaryOnly), ['en', 'ru']);
+  assert.equal(filterHistoryProjects([summaryOnly], 'first line', 'translated').length, 1);
+  assert.equal(filterHistoryProjects([summaryOnly], 'missing', 'all').length, 0);
+});

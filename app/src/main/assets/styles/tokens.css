@@ -370,9 +370,7 @@ button#btn.cancel-mode:active { transform: scale(0.97); }
   min-width: 215px;
   width: max-content;
   max-width: min(260px, calc(100vw - 32px));
-  background: color-mix(in srgb, var(--bg-surface) 86%, #1a1a1a);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: color-mix(in srgb, var(--bg-surface) 94%, #1a1a1a);
   border: none;
   border-radius: 14px;
   padding: 6px;
@@ -387,9 +385,7 @@ button#btn.cancel-mode:active { transform: scale(0.97); }
 
 .dl-fmt-item {
   width: 100%;
-  background: rgba(30, 30, 30, 0.72);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(30, 34, 46, 0.92);
   border: none;
   color: #f3f4f6;
   font-family: inherit;

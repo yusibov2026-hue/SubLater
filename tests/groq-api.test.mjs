@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import groqApi from '../app/src/main/assets/js/groq-api.js';
 
-const { KeyPool, runWithConcurrency, normalizeWavBlob, fetchGroqWithRotation } = groqApi;
+const { KeyPool, runWithConcurrency, normalizeWavBlob, fetchGroqWithRotation, sendToGroq } = groqApi;
 
 function makePcmWavBlob(amplitude, sampleRate = 16000, samplesCount = 400) {
   const buf = new ArrayBuffer(44 + samplesCount * 2);
@@ -154,6 +154,53 @@ test('fetchGroqWithRotation fails over on 401 and switches immediately on 429', 
     assert.deepEqual(rateAttempts, ['gsk_limited', 'gsk_fresh']);
     assert.ok(pool429.cooldowns.get('gsk_limited') > Date.now());
     assert.ok(statuses429.some((s) => s.includes('rate-limited')));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('sendToGroq skips normalizeWavBlob when chunkPeak >= 3500', async () => {
+  const originalFetch = globalThis.fetch;
+  let arrayBufferReads = 0;
+  const baseBlob = makePcmWavBlob(500);
+  const trackedBlob = {
+    size: baseBlob.size,
+    type: baseBlob.type,
+    async arrayBuffer() {
+      arrayBufferReads++;
+      return baseBlob.arrayBuffer();
+    }
+  };
+  // Pass real Blob for FormData compatibility while overriding arrayBuffer on a proxy/wrapper
+  Object.defineProperty(baseBlob, 'arrayBuffer', {
+    value: () => {
+      arrayBufferReads++;
+      return Blob.prototype.arrayBuffer.call(baseBlob);
+    }
+  });
+  void trackedBlob;
+
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    async json() {
+      return { text: 'ok', segments: [], words: [] };
+    }
+  });
+
+  try {
+    const pool = new KeyPool(() => ['gsk_test_key']);
+    await sendToGroq(baseBlob, 'c0.wav', 'whisper-large-v3-turbo', '', null, {
+      keyPool: pool,
+      chunkPeak: 4200
+    });
+    assert.equal(arrayBufferReads, 0, 'normalizeWavBlob should be skipped when chunkPeak >= 3500');
+
+    await sendToGroq(baseBlob, 'c1.wav', 'whisper-large-v3-turbo', '', null, {
+      keyPool: pool,
+      chunkPeak: 120
+    });
+    assert.equal(arrayBufferReads, 1, 'normalizeWavBlob should run when chunkPeak is low');
   } finally {
     globalThis.fetch = originalFetch;
   }

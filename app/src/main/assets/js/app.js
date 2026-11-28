@@ -119,7 +119,7 @@
   const audioTrackVal = $('audioTrackVal');
 
   /* ---- Состояние приложения ---- */
-  let exportData = { vtt: '', srt: '', ass: '', txt: '' };
+  let exportData = { vtt: null, srt: null, ass: null, txt: null };
   let currentFileName = 'subtitles';
   let cues = [];
   let cachedWhisper = {
@@ -136,6 +136,9 @@
   let audioBoost = 100;
   let progressMaxReached = -1;
   let externalMedia = null;
+  let lastPickedMediaUri = '';
+  let cachedApiKeys = null;
+  let settingsSaveTimer = null;
 
   function getActiveWhisperModel() {
     const modelEl = $('model');
@@ -145,8 +148,17 @@
 
   function getFileSignature(file) {
     if (!file) return '';
-    if (file.uri) return `${file.name}_${file.size || 0}_${file.uri}`;
+    if (file.uri && file.isExternalMedia) return `${file.name}_${file.size || 0}_${file.uri}`;
     return `${file.name}_${file.size || 0}_${file.lastModified || 0}`;
+  }
+
+  function getActiveFileUri(file) {
+    if (!file) return '';
+    if (file.uri) return file.uri;
+    if (lastPickedMediaUri) return lastPickedMediaUri;
+    const b = bridgeMod.getBridge();
+    if (b && typeof b.getStoredMediaUri === 'function') return b.getStoredMediaUri() || '';
+    return '';
   }
 
   function __virtualExternalFile(info) {
@@ -163,7 +175,13 @@
 
   function getActiveMedia() {
     const picked = $('mediaFile').files[0];
-    if (picked) return picked;
+    if (picked) {
+      const uri = getActiveFileUri(picked);
+      if (uri && !picked.uri) {
+        try { picked.uri = uri; } catch (_) {}
+      }
+      return picked;
+    }
     const info = externalMedia;
     if (!info) return null;
     if (!info.file) info.file = __virtualExternalFile(info);
@@ -210,8 +228,10 @@
   }
 
   function getApiKeys() {
+    if (cachedApiKeys !== null) return cachedApiKeys;
     const raw = (apiKeysListEl && apiKeysListEl.value.trim()) || storageMod.getGroqApiKeysFromKeystore();
     const keys = storageMod.parseKeyList(raw);
+    cachedApiKeys = keys;
     syncKeysBadge(keys);
     return keys;
   }
@@ -254,6 +274,7 @@
     apiKeysListEl.value = initialGroqKeys;
     const onKeysEdit = () => {
       const keys = storageMod.saveGroqApiKeys(apiKeysListEl.value);
+      cachedApiKeys = keys;
       keyPool.reset();
       syncKeysBadge(keys);
       if (keyInput) keyInput.value = keys[0] || '';
@@ -326,29 +347,86 @@
   }
 
   /* ---- Экспорт субтитров ---- */
+  const STYLE_PRESETS = {
+    classic: {
+      size: 18, width: 85, bottom: 12,
+      subAlign: 'center', subPos: 'bottom', dualOrder: 'trans-top', wordMode: 'hidden',
+      fontFamily: "'Inter', -apple-system, sans-serif",
+      textColor: '#ffffff', bg: true, bgOpacity: 62, bgStyle: 'black', subOutline: true
+    },
+    cinema: {
+      size: 20, width: 88, bottom: 10,
+      subAlign: 'center', subPos: 'bottom', dualOrder: 'trans-top', wordMode: 'full',
+      fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+      textColor: '#fde047', bg: false, bgOpacity: 40, bgStyle: 'black', subOutline: true
+    },
+    minimal: {
+      size: 17, width: 82, bottom: 11,
+      subAlign: 'center', subPos: 'bottom', dualOrder: 'trans-top', wordMode: 'full',
+      fontFamily: "'DM Sans', 'Inter', sans-serif",
+      textColor: '#ffffff', bg: false, bgOpacity: 35, bgStyle: 'black', subOutline: true
+    },
+    glass: {
+      size: 18, width: 86, bottom: 12,
+      subAlign: 'center', subPos: 'bottom', dualOrder: 'trans-top', wordMode: 'hidden',
+      fontFamily: "'Outfit', 'Inter', sans-serif",
+      textColor: '#ffffff', bg: true, bgOpacity: 55, bgStyle: 'glass', subOutline: true
+    },
+    karaoke: {
+      size: 21, width: 90, bottom: 13,
+      subAlign: 'center', subPos: 'bottom', dualOrder: 'trans-top', wordMode: 'karaoke',
+      fontFamily: "'Sora', 'Inter', sans-serif",
+      textColor: '#38bdf8', bg: true, bgOpacity: 68, bgStyle: 'accent', subOutline: true
+    },
+    bold: {
+      size: 26, width: 92, bottom: 14,
+      subAlign: 'center', subPos: 'bottom', dualOrder: 'trans-top', wordMode: 'full',
+      fontFamily: "'Montserrat', 'Inter', sans-serif",
+      textColor: '#ffffff', bg: true, bgOpacity: 78, bgStyle: 'black', subOutline: true
+    }
+  };
+
+  let styleSubAlign = 'center';
+  let styleSubPos = 'bottom';
+  let styleDualOrder = 'trans-top';
+  let styleBgStyle = 'black';
+  let styleSubOutline = true;
+
   function buildAssStyleOpts() {
+    const opEl = $('styleBgOpacity') || bgOpacityEl;
     return {
       size: sizeEl.value,
       bottom: bottomEl.value,
       textColor: subTextColorEl.value,
       accentColor: accentColorEl.value,
-      bgOpacity: bgOpacityEl ? bgOpacityEl.value : '62',
+      bgOpacity: opEl ? opEl.value : '62',
       bgEnabled: bgToggle.checked
     };
   }
 
+  function getExportContent(fmt) {
+    const key = fmt || 'vtt';
+    if (!cues.length) return '';
+    if (exportData[key] !== null && exportData[key] !== undefined) return exportData[key];
+    let out = '';
+    if (key === 'vtt') out = subtitlesMod.generateVTT(cues);
+    else if (key === 'srt') out = subtitlesMod.generateSRT(cues);
+    else if (key === 'ass') out = subtitlesMod.generateASS(cues, buildAssStyleOpts());
+    else if (key === 'txt') out = subtitlesMod.generateTXT(cues);
+    exportData[key] = out;
+    return out;
+  }
+
   function updateExportPreview() {
     const fmt = exportFormat.value || 'vtt';
-    vttPanel.innerText = exportData[fmt] || '';
     if (shareFmtExt) shareFmtExt.textContent = '.' + fmt.toUpperCase();
+    if (vttPanel.classList.contains('hidden')) return;
+    vttPanel.innerText = getExportContent(fmt);
   }
   exportFormat.addEventListener('change', updateExportPreview);
 
   function refreshAllExports() {
-    exportData.vtt = subtitlesMod.generateVTT(cues);
-    exportData.srt = subtitlesMod.generateSRT(cues);
-    exportData.ass = subtitlesMod.generateASS(cues, buildAssStyleOpts());
-    exportData.txt = subtitlesMod.generateTXT(cues);
+    exportData = { vtt: null, srt: null, ass: null, txt: null };
     updateExportPreview();
   }
 
@@ -356,7 +434,7 @@
     const fmt = fmtOverride || exportFormat.value || 'vtt';
     exportFormat.value = fmt;
     updateExportPreview();
-    const content = exportData[fmt];
+    const content = getExportContent(fmt);
     if (!content) return;
     const b = bridgeMod.getBridge();
     if (b && typeof b.saveSubtitleFile === 'function') {
@@ -379,7 +457,7 @@
     const fmt = fmtOverride || exportFormat.value || 'vtt';
     exportFormat.value = fmt;
     updateExportPreview();
-    const content = exportData[fmt];
+    const content = getExportContent(fmt);
     if (!content) {
       statusEl.innerText = t('status.genFirst');
       return;
@@ -426,6 +504,101 @@
     return built;
   }
 
+  function syncSubtitleAppearanceClasses(el, fontFamily, bgEnabled, wordMode) {
+    if (!el) return;
+    el.style.fontFamily = fontFamily;
+    el.classList.toggle('bg-on', bgEnabled);
+    el.classList.toggle('bg-off', !bgEnabled);
+    el.classList.toggle('bg-style-black', styleBgStyle === 'black');
+    el.classList.toggle('bg-style-glass', styleBgStyle === 'glass');
+    el.classList.toggle('bg-style-accent', styleBgStyle === 'accent');
+    el.classList.toggle('sub-outline-off', !styleSubOutline);
+    el.classList.toggle('mode-karaoke', wordMode === 'karaoke');
+    el.classList.toggle('mode-full', wordMode === 'full');
+    el.classList.toggle('dual-orig-top', styleDualOrder === 'orig-top');
+  }
+
+  function syncOverlayPositionClasses(ovEl) {
+    if (!ovEl) return;
+    ovEl.dataset.subPos = styleSubPos;
+    ovEl.dataset.dualOrder = styleDualOrder;
+    ovEl.classList.toggle('pos-bottom', styleSubPos === 'bottom');
+    ovEl.classList.toggle('pos-middle', styleSubPos === 'middle');
+    ovEl.classList.toggle('pos-top', styleSubPos === 'top');
+    const isSplit = styleDualOrder === 'split-orig-top' || styleDualOrder === 'split-trans-top';
+    ovEl.classList.toggle('dual-split', isSplit);
+    ovEl.classList.toggle('dual-split-orig-top', styleDualOrder === 'split-orig-top');
+    ovEl.classList.toggle('dual-split-trans-top', styleDualOrder === 'split-trans-top');
+  }
+
+  function syncStyleDesignerControls(opts) {
+    const sizeInp = $('styleSubSize');
+    const widthInp = $('styleSubWidth');
+    const bottomInp = $('styleSubBottom');
+    const opInp = $('styleBgOpacity');
+    const bgChk = $('styleBgToggle');
+    const outChk = $('styleOutlineToggle');
+    const fontSel = $('styleSubFont');
+    const colorCust = $('styleSubColorCustom');
+
+    if (sizeInp) { sizeInp.value = String(opts.size); themeCtrl.syncM3RangeSlider(sizeInp); }
+    if ($('styleSubSizeVal')) $('styleSubSizeVal').textContent = opts.size + 'px';
+    if (widthInp) { widthInp.value = String(opts.width); themeCtrl.syncM3RangeSlider(widthInp); }
+    if ($('styleSubWidthVal')) $('styleSubWidthVal').textContent = opts.width + '%';
+    if (bottomInp) { bottomInp.value = String(opts.bottom); themeCtrl.syncM3RangeSlider(bottomInp); }
+    if ($('styleSubBottomVal')) $('styleSubBottomVal').textContent = opts.bottom + '%';
+    if (opInp) { opInp.value = String(opts.bgOpacity); themeCtrl.syncM3RangeSlider(opInp); }
+    if ($('styleBgOpacityVal')) $('styleBgOpacityVal').textContent = opts.bgOpacity + '%';
+    if (bgChk) bgChk.checked = opts.bgEnabled;
+    if (outChk) outChk.checked = styleSubOutline;
+    if (fontSel && Array.from(fontSel.options).some((o) => o.value === opts.fontFamily)) {
+      fontSel.value = opts.fontFamily;
+    }
+    if (colorCust) colorCust.value = opts.textColor;
+
+    [$('styleBgOpacityBlock'), $('styleBgStyleBlock')].forEach((blk) => {
+      if (!blk) return;
+      blk.style.opacity = opts.bgEnabled ? '1' : '0.45';
+      blk.style.pointerEvents = opts.bgEnabled ? 'auto' : 'none';
+    });
+
+    const colorNorm = String(opts.textColor || '').toLowerCase();
+    document.querySelectorAll('#styleColorSwatches [data-sub-color]').forEach((btn) => {
+      btn.classList.toggle('active', String(btn.dataset.subColor || '').toLowerCase() === colorNorm);
+    });
+    document.querySelectorAll('#styleAlignGroup [data-sub-align]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.subAlign === styleSubAlign);
+    });
+    document.querySelectorAll('#stylePosGroup [data-sub-pos]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.subPos === styleSubPos);
+    });
+    document.querySelectorAll('#styleDualOrderGroup [data-dual-order]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.dualOrder === styleDualOrder);
+    });
+    document.querySelectorAll('#styleWordModeGroup [data-word-mode]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.wordMode === opts.wordMode);
+    });
+    document.querySelectorAll('#styleBgStyleGroup [data-bg-style]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.bgStyle === styleBgStyle);
+    });
+    document.querySelectorAll('#stylePresetsGrid [data-style-preset]').forEach((btn) => {
+      const p = STYLE_PRESETS[btn.dataset.stylePreset];
+      const matches = Boolean(p) &&
+        Number(opts.size) === p.size &&
+        Number(opts.width) === p.width &&
+        Number(opts.bottom) === p.bottom &&
+        styleSubAlign === p.subAlign &&
+        opts.wordMode === p.wordMode &&
+        opts.fontFamily === p.fontFamily &&
+        colorNorm === p.textColor.toLowerCase() &&
+        Boolean(opts.bgEnabled) === p.bg &&
+        Number(opts.bgOpacity) === p.bgOpacity &&
+        styleBgStyle === p.bgStyle &&
+        Boolean(styleSubOutline) === p.subOutline;
+      btn.classList.toggle('active', matches);
+    });
+  }
+
   function applySettings() {
     const size = Math.min(48, Math.max(12, parseInt(sizeEl.value, 10) || 18));
     const width = Math.min(100, Math.max(30, parseInt(widthEl.value, 10) || 85));
@@ -433,8 +606,10 @@
     const wordMode = wordModeSelect.value || 'hidden';
     const fitMode = fitModeSelect.value || 'contain';
     const textColor = subTextColorEl.value;
-    const fontFamily = "'Inter', -apple-system, sans-serif";
-    const bgOpacity = bgOpacityEl ? bgOpacityEl.value : '62';
+    const styleFontEl = $('styleSubFont');
+    const fontFamily = (styleFontEl && styleFontEl.value) ? styleFontEl.value : "'Inter', -apple-system, sans-serif";
+    const styleOpEl = $('styleBgOpacity');
+    const bgOpacity = String(Math.min(95, Math.max(10, parseInt((styleOpEl || bgOpacityEl || {}).value, 10) || 62)));
     const smoothHz = smoothHzEl ? Math.min(144, Math.max(15, parseInt(smoothHzEl.value, 10) || 90)) : 90;
     const boost = Math.min(200, Math.max(100, parseInt(boostSlider.value, 10) || 100));
     audioBoost = boost;
@@ -444,14 +619,18 @@
     const subOffset = parseInt(subOffsetEl.value, 10) || 0;
     const subHold = parseInt(subHoldEl.value, 10) || 0;
 
+    const justifyMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
     const styleRoot = document.documentElement.style;
     styleRoot.setProperty('--sub-size', size + 'px');
+    styleRoot.setProperty('--preview-sub-size', Math.max(10, Math.round(size * 0.72)) + 'px');
     styleRoot.setProperty('--sub-width', width + '%');
     styleRoot.setProperty('--sub-bottom', bottom + '%');
+    styleRoot.setProperty('--preview-sub-bottom', bottom + '%');
+    styleRoot.setProperty('--sub-justify', justifyMap[styleSubAlign] || 'center');
+    styleRoot.setProperty('--sub-align', styleSubAlign);
     styleRoot.setProperty('--sub-color', textColor);
     styleRoot.setProperty('--sub-font', fontFamily);
     styleRoot.setProperty('--bg-opacity', bgOpacity);
-    if (subtitleEl) subtitleEl.style.fontFamily = fontFamily;
 
     sizeVal.textContent = size + 'px';
     widthVal.textContent = width + '%';
@@ -469,25 +648,33 @@
 
     videoEl.classList.toggle('fill-crop', fitMode === 'cover');
     videoEl.classList.toggle('fill-stretch', fitMode === 'fill');
-    subtitleEl.classList.toggle('bg-on', bgToggle.checked);
-    subtitleEl.classList.toggle('bg-off', !bgToggle.checked);
-    subtitleEl.classList.toggle('mode-karaoke', wordMode === 'karaoke');
-    subtitleEl.classList.toggle('mode-full', wordMode === 'full');
+    syncOverlayPositionClasses(overlayEl);
+    syncOverlayPositionClasses($('stylePreviewOverlay'));
+    syncSubtitleAppearanceClasses(subtitleEl, fontFamily, bgToggle.checked, wordMode);
+    syncSubtitleAppearanceClasses($('subtitleSecondaryText'), fontFamily, bgToggle.checked, wordMode);
+    syncSubtitleAppearanceClasses($('stylePreviewText'), fontFamily, bgToggle.checked, wordMode);
+    syncSubtitleAppearanceClasses($('stylePreviewSecondaryText'), fontFamily, bgToggle.checked, wordMode);
+    syncStyleDesignerControls({ size, width, bottom, wordMode, fontFamily, textColor, bgEnabled: bgToggle.checked, bgOpacity });
 
-    if (cues.length) {
-      exportData.ass = subtitlesMod.generateASS(cues, buildAssStyleOpts());
-      if (exportFormat.value === 'ass') updateExportPreview();
+    exportData.ass = null;
+    if (!vttPanel.classList.contains('hidden') && exportFormat.value === 'ass') {
+      updateExportPreview();
     }
     if (playerCtrl && playerCtrl.isPlayerActive()) {
       playerCtrl.updateOverlayGeometry();
       playerCtrl.updateSubtitleFrame();
     }
 
-    storageMod.safeSetStorage('groq_sub_settings', JSON.stringify({
+    const payload = JSON.stringify({
       size, width, bottom,
       bg: bgToggle.checked,
       wordMode, fitMode,
       textColor, fontFamily, bgOpacity, smoothHz, boost,
+      subAlign: styleSubAlign,
+      subPos: styleSubPos,
+      dualOrder: styleDualOrder,
+      bgStyle: styleBgStyle,
+      subOutline: styleSubOutline,
       subOffset, subHold,
       autoPlay: autoPlayToggle.checked,
       llmModel: llmModelEl.value,
@@ -496,7 +683,12 @@
       fastAudioCompress: fastAudioCompressEl.checked,
       genMode: genModeEl ? genModeEl.value : 'progressive',
       whisperPrompt: whisperPromptEl.value
-    }));
+    });
+    if (settingsSaveTimer) clearTimeout(settingsSaveTimer);
+    settingsSaveTimer = setTimeout(() => {
+      settingsSaveTimer = null;
+      storageMod.safeSetStorage('groq_sub_settings', payload);
+    }, 250);
   }
 
   playerCtrl = playerMod.createPlayerController({
@@ -616,21 +808,46 @@
     const smartSplit = Boolean(smartSplitToggleEl && smartSplitToggleEl.checked);
     const activeMedia = getActiveMedia();
     const mediaMatches = Boolean(activeMedia && project.fileSig && getFileSignature(activeMedia) === project.fileSig);
+    let uriRestored = false;
+    let videoMissing = false;
 
     if (!mediaMatches && project.fileUri) {
-      externalMedia = {
-        name: displayName,
-        size: Number(project.fileSize) || 0,
-        mime: project.fileMime || 'video/*',
-        lastModified: 0,
-        uri: project.fileUri,
-        isStream: Boolean(project.isStream)
-      };
-      externalMedia.file = __virtualExternalFile(externalMedia);
-      const pickedInput = $('mediaFile');
-      if (pickedInput) pickedInput.value = '';
-      window.externalMediaUri = project.fileUri;
+      const b = bridgeMod.getBridge();
+      const canSetUri = b && typeof b.setMediaUri === 'function'
+        ? Boolean(b.setMediaUri(project.fileUri, project.fileMime || ''))
+        : /^https?:\/\//i.test(project.fileUri);
+      if (canSetUri) {
+        uriRestored = true;
+        externalMedia = {
+          name: displayName,
+          size: Number(project.fileSize) || 0,
+          mime: project.fileMime || 'video/*',
+          lastModified: 0,
+          uri: project.fileUri,
+          isStream: Boolean(project.isStream)
+        };
+        externalMedia.file = __virtualExternalFile(externalMedia);
+        const pickedInput = $('mediaFile');
+        if (pickedInput) pickedInput.value = '';
+        lastPickedMediaUri = '';
+        window.externalMediaUri = project.fileUri;
+      } else {
+        videoMissing = true;
+        externalMedia = null;
+        window.externalMediaUri = '';
+      }
+    } else if (!mediaMatches) {
+      externalMedia = null;
+      window.externalMediaUri = '';
     }
+
+    const hidePlayerIfMissing = () => {
+      if (playerBox) playerBox.style.display = 'none';
+      const b = bridgeMod.getBridge();
+      if (b && typeof b.setPlayerVisibility === 'function') {
+        try { b.setPlayerVisibility(false); } catch (e) { diag.logWarn('history.hidePlayer', e); }
+      }
+    };
 
     if (project.isComplete !== false && ((Array.isArray(project.rawSegments) && project.rawSegments.length) || (Array.isArray(project.cues) && project.cues.length))) {
       cachedWhisper = {
@@ -659,23 +876,38 @@
 
       refreshAllExports();
       actionRow.style.display = 'flex';
-      const targetMedia = mediaMatches ? activeMedia : (project.fileUri ? getActiveMedia() : null);
+      const targetMedia = mediaMatches ? activeMedia : (uriRestored ? getActiveMedia() : null);
       if (targetMedia) {
         playerCtrl.setupPlayer(targetMedia);
-      } else if (vttPanel) {
-        vttPanel.classList.remove('hidden');
-        if (openBtn) openBtn.innerText = t('btn.hide');
+      } else {
+        hidePlayerIfMissing();
+        if (vttPanel) {
+          vttPanel.classList.remove('hidden');
+          if (openBtn) openBtn.innerText = t('btn.hide');
+        }
       }
-      if (statusEl) statusEl.innerText = t('history.opened', { name: currentFileName });
+      if (statusEl) {
+        statusEl.innerText = videoMissing
+          ? t('history.videoMissing', { name: currentFileName })
+          : t('history.opened', { name: currentFileName });
+      }
     } else if (project.isComplete === false && project.partialChunks && Object.keys(project.partialChunks).length) {
       cachedPartialChunks = {
         fileSig: project.fileSig || '',
         model: project.model || getActiveWhisperModel(),
         chunks: project.partialChunks
       };
-      const targetMedia = mediaMatches ? activeMedia : (project.fileUri ? getActiveMedia() : null);
-      if (targetMedia) playerCtrl.setupPlayer(targetMedia);
-      if (statusEl) statusEl.innerText = t('status.unfinishedHistory');
+      const targetMedia = mediaMatches ? activeMedia : (uriRestored ? getActiveMedia() : null);
+      if (targetMedia) {
+        playerCtrl.setupPlayer(targetMedia);
+      } else {
+        hidePlayerIfMissing();
+      }
+      if (statusEl) {
+        statusEl.innerText = videoMissing
+          ? t('history.videoMissing', { name: currentFileName })
+          : t('status.unfinishedHistory');
+      }
     }
     updateButtonLabel();
   }
@@ -730,6 +962,7 @@
     onDualSubLangChanged: ensureDualSubTrackReady,
     onOpenHistoryProject: openHistoryProject,
     onExportHistoryProject: exportHistoryProject,
+    onStyleTabOpened: () => themeCtrl.syncAllM3Sliders(),
     showMissingApiStatus,
     openApiSettingsFocus,
     formatTime: playerCtrl.formatTime
@@ -771,6 +1004,30 @@
   if (genModeAllBtn) genModeAllBtn.addEventListener('click', () => setGenMode('all'));
   if (genModeProgressiveBtn) genModeProgressiveBtn.addEventListener('click', () => setGenMode('progressive'));
 
+  function applyStylePreset(presetName) {
+    const p = STYLE_PRESETS[presetName];
+    if (!p) return;
+    sizeEl.value = String(p.size);
+    widthEl.value = String(p.width);
+    bottomEl.value = String(p.bottom);
+    wordModeSelect.value = p.wordMode;
+    subTextColorEl.value = p.textColor;
+    bgToggle.checked = p.bg;
+    styleSubAlign = p.subAlign;
+    styleSubPos = p.subPos || 'bottom';
+    styleDualOrder = p.dualOrder || 'trans-top';
+    styleBgStyle = p.bgStyle;
+    styleSubOutline = p.subOutline;
+    if ($('styleSubFont')) $('styleSubFont').value = p.fontFamily;
+    if ($('styleBgOpacity')) $('styleBgOpacity').value = String(p.bgOpacity);
+    if (bgOpacityEl) bgOpacityEl.value = String(p.bgOpacity);
+    if ($('styleSubColorCustom')) $('styleSubColorCustom').value = p.textColor;
+    if (playerCtrl) playerCtrl.resetCueCursor();
+    themeCtrl.syncColorPickers();
+    themeCtrl.syncAllM3Sliders();
+    applySettings();
+  }
+
   (function loadSettings() {
     try {
       const s = JSON.parse(storageMod.safeGetStorage('groq_sub_settings', '{}'));
@@ -782,7 +1039,16 @@
       if (s.wordMode) wordModeSelect.value = s.wordMode;
       if (s.fitMode) fitModeSelect.value = s.fitMode;
       if (s.textColor) subTextColorEl.value = s.textColor;
-      if (bgOpacityEl && s.bgOpacity !== undefined) bgOpacityEl.value = s.bgOpacity;
+      if (s.fontFamily && $('styleSubFont')) $('styleSubFont').value = s.fontFamily;
+      if (s.subAlign && (s.subAlign === 'left' || s.subAlign === 'center' || s.subAlign === 'right')) styleSubAlign = s.subAlign;
+      if (s.subPos && (s.subPos === 'bottom' || s.subPos === 'middle' || s.subPos === 'top')) styleSubPos = s.subPos;
+      if (s.dualOrder && (s.dualOrder === 'trans-top' || s.dualOrder === 'orig-top' || s.dualOrder === 'split-orig-top' || s.dualOrder === 'split-trans-top')) styleDualOrder = s.dualOrder;
+      if (s.bgStyle && (s.bgStyle === 'black' || s.bgStyle === 'glass' || s.bgStyle === 'accent')) styleBgStyle = s.bgStyle;
+      if (typeof s.subOutline === 'boolean') styleSubOutline = s.subOutline;
+      if (s.bgOpacity !== undefined) {
+        if (bgOpacityEl) bgOpacityEl.value = s.bgOpacity;
+        if ($('styleBgOpacity')) $('styleBgOpacity').value = s.bgOpacity;
+      }
       if (smoothHzEl && s.smoothHz) smoothHzEl.value = s.smoothHz;
       if (s.boost !== undefined) boostSlider.value = s.boost;
       if (s.subOffset !== undefined) subOffsetEl.value = s.subOffset;
@@ -819,6 +1085,111 @@
     });
   });
 
+  [
+    [$('styleSubSize'), sizeEl],
+    [$('styleSubWidth'), widthEl],
+    [$('styleSubBottom'), bottomEl]
+  ].forEach(([styleRange, mirrorRange]) => {
+    if (!styleRange || !mirrorRange) return;
+    const onRangeUpdate = () => {
+      mirrorRange.value = styleRange.value;
+      themeCtrl.syncM3RangeSlider(styleRange);
+      themeCtrl.syncM3RangeSlider(mirrorRange);
+      applySettings();
+    };
+    styleRange.addEventListener('input', onRangeUpdate);
+    styleRange.addEventListener('change', onRangeUpdate);
+  });
+
+  if ($('styleBgOpacity')) {
+    const styleOpEl = $('styleBgOpacity');
+    const onOpUpdate = () => {
+      if (bgOpacityEl) bgOpacityEl.value = styleOpEl.value;
+      themeCtrl.syncM3RangeSlider(styleOpEl);
+      applySettings();
+    };
+    styleOpEl.addEventListener('input', onOpUpdate);
+    styleOpEl.addEventListener('change', onOpUpdate);
+  }
+
+  if ($('styleBgToggle')) {
+    $('styleBgToggle').addEventListener('change', (e) => {
+      bgToggle.checked = Boolean(e.target.checked);
+      applySettings();
+    });
+  }
+  if ($('styleOutlineToggle')) {
+    $('styleOutlineToggle').addEventListener('change', (e) => {
+      styleSubOutline = Boolean(e.target.checked);
+      applySettings();
+    });
+  }
+  if ($('styleSubFont')) {
+    $('styleSubFont').addEventListener('change', applySettings);
+  }
+  if ($('styleSubColorCustom')) {
+    const onColorPick = (e) => {
+      subTextColorEl.value = e.target.value;
+      themeCtrl.syncColorPickers(e.target);
+      applySettings();
+    };
+    $('styleSubColorCustom').addEventListener('input', onColorPick);
+    $('styleSubColorCustom').addEventListener('change', onColorPick);
+  }
+  if (subTextColorEl) {
+    const syncCustomPicker = () => {
+      if ($('styleSubColorCustom')) $('styleSubColorCustom').value = subTextColorEl.value;
+      themeCtrl.syncColorPickers(subTextColorEl);
+    };
+    subTextColorEl.addEventListener('input', syncCustomPicker);
+    subTextColorEl.addEventListener('change', syncCustomPicker);
+  }
+  document.querySelectorAll('#styleColorSwatches [data-sub-color]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      subTextColorEl.value = btn.dataset.subColor;
+      if ($('styleSubColorCustom')) $('styleSubColorCustom').value = btn.dataset.subColor;
+      themeCtrl.syncColorPickers();
+      applySettings();
+    });
+  });
+  document.querySelectorAll('#styleAlignGroup [data-sub-align]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      styleSubAlign = btn.dataset.subAlign || 'center';
+      applySettings();
+    });
+  });
+  document.querySelectorAll('#stylePosGroup [data-sub-pos]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      styleSubPos = btn.dataset.subPos || 'bottom';
+      applySettings();
+    });
+  });
+  document.querySelectorAll('#styleDualOrderGroup [data-dual-order]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      styleDualOrder = btn.dataset.dualOrder || 'trans-top';
+      if (playerCtrl) playerCtrl.resetCueCursor();
+      applySettings();
+    });
+  });
+  document.querySelectorAll('#styleWordModeGroup [data-word-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      wordModeSelect.value = btn.dataset.wordMode || 'hidden';
+      applySettings();
+    });
+  });
+  document.querySelectorAll('#styleBgStyleGroup [data-bg-style]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      styleBgStyle = btn.dataset.bgStyle || 'black';
+      applySettings();
+    });
+  });
+  document.querySelectorAll('#stylePresetsGrid [data-style-preset]').forEach((btn) => {
+    btn.addEventListener('click', () => applyStylePreset(btn.dataset.stylePreset));
+  });
+  if ($('styleResetBtn')) {
+    $('styleResetBtn').addEventListener('click', () => applyStylePreset('classic'));
+  }
+
   accentColorEl.addEventListener('input', (e) => {
     const color = e.target.value;
     storageMod.safeSetStorage('sublater_accent', color);
@@ -826,9 +1197,9 @@
     if ((!themeCtrl.wallpaperFollowAccentInput || themeCtrl.wallpaperFollowAccentInput.checked) && themeCtrl.isWhiteColorHex(color)) {
       themeCtrl.setWallpaperOpacityMax();
     }
-    if (cues.length) {
-      exportData.ass = subtitlesMod.generateASS(cues, buildAssStyleOpts());
-      if (exportFormat.value === 'ass') updateExportPreview();
+    exportData.ass = null;
+    if (!vttPanel.classList.contains('hidden') && exportFormat.value === 'ass') {
+      updateExportPreview();
     }
   });
 
@@ -923,7 +1294,7 @@
     cues = [];
     playerCtrl.resetOverlayState();
     geminiCtrl.cancelActiveRequest();
-    exportData = { vtt: '', srt: '', ass: '', txt: '' };
+    exportData = { vtt: null, srt: null, ass: null, txt: null };
     cachedWhisper = {
       fileSig: '',
       model: '',
@@ -1045,7 +1416,12 @@
   }
 
   $('mediaFile').addEventListener('change', () => {
-    if ($('mediaFile').files[0]) externalMedia = null;
+    if ($('mediaFile').files[0]) {
+      externalMedia = null;
+      const b = bridgeMod.getBridge();
+      lastPickedMediaUri = (b && typeof b.getStoredMediaUri === 'function') ? (b.getStoredMediaUri() || '') : '';
+      window.externalMediaUri = '';
+    }
     updateFileName();
   });
   $('translateLang').addEventListener('change', updateButtonLabel);
@@ -1077,7 +1453,7 @@
       fileSig: mediaF ? getFileSignature(mediaF) : `sub_${subF.name}_${subF.size || 0}_${subF.lastModified || 0}`,
       fileName: displayName,
       fileSize: (mediaF && mediaF.size) || subF.size || 0,
-      fileUri: (mediaF && mediaF.uri) || '',
+      fileUri: getActiveFileUri(mediaF),
       fileMime: (mediaF && mediaF.type) || '',
       isStream: Boolean(mediaF && mediaF.isStream),
       updatedAt: Date.now(),
@@ -1148,6 +1524,7 @@
   openBtn.addEventListener('click', () => {
     const isHidden = vttPanel.classList.toggle('hidden');
     openBtn.innerText = isHidden ? t('btn.text') : t('btn.hide');
+    if (!isHidden) updateExportPreview();
   });
 
   /* ---- Кастомный Material You выбор Speech-модели ---- */
@@ -1247,7 +1624,7 @@
           const p = Math.max(0, Math.min(100, Number(pct) || 0));
           btnEl.textContent = t('model.downloading', { pct: p });
           if (fill) fill.style.width = `${Math.max(4, p)}%`;
-        });
+        }, { disposeAfterDownload: true });
         if (modelSelectEl) {
           modelSelectEl.value = mId;
           storageMod.safeSetStorage('sublater_whisper_model', mId);
@@ -1280,6 +1657,10 @@
     const selectOption = (e) => {
       if (e.target && e.target.closest && e.target.closest('.m3-model-dl-btn, .m3-model-del-btn')) return;
       const m = opt.dataset.model || 'auto';
+      const lw = root.localWhisper;
+      if (lw && !lw.isLocalWhisperModel(m) && typeof lw.disposeAllPipelines === 'function') {
+        lw.disposeAllPipelines();
+      }
       if (modelSelectEl) {
         modelSelectEl.value = m;
         storageMod.safeSetStorage('sublater_whisper_model', m);
@@ -1437,4 +1818,26 @@
   if (storageMod.safeGetStorage('sublater_welcome_seen_v2', '') !== '1') {
     setTimeout(openWelcomeModal, 120);
   }
+
+  window.__onAppVisibilityChanged = (visible) => {
+    const isVis = Boolean(visible);
+    document.body.classList.toggle('app-hidden', !isVis);
+    if (!isVis && root.localWhisper && typeof root.localWhisper.disposeAllPipelines === 'function') {
+      root.localWhisper.disposeAllPipelines();
+    }
+  };
+
+  document.addEventListener('visibilitychange', () => {
+    if (typeof window.__onAppVisibilityChanged === 'function') {
+      window.__onAppVisibilityChanged(!document.hidden);
+    }
+  });
+
+  window.__onLowMemoryTrim = () => {
+    exportData = { vtt: null, srt: null, ass: null, txt: null };
+    origCuesCache = { ref: null, len: -1, smart: null, list: [] };
+    if (root.localWhisper && typeof root.localWhisper.disposeAllPipelines === 'function') {
+      root.localWhisper.disposeAllPipelines();
+    }
+  };
 })();

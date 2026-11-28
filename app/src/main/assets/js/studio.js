@@ -113,6 +113,11 @@
   }
 
   function buildHistoryPreview(project, maxChars = 130) {
+    if (project && typeof project.preview === 'string' && project.preview) {
+      const limit = Math.max(10, Number(maxChars) || 130);
+      if (project.preview.length <= limit) return project.preview;
+      return project.preview.slice(0, limit).trimEnd() + '…';
+    }
     const items = getHistoryProjectCues(project);
     if (!items.length) return '';
     const joined = items
@@ -128,6 +133,9 @@
   }
 
   function getHistoryDurationSec(project) {
+    if (project && typeof project.durationSec === 'number' && Number.isFinite(project.durationSec)) {
+      return Math.max(0, Math.round(project.durationSec));
+    }
     const cuesList = getHistoryProjectCues(project);
     const rawList = (project && Array.isArray(project.rawSegments)) ? project.rawSegments : [];
     let maxEnd = 0;
@@ -143,6 +151,9 @@
 
   function getHistoryLanguages(project) {
     if (!project || typeof project !== 'object') return [];
+    if (Array.isArray(project.languages)) {
+      return project.languages.filter((x) => typeof x === 'string' && x.trim());
+    }
     const out = [];
     const seen = new Set();
     const pushLang = (val) => {
@@ -169,11 +180,14 @@
       if (mode === 'translated' && getHistoryLanguages(p).length === 0) return false;
       if (mode === 'incomplete' && p.isComplete !== false) return false;
       if (!q) return true;
+      const textSnippet = (typeof p.searchSnippet === 'string' && p.searchSnippet)
+        ? p.searchSnippet
+        : buildHistoryPreview(p, 800);
       const hay = [
         p.fileName,
         p.model,
         getHistoryLanguages(p).join(' '),
-        buildHistoryPreview(p, 800)
+        textSnippet
       ].join(' ').toLowerCase();
       return hay.includes(q);
     });
@@ -304,7 +318,7 @@
         renderLearnPanel();
       } else if (tabName === 'history' && dirty.history) {
         dirty.history = false;
-        renderHistoryPanel();
+        refreshHistoryFromDb(true);
       } else if (tabName === 'voice' && dirty.voice) {
         dirty.voice = false;
         renderVoicePanel();
@@ -360,6 +374,10 @@
 
       const prevEl = panelMap[prev];
       const nextEl = panelMap[next];
+
+      if (next === 'learn' && activeLearnSubTab === 'style' && typeof deps.onStyleTabOpened === 'function') {
+        setTimeout(() => deps.onStyleTabOpened(), 40);
+      }
 
       if (prev === next || !prevEl || !nextEl) {
         activeTab = next;
@@ -430,6 +448,28 @@
 
     document.querySelectorAll('#hubTabs .m3-hub-tab').forEach((btn) => {
       btn.addEventListener('click', () => switchTab(btn.dataset.hubTab));
+    });
+
+    let activeLearnSubTab = 'learn';
+    function setLearnSubTab(subTab) {
+      activeLearnSubTab = subTab === 'style' ? 'style' : 'learn';
+      document.querySelectorAll('#learnSubTabs [data-learn-subtab]').forEach((btn) => {
+        const on = btn.dataset.learnSubtab === activeLearnSubTab;
+        btn.classList.toggle('active', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      const studyView = $('learnStudyView');
+      const styleView = $('learnStyleView');
+      if (studyView) studyView.classList.toggle('active', activeLearnSubTab === 'learn');
+      if (styleView) styleView.classList.toggle('active', activeLearnSubTab === 'style');
+      if (hubViewport) hubViewport.style.height = '';
+      syncBoundsSoon();
+      if (activeLearnSubTab === 'style' && typeof deps.onStyleTabOpened === 'function') {
+        requestAnimationFrame(() => deps.onStyleTabOpened());
+      }
+    }
+    document.querySelectorAll('#learnSubTabs [data-learn-subtab]').forEach((btn) => {
+      btn.addEventListener('click', () => setLearnSubTab(btn.dataset.learnSubtab));
     });
 
     /* ---- Плавный свайп вкладок по всему экрану ---- */
@@ -956,7 +996,9 @@
         top.appendChild(metaCol);
         card.appendChild(top);
 
-        const cuesList = getHistoryProjectCues(project);
+        const hasPrecomputedLines = typeof project.linesCount === 'number';
+        const cuesList = hasPrecomputedLines ? [] : getHistoryProjectCues(project);
+        const linesCount = hasPrecomputedLines ? project.linesCount : cuesList.length;
         const durSec = getHistoryDurationSec(project);
         const langs = getHistoryLanguages(project);
         const pillsWrap = document.createElement('div');
@@ -968,10 +1010,10 @@
           pWarn.textContent = t('history.inProgress');
           pillsWrap.appendChild(pWarn);
         }
-        if (cuesList.length > 0) {
+        if (linesCount > 0) {
           const pLines = document.createElement('span');
           pLines.className = 'm3-hist-pill';
-          pLines.textContent = t('history.linesCount', { n: cuesList.length });
+          pLines.textContent = t('history.linesCount', { n: linesCount });
           pillsWrap.appendChild(pLines);
         }
         if (durSec > 0 && typeof deps.formatTime === 'function') {
@@ -996,6 +1038,27 @@
           card.appendChild(prevEl);
         }
 
+        const resolveFullProject = async () => {
+          if (project.rawSegments || project.cues || project.partialChunks) return project;
+          if (storageMod && typeof storageMod.getProjectFromHistory === 'function') {
+            return (await storageMod.getProjectFromHistory(project.fileSig)) || project;
+          }
+          return project;
+        };
+
+        const openProjectFromCard = async () => {
+          const full = await resolveFullProject();
+          switchTab('video');
+          if (typeof deps.onOpenHistoryProject === 'function') {
+            await deps.onOpenHistoryProject(full);
+          }
+        };
+
+        card.addEventListener('click', async (e) => {
+          if (e.target && e.target.closest && e.target.closest('.m3-hist-actions')) return;
+          await openProjectFromCard();
+        });
+
         const acts = document.createElement('div');
         acts.className = 'm3-hist-actions';
 
@@ -1003,11 +1066,9 @@
         openBtn.type = 'button';
         openBtn.className = 'm3-hist-open-btn';
         openBtn.textContent = t('history.open');
-        openBtn.addEventListener('click', async () => {
-          switchTab('video');
-          if (typeof deps.onOpenHistoryProject === 'function') {
-            await deps.onOpenHistoryProject(project);
-          }
+        openBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await openProjectFromCard();
         });
         acts.appendChild(openBtn);
 
@@ -1015,8 +1076,11 @@
         copyBtn.type = 'button';
         copyBtn.className = 'm3-icon-mini';
         copyBtn.textContent = t('history.copy');
-        copyBtn.addEventListener('click', async () => {
-          const fullText = cuesList
+        copyBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const full = await resolveFullProject();
+          const fullCues = getHistoryProjectCues(full);
+          const fullText = fullCues
             .map((c) => String((c && c.text) || '').trim())
             .filter(Boolean)
             .join('\n');
@@ -1029,14 +1093,16 @@
         });
         acts.appendChild(copyBtn);
 
-        if (cuesList.length > 0 && !incomplete) {
+        if (linesCount > 0 && !incomplete) {
           const srtBtn = document.createElement('button');
           srtBtn.type = 'button';
           srtBtn.className = 'm3-icon-mini';
           srtBtn.textContent = t('history.export');
-          srtBtn.addEventListener('click', () => {
+          srtBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const full = await resolveFullProject();
             if (typeof deps.onExportHistoryProject === 'function') {
-              deps.onExportHistoryProject(project, 'srt');
+              deps.onExportHistoryProject(full, 'srt');
             }
           });
           acts.appendChild(srtBtn);
@@ -1046,7 +1112,8 @@
         delBtn.type = 'button';
         delBtn.className = 'm3-icon-mini';
         delBtn.textContent = t('history.delete');
-        delBtn.addEventListener('click', async () => {
+        delBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
           if (storageMod && typeof storageMod.deleteProjectFromHistory === 'function') {
             await storageMod.deleteProjectFromHistory(project.fileSig);
           }

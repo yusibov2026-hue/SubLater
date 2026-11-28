@@ -26,6 +26,7 @@ class SubtitleForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
         if (action == ACTION_CANCEL) {
+            isRunning = false
             try {
                 onCancelRequested?.invoke()
             } catch (_: Exception) {
@@ -35,6 +36,7 @@ class SubtitleForegroundService : Service() {
             return START_NOT_STICKY
         }
         if (action == ACTION_STOP || intent == null) {
+            isRunning = false
             stopForegroundCompat()
             stopSelf()
             return START_NOT_STICKY
@@ -48,7 +50,7 @@ class SubtitleForegroundService : Service() {
             ?.takeIf { it.isNotBlank() }
             ?: "Cancel"
 
-        val notification = buildNotification(statusText, progress, cancelLabel)
+        val notification = buildNotificationStatic(this, statusText, progress, cancelLabel)
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(
@@ -59,6 +61,7 @@ class SubtitleForegroundService : Service() {
             } else {
                 startForeground(NOTIFICATION_ID, notification)
             }
+            isRunning = true
         } catch (_: Exception) {
         }
 
@@ -66,6 +69,7 @@ class SubtitleForegroundService : Service() {
     }
 
     override fun onDestroy() {
+        isRunning = false
         releaseWakeLock()
         super.onDestroy()
     }
@@ -125,40 +129,6 @@ class SubtitleForegroundService : Service() {
         }
     }
 
-    private fun buildNotification(contentText: String, progress: Int = -1, cancelLabel: String = "Cancel"): Notification {
-        val openIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val pendingFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        } else {
-            PendingIntent.FLAG_UPDATE_CURRENT
-        }
-        val pendingIntent = PendingIntent.getActivity(this, 0, openIntent, pendingFlags)
-
-        val cancelIntent = Intent(this, SubtitleForegroundService::class.java).apply {
-            action = ACTION_CANCEL
-        }
-        val cancelPendingIntent = PendingIntent.getService(this, 1, cancelIntent, pendingFlags)
-
-        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("SubLyter")
-            .setContentText(contentText)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .addAction(0, cancelLabel, cancelPendingIntent)
-
-        if (progress in 0..100) {
-            builder.setProgress(100, progress, false)
-            builder.setSubText("$progress%")
-        }
-
-        return builder.build()
-    }
-
     companion object {
         const val CHANNEL_ID = "sublater_subtitle_gen_channel"
         const val NOTIFICATION_ID = 4201
@@ -170,6 +140,67 @@ class SubtitleForegroundService : Service() {
         const val EXTRA_CANCEL_LABEL = "extra_cancel_label"
 
         @Volatile
+        var isRunning: Boolean = false
+
+        @Volatile
         var onCancelRequested: (() -> Unit)? = null
+
+        fun buildNotificationStatic(
+            context: Context,
+            contentText: String,
+            progress: Int = -1,
+            cancelLabel: String = "Cancel"
+        ): Notification {
+            val openIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+            val pendingIntent = PendingIntent.getActivity(context, 0, openIntent, pendingFlags)
+
+            val cancelIntent = Intent(context, SubtitleForegroundService::class.java).apply {
+                action = ACTION_CANCEL
+            }
+            val cancelPendingIntent = PendingIntent.getService(context, 1, cancelIntent, pendingFlags)
+
+            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setContentTitle("SubLyter")
+                .setContentText(contentText)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .addAction(0, cancelLabel, cancelPendingIntent)
+
+            if (progress in 0..100) {
+                builder.setProgress(100, progress, false)
+                builder.setSubText("$progress%")
+            }
+
+            return builder.build()
+        }
+
+        fun updateNotificationIfRunning(
+            context: Context,
+            statusText: String,
+            progress: Int,
+            cancelLabel: String
+        ): Boolean {
+            if (!isRunning) return false
+            return try {
+                val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                    ?: return false
+                val text = statusText.takeIf { it.isNotBlank() } ?: "Generating subtitles..."
+                val label = cancelLabel.takeIf { it.isNotBlank() } ?: "Cancel"
+                nm.notify(NOTIFICATION_ID, buildNotificationStatic(context, text, progress, label))
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
     }
 }

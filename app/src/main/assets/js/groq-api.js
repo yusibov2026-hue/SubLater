@@ -320,7 +320,9 @@
   }
 
   async function sendToGroq(blob, filename, model, promptHint, signal, ctx = {}) {
-    if (!ctx.skipNormalize) {
+    const peak = typeof ctx.chunkPeak === 'number' ? ctx.chunkPeak : null;
+    const peakAlreadyGood = peak !== null && (peak >= 3500 || (peak > 0 && peak < 8));
+    if (!ctx.skipNormalize && !peakAlreadyGood) {
       blob = await normalizeWavBlob(blob);
     }
     const res = await fetchGroqWithRotation(
@@ -397,6 +399,11 @@
     const primaryModel = ctx.primaryModel || 'openai/gpt-oss-120b';
     const fallbackModel = 'openai/gpt-oss-20b';
     const payload = batch.map((c, idx) => ({ id: idx, text: c.text }));
+    const origWordsByIdx = batch.map((c) => (
+      Array.isArray(c.words) && c.words.length
+        ? c.words.map((w) => ({ start: w.start, end: w.end }))
+        : null
+    ));
     let failed = 0;
 
     try {
@@ -433,8 +440,9 @@
     }
 
     const distributeFn = subtitlesMod ? subtitlesMod.distributeWords : null;
-    for (const c of batch) {
-      if (c._translated && distributeFn) distributeFn(c);
+    for (let i = 0; i < batch.length; i++) {
+      const c = batch[i];
+      if (c._translated && distributeFn) distributeFn(c, origWordsByIdx[i]);
       delete c._translated;
     }
     return failed;

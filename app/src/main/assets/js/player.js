@@ -51,6 +51,7 @@
     } = deps;
 
     const TRANSPARENT_POSTER = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    const secondarySubtitleEl = document.getElementById('subtitleSecondaryText');
 
     let mediaObjectURL = null;
     let wordSpans = [];
@@ -65,11 +66,32 @@
     let usingNativeExoFallback = false;
     let hideControlsTimer = null;
     let audioTracksRefreshTimer = null;
+    let lastTimeLabel = '';
+    let lastSeekPct = -1;
+    let lastRenderTs = 0;
+    let cachedOffsetSec = (parseInt(subOffsetEl.value, 10) || 0) / 1000;
+    let cachedHoldSec = (parseInt(subHoldEl.value, 10) || 0) / 1000;
+    let cachedWordMode = wordModeSelect.value || 'hidden';
+
+    const syncCachedSubPrefs = () => {
+      cachedOffsetSec = (parseInt(subOffsetEl.value, 10) || 0) / 1000;
+      cachedHoldSec = (parseInt(subHoldEl.value, 10) || 0) / 1000;
+      cachedWordMode = wordModeSelect.value || 'hidden';
+    };
+    subOffsetEl.addEventListener('input', syncCachedSubPrefs);
+    subOffsetEl.addEventListener('change', syncCachedSubPrefs);
+    subHoldEl.addEventListener('input', syncCachedSubPrefs);
+    subHoldEl.addEventListener('change', syncCachedSubPrefs);
+    wordModeSelect.addEventListener('change', syncCachedSubPrefs);
 
     /* ---- Web Audio (локальный boost для HTML5 <video>) ---- */
     let audioCtx, gainNode, compressorNode, sourceNode;
 
     function initAudio() {
+      if (usingNativeExoFallback) return;
+      const vol = parseInt(volSlider.value, 10) || 100;
+      const boost = getAudioBoost();
+      if (!audioCtx && vol <= 100 && boost <= 100) return;
       if (!audioCtx) {
         try {
           const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -87,7 +109,7 @@
           sourceNode.connect(gainNode);
           gainNode.connect(compressorNode);
           compressorNode.connect(audioCtx.destination);
-          gainNode.gain.value = ((parseInt(volSlider.value, 10) || 100) / 100) * (getAudioBoost() / 100);
+          gainNode.gain.value = (vol / 100) * (boost / 100);
         } catch (e) {
           diag.logWarn('player.webAudio', e);
         }
@@ -100,17 +122,19 @@
     volSlider.addEventListener('input', (e) => {
       const val = parseInt(e.target.value, 10);
       volVal.textContent = val + '%';
-      initAudio();
-      if (gainNode) {
-        gainNode.gain.value = (val / 100) * (getAudioBoost() / 100);
-      } else {
-        videoEl.volume = Math.min(val / 100, 1.0);
-      }
       if (usingNativeExoFallback) {
         const b = bridgeMod.getBridge();
         if (b && typeof b.setVolume === 'function') {
           try { b.setVolume(val || 100); } catch (err) { diag.logWarn('native.setVolume', err); }
         }
+        return;
+      }
+      const boost = getAudioBoost();
+      if (val > 100 || boost > 100) initAudio();
+      if (gainNode) {
+        gainNode.gain.value = (val / 100) * (boost / 100);
+      } else {
+        videoEl.volume = Math.min(val / 100, 1.0);
       }
     });
 
@@ -120,8 +144,11 @@
       boostVal.textContent = val + '%';
       setAudioBoost(val);
       applySettings();
-      if (gainNode) {
-        gainNode.gain.value = ((parseInt(volSlider.value, 10) || 100) / 100) * (val / 100);
+      if (!usingNativeExoFallback) {
+        if (val > 100) initAudio();
+        if (gainNode) {
+          gainNode.gain.value = ((parseInt(volSlider.value, 10) || 100) / 100) * (val / 100);
+        }
       }
       const b = bridgeMod.getBridge();
       if (b && typeof b.setBoost === 'function') {
@@ -132,6 +159,7 @@
     function setPlaybackSpeed(spd) {
       const clamped = Math.min(2.0, Math.max(0.5, Number(spd) || 1));
       videoEl.playbackRate = clamped;
+      nativePlaybackRate = clamped;
       if (speedSlider) speedSlider.value = String(clamped);
       if (speedVal) speedVal.textContent = clamped.toFixed(clamped % 1 === 0 ? 1 : 2) + 'x';
       if (shadowSpeedBtn) {
@@ -168,16 +196,29 @@
     }
 
     function syncTimeUI() {
-      if (!seekBar.dataset.dragging) {
-        const pct = videoEl.duration > 0 ? (videoEl.currentTime / videoEl.duration) * 100 : 0;
-        seekBar.value = pct;
-        seekBar.style.setProperty('--progress', pct + '%');
+      if (controlsEl && controlsEl.classList.contains('hidden-controls') && !seekBar.dataset.dragging) {
+        return;
       }
-      timeText.innerText = `${formatTime(videoEl.currentTime)} / ${formatTime(videoEl.duration)}`;
+      const cur = videoEl.currentTime;
+      const dur = videoEl.duration;
+      if (!seekBar.dataset.dragging) {
+        const pct = dur > 0 ? (cur / dur) * 100 : 0;
+        if (Math.abs(pct - lastSeekPct) >= 0.1 || (pct === 0 && lastSeekPct !== 0)) {
+          lastSeekPct = pct;
+          seekBar.value = pct;
+          seekBar.style.setProperty('--progress', pct.toFixed(1) + '%');
+        }
+      }
+      const nextLabel = `${formatTime(cur)} / ${formatTime(dur)}`;
+      if (nextLabel !== lastTimeLabel) {
+        lastTimeLabel = nextLabel;
+        timeText.textContent = nextLabel;
+      }
     }
 
     function showControls() {
       controlsEl.classList.remove('hidden-controls');
+      syncTimeUI();
       clearTimeout(hideControlsTimer);
       if (!videoEl.paused) {
         hideControlsTimer = setTimeout(() => {
@@ -190,6 +231,12 @@
 
     function rebuildCueDOM(cue, origText) {
       subtitleEl.innerHTML = '';
+      if (secondarySubtitleEl) {
+        secondarySubtitleEl.innerHTML = '';
+        secondarySubtitleEl.style.opacity = '0';
+        secondarySubtitleEl.classList.remove('has-dual-text');
+      }
+      if (overlayEl) overlayEl.classList.remove('has-secondary');
       wordSpans = [];
       boxVisible = false;
       subtitleEl.style.opacity = '0';
@@ -213,7 +260,13 @@
         const origDiv = document.createElement('div');
         origDiv.className = 'sub-dual-orig';
         origDiv.textContent = origText.trim();
-        subtitleEl.appendChild(origDiv);
+        if (overlayEl && overlayEl.classList.contains('dual-split') && secondarySubtitleEl) {
+          secondarySubtitleEl.appendChild(origDiv);
+          secondarySubtitleEl.classList.add('has-dual-text');
+          overlayEl.classList.add('has-secondary');
+        } else {
+          subtitleEl.appendChild(origDiv);
+        }
       }
     }
 
@@ -222,8 +275,8 @@
       if (!playerActive || !cues.length) return;
 
       const t = videoEl.currentTime;
-      const offsetSec = (parseInt(subOffsetEl.value, 10) || 0) / 1000;
-      const holdSec = (parseInt(subHoldEl.value, 10) || 0) / 1000;
+      const offsetSec = cachedOffsetSec;
+      const holdSec = cachedHoldSec;
 
       const idx = subtitlesMod.findActiveCueIndex(cues, t, offsetSec, holdSec, currentCueIdx);
       if (idx >= 0 && cues[idx]) lastValidCue = cues[idx];
@@ -237,36 +290,44 @@
         }
       }
 
-      if (idx !== currentCueIdx || origText !== currentOrigLine) {
+      const mode = cachedWordMode;
+      const cueChanged = idx !== currentCueIdx || origText !== currentOrigLine;
+      if (cueChanged) {
         currentCueIdx = idx;
         currentOrigLine = origText;
         rebuildCueDOM(idx >= 0 ? cues[idx] : null, origText);
       }
       if (idx < 0) return;
 
+      if (mode === 'full' && !cueChanged && boxVisible) {
+        return;
+      }
+
       const cue = cues[idx];
-      const mode = wordModeSelect.value || 'hidden';
       let anySpoken = mode !== 'hidden';
 
-      for (let i = 0; i < cue.words.length; i++) {
-        const w = cue.words[i];
-        const span = wordSpans[i];
-        if (!span) continue;
+      if (mode !== 'full') {
+        for (let i = 0; i < cue.words.length; i++) {
+          const w = cue.words[i];
+          const span = wordSpans[i];
+          if (!span) continue;
 
-        const spoken = t >= (w.start + offsetSec);
-        if (spoken) anySpoken = true;
+          const spoken = t >= (w.start + offsetSec);
+          if (spoken) anySpoken = true;
 
-        const state = spoken ? 'v' : 'h';
-        if (span.dataset.state !== state) {
-          span.dataset.state = state;
-          if (spoken) span.classList.add('spoken');
-          else span.classList.remove('spoken');
+          const state = spoken ? 'v' : 'h';
+          if (span.dataset.state !== state) {
+            span.dataset.state = state;
+            if (spoken) span.classList.add('spoken');
+            else span.classList.remove('spoken');
+          }
         }
       }
 
       if (anySpoken !== boxVisible) {
         boxVisible = anySpoken;
         subtitleEl.style.opacity = anySpoken ? '1' : '0';
+        if (secondarySubtitleEl) secondarySubtitleEl.style.opacity = anySpoken ? '1' : '0';
       }
     }
 
@@ -297,9 +358,14 @@
 
     function startRenderLoop() {
       if (rafId) return;
-      const loop = () => {
-        syncTimeUI();
-        updateSubtitleFrame();
+      lastRenderTs = 0;
+      const loop = (now) => {
+        const minInterval = cachedWordMode === 'full' ? 66 : 32;
+        if (!lastRenderTs || (now - lastRenderTs) >= minInterval) {
+          lastRenderTs = now;
+          syncTimeUI();
+          updateSubtitleFrame();
+        }
         if (!videoEl.paused) {
           rafId = requestAnimationFrame(loop);
         } else {
@@ -317,10 +383,16 @@
     }
 
     function updatePlayState() {
-      if (videoEl.paused) {
+      const paused = videoEl.paused;
+      document.body.classList.toggle('player-playing', !paused);
+      if (paused) {
         controlsEl.classList.remove('hidden-controls');
+        syncTimeUI();
         clearTimeout(hideControlsTimer);
         stopRenderLoop();
+        if (audioCtx && audioCtx.state === 'running') {
+          audioCtx.suspend().catch(() => {});
+        }
         releaseWakeLock();
       } else {
         initAudio();
@@ -379,11 +451,29 @@
       overlayEl.style.top = top + 'px';
       overlayEl.style.height = dh + 'px';
       overlayEl.style.bottom = 'auto';
-      overlayEl.style.alignItems = 'flex-end';
       const bottomPct = parseFloat(
         getComputedStyle(document.documentElement).getPropertyValue('--sub-bottom')
       ) || 12;
-      overlayEl.style.paddingBottom = (dh * bottomPct / 100) + 'px';
+      const marginPx = (dh * bottomPct / 100) + 'px';
+      const subPos = overlayEl.dataset.subPos || 'bottom';
+      const dualOrder = overlayEl.dataset.dualOrder || 'trans-top';
+      if (dualOrder === 'split-orig-top' || dualOrder === 'split-trans-top') {
+        overlayEl.style.alignItems = '';
+        overlayEl.style.paddingTop = marginPx;
+        overlayEl.style.paddingBottom = marginPx;
+      } else if (subPos === 'top') {
+        overlayEl.style.alignItems = 'flex-start';
+        overlayEl.style.paddingTop = marginPx;
+        overlayEl.style.paddingBottom = '0px';
+      } else if (subPos === 'middle') {
+        overlayEl.style.alignItems = 'center';
+        overlayEl.style.paddingTop = '0px';
+        overlayEl.style.paddingBottom = '0px';
+      } else {
+        overlayEl.style.alignItems = 'flex-end';
+        overlayEl.style.paddingTop = '0px';
+        overlayEl.style.paddingBottom = marginPx;
+      }
     }
 
     function syncPlayerAspectRatio(rawW, rawH) {
@@ -506,6 +596,8 @@
     /* ---- Мост нативного ExoPlayer (событийная синхронизация, ноль опроса в простое) ---- */
     let nativeSyncTimer = null;
     let scheduleNativeSyncTick = () => {};
+    let nativeSyncAnchorPerfMs = 0;
+    let nativePlaybackRate = 1;
 
     const nativeBridge = bridgeMod.getBridge();
     if (nativeBridge) {
@@ -513,6 +605,8 @@
       let nativeCurrentTime = 0;
       let nativeDuration = 0;
       let lastUserPlayActionAt = 0;
+      let boundsRafPending = false;
+      let lastSentBoundsKey = '';
 
       try {
         if (typeof nativeBridge.setPlayerVisibility === 'function') {
@@ -520,36 +614,54 @@
         }
       } catch (_) {}
 
-      const syncNativePlayerBounds = () => {
-        if (!playerActive || !usingNativeExoFallback || playerBox.style.display === 'none' || document.body.classList.contains('global-settings-open') || document.body.classList.contains('welcome-modal-open')) {
-          try {
-            if (typeof nativeBridge.setPlayerVisibility === 'function') {
-              nativeBridge.setPlayerVisibility(false);
-            }
-          } catch (_) {}
+      const flushNativePlayerBounds = () => {
+        boundsRafPending = false;
+        const visible = Boolean(
+          playerActive &&
+          usingNativeExoFallback &&
+          playerBox.style.display !== 'none' &&
+          !document.body.classList.contains('global-settings-open') &&
+          !document.body.classList.contains('welcome-modal-open')
+        );
+        if (!visible) {
+          if (lastSentBoundsKey !== 'hidden') {
+            lastSentBoundsKey = 'hidden';
+            try {
+              if (typeof nativeBridge.setPlayerVisibility === 'function') {
+                nativeBridge.setPlayerVisibility(false);
+              }
+            } catch (_) {}
+          }
           return;
         }
         try {
-          if (typeof nativeBridge.setPlayerVisibility === 'function') {
-            nativeBridge.setPlayerVisibility(true);
-          }
           const rect = playerBox.getBoundingClientRect();
+          const vw = window.innerWidth || 1;
+          const vh = window.innerHeight || 1;
           const isFs = Boolean(
             document.body.classList.contains('player-fullscreen-open') ||
             document.fullscreenElement ||
             document.webkitFullscreenElement
           );
-          nativeBridge.setPlayerBounds(
-            rect.left,
-            rect.top,
-            rect.width,
-            rect.height,
-            window.innerWidth || 1,
-            window.innerHeight || 1,
-            isFs
-          );
+          const nextKey = `${Math.round(rect.left)}_${Math.round(rect.top)}_${Math.round(rect.width)}_${Math.round(rect.height)}_${vw}_${vh}_${isFs ? 1 : 0}`;
+          if (nextKey === lastSentBoundsKey) return;
+          lastSentBoundsKey = nextKey;
+          if (typeof nativeBridge.setPlayerVisibility === 'function') {
+            nativeBridge.setPlayerVisibility(true);
+          }
+          nativeBridge.setPlayerBounds(rect.left, rect.top, rect.width, rect.height, vw, vh, isFs);
         } catch (e) {
           diag.logWarn('native.bounds', e);
+        }
+      };
+
+      const syncNativePlayerBounds = () => {
+        if (boundsRafPending) return;
+        boundsRafPending = true;
+        if (typeof requestAnimationFrame === 'function') {
+          requestAnimationFrame(flushNativePlayerBounds);
+        } else {
+          flushNativePlayerBounds();
         }
       };
 
@@ -568,6 +680,7 @@
             }
           }
           nativeCurrentTime = Number(nativeBridge.getCurrentTime()) || 0;
+          nativeSyncAnchorPerfMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
           const dur = Number(nativeBridge.getDuration()) || 0;
           if (dur > 0 && Math.abs(dur - nativeDuration) > 0.1) {
             nativeDuration = dur;
@@ -593,23 +706,25 @@
         }
         if (!playerActive || !usingNativeExoFallback) return;
         if (immediate) syncNativeNowOnce();
-        // Пока нативное видео на паузе (и метаданные/размеры уже получены), опрос останавливаем полностью
+        // Опрос только пока не пришли метаданные/размеры; при воспроизведении позиция пушится из ExoPlayer (120 мс) + интерполяция в JS
         const awaitingMetadata = nativeDuration <= 0 || lastVideoWidth <= 0;
-        if (nativePaused && !awaitingMetadata) return;
-        const hz = Math.min(144, Math.max(15, Number(window.__nativeSyncHz) || 60));
-        const delayMs = nativePaused ? 120 : Math.max(4, Math.round(1000 / hz));
+        if (!awaitingMetadata) return;
         nativeSyncTimer = setTimeout(() => {
           nativeSyncTimer = null;
           syncNativeNowOnce();
           scheduleNativeSyncTick(false);
-        }, delayMs);
+        }, 250);
       };
 
-      window.__onNativePlaybackStateChanged = (isPlaying, posSec, durSec) => {
+      window.__onNativePlaybackStateChanged = (isPlaying, posSec, durSec, speed) => {
         if (!playerActive || !usingNativeExoFallback) return;
         try {
           if (Number.isFinite(posSec) && posSec >= 0) {
             nativeCurrentTime = posSec;
+            nativeSyncAnchorPerfMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+          }
+          if (Number.isFinite(speed) && speed > 0) {
+            nativePlaybackRate = speed;
           }
           if (Number.isFinite(durSec) && durSec > 0 && Math.abs(durSec - nativeDuration) > 0.1) {
             nativeDuration = durSec;
@@ -630,6 +745,8 @@
 
       window.__activateNativeExoFallback = function () {
         usingNativeExoFallback = true;
+        lastSentBoundsKey = '';
+        nativeSyncAnchorPerfMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
         document.documentElement.classList.add('native-exo-fallback');
         document.body.classList.add('native-exo-fallback');
         try {
@@ -638,12 +755,16 @@
           }
           Object.defineProperty(videoEl, 'currentTime', {
             get() {
-              try { return Number(nativeBridge.getCurrentTime()) || nativeCurrentTime; }
-              catch (_) { return nativeCurrentTime; }
+              if (nativePaused) return nativeCurrentTime;
+              const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+              const elapsed = Math.max(0, (nowMs - nativeSyncAnchorPerfMs) / 1000) * nativePlaybackRate;
+              const est = nativeCurrentTime + elapsed;
+              return nativeDuration > 0 ? Math.min(nativeDuration, est) : est;
             },
             set(val) {
               const sec = Math.max(0, Number(val) || 0);
               nativeCurrentTime = sec;
+              nativeSyncAnchorPerfMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
               lastUserPlayActionAt = Date.now();
               try { nativeBridge.seekTo(sec); } catch (e) { diag.logWarn('native.seekTo', e); }
             },
@@ -652,35 +773,28 @@
 
           Object.defineProperty(videoEl, 'duration', {
             get() {
-              try {
-                const d = Number(nativeBridge.getDuration());
-                return d > 0 ? d : (nativeDuration || 0);
-              } catch (_) { return nativeDuration || 0; }
+              return nativeDuration || 0;
             },
             configurable: true
           });
 
           Object.defineProperty(videoEl, 'paused', {
             get() {
-              if (Date.now() - lastUserPlayActionAt < 320) return nativePaused;
-              try { return !Boolean(nativeBridge.isPlaying()); }
-              catch (_) { return nativePaused; }
+              return nativePaused;
             },
             configurable: true
           });
 
           Object.defineProperty(videoEl, 'videoWidth', {
             get() {
-              try { return Number(nativeBridge.getVideoWidth()) || 0; }
-              catch (_) { return 0; }
+              return lastVideoWidth || 0;
             },
             configurable: true
           });
 
           Object.defineProperty(videoEl, 'videoHeight', {
             get() {
-              try { return Number(nativeBridge.getVideoHeight()) || 0; }
-              catch (_) { return 0; }
+              return lastVideoHeight || 0;
             },
             configurable: true
           });
@@ -688,6 +802,7 @@
           videoEl.play = function () {
             try {
               nativePaused = false;
+              nativeSyncAnchorPerfMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
               lastUserPlayActionAt = Date.now();
               nativeBridge.play();
               videoEl.dispatchEvent(new Event('play'));
@@ -700,7 +815,12 @@
 
           videoEl.pause = function () {
             try {
+              try {
+                const pos = Number(nativeBridge.getCurrentTime());
+                if (Number.isFinite(pos) && pos >= 0) nativeCurrentTime = pos;
+              } catch (_) {}
               nativePaused = true;
+              nativeSyncAnchorPerfMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
               lastUserPlayActionAt = Date.now();
               nativeBridge.pause();
               videoEl.dispatchEvent(new Event('pause'));
@@ -758,8 +878,7 @@
           if (mediaObjectURL) URL.revokeObjectURL(mediaObjectURL);
           mediaObjectURL = URL.createObjectURL(file);
           videoEl.src = mediaObjectURL + '#t=0.1';
-          setTimeout(applyRealVideoPreviewPoster, 120);
-          setTimeout(applyRealVideoPreviewPoster, 450);
+          setTimeout(applyRealVideoPreviewPoster, 200);
         }
         videoEl.dataset.fileSig = newSig;
       }
@@ -780,6 +899,12 @@
       boxVisible = false;
       subtitleEl.innerHTML = '';
       subtitleEl.style.opacity = '0';
+      if (secondarySubtitleEl) {
+        secondarySubtitleEl.innerHTML = '';
+        secondarySubtitleEl.style.opacity = '0';
+        secondarySubtitleEl.classList.remove('has-dual-text');
+      }
+      if (overlayEl) overlayEl.classList.remove('has-secondary');
 
       updatePlayState();
       updateOverlayGeometry();
@@ -1170,8 +1295,17 @@
         lastValidCue = null;
         currentOrigLine = '';
         boxVisible = false;
+        lastTimeLabel = '';
+        lastSeekPct = -1;
+        document.body?.classList.remove('player-playing');
         subtitleEl.innerHTML = '';
         subtitleEl.style.opacity = '0';
+        if (secondarySubtitleEl) {
+          secondarySubtitleEl.innerHTML = '';
+          secondarySubtitleEl.style.opacity = '0';
+          secondarySubtitleEl.classList.remove('has-dual-text');
+        }
+        if (overlayEl) overlayEl.classList.remove('has-secondary');
       },
       resetCueCursor() {
         currentCueIdx = -2;

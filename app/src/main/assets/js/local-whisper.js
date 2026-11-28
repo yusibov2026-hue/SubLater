@@ -35,9 +35,51 @@
     }
   };
 
+  const IDLE_DISPOSE_MS = 60_000;
   const pipelineCache = new Map();
   const activeDownloads = new Map();
+  const idleTimers = new Map();
+  let activeTranscriptions = 0;
   let transformersModPromise = null;
+
+  function clearIdleTimer(modelId) {
+    const timer = idleTimers.get(modelId);
+    if (timer) {
+      clearTimeout(timer);
+      idleTimers.delete(modelId);
+    }
+  }
+
+  async function disposeModel(modelId) {
+    clearIdleTimer(modelId);
+    if (activeTranscriptions > 0) return false;
+    const pipe = pipelineCache.get(modelId);
+    if (!pipe) return false;
+    pipelineCache.delete(modelId);
+    if (typeof pipe.dispose === 'function') {
+      try { await pipe.dispose(); } catch (_) {}
+    }
+    return true;
+  }
+
+  async function disposeAllPipelines() {
+    if (activeTranscriptions > 0) return false;
+    const ids = Array.from(pipelineCache.keys());
+    for (let i = 0; i < ids.length; i++) {
+      await disposeModel(ids[i]);
+    }
+    return true;
+  }
+
+  function scheduleIdleDispose(modelId) {
+    clearIdleTimer(modelId);
+    const timer = setTimeout(() => {
+      idleTimers.delete(modelId);
+      disposeModel(modelId);
+    }, IDLE_DISPOSE_MS);
+    if (typeof timer.unref === 'function') timer.unref();
+    idleTimers.set(modelId, timer);
+  }
 
   function getDiag() {
     return (subLyterRoot && subLyterRoot.diagnostics) || { logWarn() {}, logError() {} };
@@ -290,16 +332,25 @@
     }
   }
 
-  async function downloadModel(modelId, onProgress) {
+  async function downloadModel(modelId, onProgress, opts = {}) {
     const cfg = getLocalModelConfig(modelId);
     if (!cfg) throw new Error(`Unknown offline model: ${modelId}`);
     if (pipelineCache.has(modelId)) {
       setModelDownloaded(modelId, true);
       if (typeof onProgress === 'function') onProgress({ pct: 100, loadedMb: cfg.sizeMb, totalMb: cfg.sizeMb });
+      if (opts.disposeAfterDownload) {
+        await disposeModel(modelId);
+        return null;
+      }
       return pipelineCache.get(modelId);
     }
     if (activeDownloads.has(modelId)) {
-      return activeDownloads.get(modelId);
+      const existing = await activeDownloads.get(modelId);
+      if (opts.disposeAfterDownload) {
+        await disposeModel(modelId);
+        return null;
+      }
+      return existing;
     }
 
     const promise = (async () => {
@@ -317,13 +368,19 @@
     })();
 
     activeDownloads.set(modelId, promise);
-    return promise;
+    const pipe = await promise;
+    if (opts.disposeAfterDownload) {
+      await disposeModel(modelId);
+      return null;
+    }
+    return pipe;
   }
 
   async function deleteModel(modelId) {
     const cfg = getLocalModelConfig(modelId);
     if (!cfg) return false;
 
+    clearIdleTimer(modelId);
     const pipe = pipelineCache.get(modelId);
     pipelineCache.delete(modelId);
     if (pipe && typeof pipe.dispose === 'function') {
@@ -352,25 +409,38 @@
     if (opts.signal && opts.signal.aborted) {
       throw new Error('Cancelled by user.');
     }
+    clearIdleTimer(modelId);
     const pipe = await downloadModel(modelId, opts.onProgress);
     if (opts.signal && opts.signal.aborted) {
+      scheduleIdleDispose(modelId);
       throw new Error('Cancelled by user.');
     }
     const audioInput = float32Pcm16k instanceof Float32Array
       ? float32Pcm16k
       : new Float32Array(float32Pcm16k || []);
-    if (!audioInput.length) return { segments: [], words: [] };
-
-    const result = await pipe(audioInput, {
-      chunk_length_s: 30,
-      stride_length_s: 5,
-      return_timestamps: true,
-      task: 'transcribe'
-    });
-    if (opts.signal && opts.signal.aborted) {
-      throw new Error('Cancelled by user.');
+    if (!audioInput.length) {
+      scheduleIdleDispose(modelId);
+      return { segments: [], words: [] };
     }
-    return normalizeWhisperChunksToSegments(result);
+
+    activeTranscriptions++;
+    try {
+      const result = await pipe(audioInput, {
+        chunk_length_s: 30,
+        stride_length_s: 5,
+        return_timestamps: true,
+        task: 'transcribe'
+      });
+      if (opts.signal && opts.signal.aborted) {
+        throw new Error('Cancelled by user.');
+      }
+      return normalizeWhisperChunksToSegments(result);
+    } finally {
+      activeTranscriptions = Math.max(0, activeTranscriptions - 1);
+      if (activeTranscriptions === 0) {
+        scheduleIdleDispose(modelId);
+      }
+    }
   }
 
   async function transcribeBlob(modelId, blob, opts = {}) {
@@ -401,6 +471,8 @@
     decodeWavToFloat32,
     normalizeWhisperChunksToSegments,
     downloadModel,
+    disposeModel,
+    disposeAllPipelines,
     deleteModel,
     transcribeFloat32,
     transcribeBlob

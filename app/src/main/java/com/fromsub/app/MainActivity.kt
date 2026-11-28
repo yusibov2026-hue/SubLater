@@ -3,6 +3,7 @@ package com.fromsub.app
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.ComponentCallbacks2
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
@@ -13,12 +14,14 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Base64
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
 import android.webkit.PermissionRequest
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -307,14 +310,31 @@ class MainActivity : ComponentActivity() {
                 onOpenFileChooser = { callback, fileChooserParams ->
                     filePathCallback?.onReceiveValue(null)
                     filePathCallback = callback
+                    val acceptTypes = fileChooserParams?.acceptTypes?.map { it.lowercase() } ?: emptyList()
+                    val wantsMedia = acceptTypes.any { it.contains("video") || it.contains("audio") || it.contains(".mkv") }
+                    val wantsSubtitles = acceptTypes.isNotEmpty() && acceptTypes.all { it.contains(".vtt") || it.contains(".srt") }
                     val intent = try {
-                        fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                            addCategory(Intent.CATEGORY_OPENABLE)
-                            type = "*/*"
+                        if (wantsMedia && !wantsSubtitles) {
+                            Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                                type = "*/*"
+                                putExtra(
+                                    Intent.EXTRA_MIME_TYPES,
+                                    arrayOf("video/*", "audio/*", "application/octet-stream")
+                                )
+                            }
+                        } else {
+                            fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                                type = "*/*"
+                            }
                         }
                     } catch (_: Exception) {
                         Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                             addCategory(Intent.CATEGORY_OPENABLE)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
                             type = "*/*"
                         }
                     }
@@ -332,7 +352,50 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         exoPlayerManager.pause()
-        webViewRef?.resumeTimers()
+        webViewRef?.let { wv ->
+            wv.evaluateJavascript(
+                "window.__onAppVisibilityChanged && window.__onAppVisibilityChanged(false);",
+                null
+            )
+            wv.onPause()
+            if (exoPlayerManager.isGenerationActive()) {
+                wv.resumeTimers()
+            } else {
+                wv.pauseTimers()
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        webViewRef?.let { wv ->
+            wv.onResume()
+            wv.resumeTimers()
+            wv.evaluateJavascript(
+                "window.__onAppVisibilityChanged && window.__onAppVisibilityChanged(true);",
+                null
+            )
+        }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        exoPlayerManager.onTrimMemory(level)
+        val wv = webViewRef ?: return
+        wv.post {
+            wv.evaluateJavascript(
+                "window.__onLowMemoryTrim && window.__onLowMemoryTrim($level);",
+                null
+            )
+            if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+                try { wv.clearCache(false) } catch (_: Exception) {}
+            }
+        }
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        onTrimMemory(ComponentCallbacks2.TRIM_MEMORY_COMPLETE)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -490,9 +553,25 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-                val rawBytes = contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return@execute
-                val decoded = BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size) ?: return@execute
+                val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                contentResolver.openInputStream(uri)?.use { stream ->
+                    BitmapFactory.decodeStream(stream, null, opts)
+                }
                 val maxDim = 1024
+                var sampleSize = 1
+                val srcW = opts.outWidth
+                val srcH = opts.outHeight
+                if (srcW > maxDim || srcH > maxDim) {
+                    var halfW = srcW / 2
+                    var halfH = srcH / 2
+                    while ((halfW / sampleSize) >= maxDim && (halfH / sampleSize) >= maxDim) {
+                        sampleSize *= 2
+                    }
+                }
+                val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+                val decoded = contentResolver.openInputStream(uri)?.use { stream ->
+                    BitmapFactory.decodeStream(stream, null, decodeOpts)
+                } ?: return@execute
                 val scale = minOf(1f, maxDim.toFloat() / maxOf(decoded.width, decoded.height).coerceAtLeast(1))
                 val scaled = if (scale < 1f) {
                     Bitmap.createScaledBitmap(
@@ -612,6 +691,7 @@ fun HybridVideoApp(
     val resizeMode by exoPlayerManager.resizeModeState
     val bounds by exoPlayerManager.videoBoundsState
     val hostSurfaceColor by exoPlayerManager.hostSurfaceColorState
+    val isPlayerPrepared by exoPlayerManager.isPlayerReadyForAttach
 
     DisposableEffect(Unit) {
         onDispose { }
@@ -646,7 +726,7 @@ fun HybridVideoApp(
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
-                    player = exoPlayerManager.exoPlayer
+                    player = null
                     useController = false
                     this.resizeMode = resizeMode
                     isFocusable = false
@@ -661,6 +741,9 @@ fun HybridVideoApp(
                 }
             },
             update = { playerView ->
+                if ((isPlayerPrepared || bounds.isVisible) && playerView.player == null) {
+                    playerView.player = exoPlayerManager.exoPlayer
+                }
                 playerView.resizeMode = resizeMode
             },
             modifier = playerModifier
@@ -763,6 +846,20 @@ fun HybridVideoApp(
                                     null
                                 )
                             }
+                        }
+
+                        override fun onRenderProcessGone(
+                            view: WebView?,
+                            detail: RenderProcessGoneDetail?
+                        ): Boolean {
+                            Log.w("SubLyterWebView", "Render process gone (didCrash=${if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) detail?.didCrash() else false})")
+                            view?.post {
+                                try {
+                                    view.loadUrl("https://appassets.androidplatform.net/assets/index.html")
+                                } catch (_: Exception) {
+                                }
+                            }
+                            return true
                         }
                     }
                     webChromeClient = object : WebChromeClient() {

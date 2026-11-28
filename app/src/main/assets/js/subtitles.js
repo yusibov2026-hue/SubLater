@@ -87,14 +87,58 @@
     return 0;
   }
 
-  function distributeWords(cue) {
+  function extractSpeechSpans(sourceWords, fallbackStart, fallbackEnd, pauseThreshold = 0.18) {
+    const valid = [];
+    for (let i = 0; i < (sourceWords || []).length; i++) {
+      const w = sourceWords[i];
+      if (!w) continue;
+      const ws = Number(w.start);
+      const we = Number(w.end);
+      if (isFinite(ws) && isFinite(we) && we > ws) {
+        valid.push({ start: ws, end: we });
+      }
+    }
+    if (!valid.length) {
+      const safeStart = Math.max(0, Number(fallbackStart) || 0);
+      return [{ start: safeStart, end: Math.max(safeStart + 0.1, Number(fallbackEnd) || safeStart + 0.1) }];
+    }
+    valid.sort((a, b) => a.start - b.start);
+    const spans = [{ start: valid[0].start, end: valid[0].end }];
+    for (let i = 1; i < valid.length; i++) {
+      const cur = spans[spans.length - 1];
+      if (valid[i].start - cur.end < pauseThreshold) {
+        if (valid[i].end > cur.end) cur.end = valid[i].end;
+      } else {
+        spans.push({ start: valid[i].start, end: valid[i].end });
+      }
+    }
+    return spans;
+  }
+
+  function mapSpanOffset(spans, targetOffset, isEnd = false) {
+    let acc = 0;
+    for (let i = 0; i < spans.length; i++) {
+      const sp = spans[i];
+      const len = Math.max(0.02, sp.end - sp.start);
+      const inside = isEnd
+        ? targetOffset <= acc + len + 1e-6
+        : targetOffset < acc + len - 1e-6;
+      if (inside || i === spans.length - 1) {
+        const local = Math.min(len, Math.max(0, targetOffset - acc));
+        return sp.start + local;
+      }
+      acc += len;
+    }
+    return spans[spans.length - 1].end;
+  }
+
+  function distributeWords(cue, sourceWords = null) {
     const words = String(cue.text || '').split(/\s+/).filter(Boolean);
     cue.words = [];
     if (!words.length) return;
 
     const start = Math.max(0, Number(cue.start) || 0);
     const end = Math.max(start + 0.1, Number(cue.end) || 0);
-    const dur = end - start;
 
     const weights = words.map((w) => {
       const core = w.replace(/[^\p{L}\p{N}]/gu, '');
@@ -102,6 +146,24 @@
     });
     const total = weights.reduce((a, b) => a + b, 0) || 1;
 
+    if (Array.isArray(sourceWords) && sourceWords.length) {
+      const spans = extractSpeechSpans(sourceWords, start, end, 0.18);
+      const totalActive = spans.reduce((s, sp) => s + Math.max(0.02, sp.end - sp.start), 0);
+      if (totalActive >= 0.15) {
+        let acc = 0;
+        cue.words = words.map((w, i) => {
+          const off0 = (acc / total) * totalActive;
+          acc += weights[i];
+          const off1 = (acc / total) * totalActive;
+          const ws = mapSpanOffset(spans, off0, false);
+          const we = Math.max(ws + 0.04, mapSpanOffset(spans, off1, true));
+          return { word: w, start: ws, end: we };
+        });
+        return;
+      }
+    }
+
+    const dur = end - start;
     let acc = 0;
     cue.words = words.map((w, i) => {
       const ws = start + (acc / total) * dur;
@@ -136,26 +198,43 @@
     const out = [];
 
     for (const cue of cueList) {
-      if (!cue.words || cue.words.length <= maxWords) {
+      const words = cue.words || [];
+      if (!words.length) {
+        out.push(cue);
+        continue;
+      }
+      let hasPause = false;
+      for (let idx = 0; idx < words.length - 1; idx++) {
+        if ((words[idx + 1].start - words[idx].end) >= 0.35) {
+          hasPause = true;
+          break;
+        }
+      }
+      if (words.length <= maxWords && !hasPause) {
         out.push(cue);
         continue;
       }
 
       let currentWords = [];
-      for (let i = 0; i < cue.words.length; i++) {
-        const w = cue.words[i];
+      for (let i = 0; i < words.length; i++) {
+        const w = words[i];
         currentWords.push(w);
 
-        const isLast = i === cue.words.length - 1;
-        const nextW = !isLast ? cue.words[i + 1] : null;
+        const isLast = i === words.length - 1;
+        const nextW = !isLast ? words[i + 1] : null;
         const gap = nextW ? (nextW.start - w.end) : 0;
+        const remaining = words.length - 1 - i;
         const hasStrongPunct = /[.!?…]$/.test(w.word);
         const hasSoftPunct = /[,;:—–-]$/.test(w.word);
 
         const shouldSplit = !isLast && (
-          (currentWords.length >= 6 && hasStrongPunct) ||
-          (currentWords.length >= 9 && (hasSoftPunct || gap >= 0.35)) ||
-          currentWords.length >= maxWords
+          (gap >= 0.75 && currentWords.length >= 1 && remaining >= 1) ||
+          (gap >= 0.35 && currentWords.length >= 2 && remaining >= 2) ||
+          (words.length > maxWords && (
+            (currentWords.length >= 6 && hasStrongPunct) ||
+            (currentWords.length >= 9 && (hasSoftPunct || gap >= 0.35)) ||
+            currentWords.length >= maxWords
+          ))
         );
 
         if (shouldSplit || isLast) {
@@ -216,7 +295,7 @@
             bestIdx = segIdx - 1;
           }
         }
-        if (bestDist <= 2.5) {
+        if (bestDist <= 1.2) {
           segs[bestIdx].words.push(w);
         }
       }
@@ -225,6 +304,14 @@
     let result = segs.map((c) => {
       if (c.words.length) {
         c.words.sort((a, b) => a.start - b.start);
+        for (let wi = 1; wi < c.words.length; wi++) {
+          if (c.words[wi].start < c.words[wi - 1].start) {
+            c.words[wi].start = c.words[wi - 1].start;
+          }
+          if (c.words[wi].end <= c.words[wi].start) {
+            c.words[wi].end = c.words[wi].start + 0.05;
+          }
+        }
         return {
           start: c.words[0].start,
           end: Math.max(c.words[c.words.length - 1].end, c.words[0].start + 0.05),
@@ -400,6 +487,7 @@
     isWhisperHallucination,
     parseTimeCode,
     parseSubtitleText,
+    extractSpeechSpans,
     distributeWords,
     smartSplitLongCues,
     buildCues,

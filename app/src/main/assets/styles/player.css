@@ -239,9 +239,7 @@
 #aiSendBtn svg { width: 17px; height: 17px; fill: currentColor; }
 
 #vttPanel {
-  background: color-mix(in srgb, var(--bg-elevated) 74%, transparent);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
   padding: 12px;
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--border-soft) 85%, transparent);
@@ -378,7 +376,9 @@ video#videoPlayer.fill-stretch { object-fit: fill; }
 #subtitleOverlay {
   position: absolute;
   display: flex;
-  justify-content: center;
+  justify-content: var(--sub-justify, center);
+  padding: 0 12px;
+  box-sizing: border-box;
   pointer-events: none;
   z-index: 10;
   will-change: top, left, width, bottom;
@@ -387,9 +387,26 @@ video#videoPlayer.fill-stretch { object-fit: fill; }
   transition: bottom 0.1s ease;
 }
 
-#subtitleText {
+#subtitleOverlay.dual-split {
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: var(--sub-justify, center);
+}
+#subtitleOverlay.dual-split:not(.has-secondary).dual-split-trans-top {
+  justify-content: flex-start;
+}
+#subtitleOverlay.dual-split:not(.has-secondary).dual-split-orig-top {
+  justify-content: flex-end;
+}
+#subtitleOverlay.dual-split.dual-split-orig-top #subtitleSecondaryText { order: 1; }
+#subtitleOverlay.dual-split.dual-split-orig-top #subtitleText { order: 2; }
+#subtitleOverlay.dual-split.dual-split-trans-top #subtitleText { order: 1; }
+#subtitleOverlay.dual-split.dual-split-trans-top #subtitleSecondaryText { order: 2; }
+
+#subtitleText,
+#subtitleSecondaryText {
   max-width: var(--sub-width, 85%);
-  text-align: center;
+  text-align: var(--sub-align, center);
   font-family: var(--sub-font, 'Inter', sans-serif);
   font-size: var(--sub-size, 18px);
   line-height: 1.35;
@@ -401,13 +418,54 @@ video#videoPlayer.fill-stretch { object-fit: fill; }
   opacity: 0;
   transition: opacity 0.12s ease, background 0.2s ease;
 }
-#subtitleText.bg-on {
+#subtitleText {
+  display: flex;
+  flex-direction: column;
+}
+#subtitleText.dual-orig-top {
+  flex-direction: column-reverse;
+}
+#subtitleText.dual-orig-top .sub-dual-orig {
+  margin-top: 0;
+  margin-bottom: 3px;
+}
+#subtitleSecondaryText {
+  display: none;
+}
+#subtitleOverlay.dual-split #subtitleSecondaryText.has-dual-text {
+  display: block;
+}
+#subtitleSecondaryText .sub-dual-orig {
+  margin-top: 0;
+}
+#subtitleText.bg-on,
+#subtitleSecondaryText.bg-on {
   background: rgba(0, 0, 0, calc(var(--bg-opacity, 62) / 100));
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
-#subtitleText.bg-off {
+#subtitleText.bg-on.bg-style-black,
+#subtitleSecondaryText.bg-on.bg-style-black {
+  background: rgba(0, 0, 0, calc(var(--bg-opacity, 62) / 100));
+}
+#subtitleText.bg-on.bg-style-glass,
+#subtitleSecondaryText.bg-on.bg-style-glass {
+  background: rgba(15, 23, 42, calc(var(--bg-opacity, 62) / 100));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+#subtitleText.bg-on.bg-style-accent,
+#subtitleSecondaryText.bg-on.bg-style-accent {
+  background: color-mix(in srgb, var(--accent) calc(var(--bg-opacity, 62) * 1%), rgba(10, 14, 24, 0.72));
+}
+#subtitleText.bg-off,
+#subtitleSecondaryText.bg-off {
   background: transparent;
   text-shadow: 0 2px 4px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,1);
+}
+#subtitleText.sub-outline-off,
+#subtitleSecondaryText.sub-outline-off {
+  text-shadow: none !important;
 }
 
 .sub-main-line {

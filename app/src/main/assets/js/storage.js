@@ -154,14 +154,129 @@
     return cachedDbPromise;
   }
 
+  function extractSummaryCues(project) {
+    if (!project || typeof project !== 'object') return [];
+    if (Array.isArray(project.cues) && project.cues.length) return project.cues;
+    if (project.activeLang && project.translations && Array.isArray(project.translations[project.activeLang]) && project.translations[project.activeLang].length) {
+      return project.translations[project.activeLang];
+    }
+    if (Array.isArray(project.rawSegments) && project.rawSegments.length) return project.rawSegments;
+    if (project.partialChunks && typeof project.partialChunks === 'object') {
+      const merged = [];
+      Object.keys(project.partialChunks)
+        .sort((a, b) => Number(a) - Number(b))
+        .forEach((k) => {
+          const ch = project.partialChunks[k];
+          if (ch && Array.isArray(ch.segments)) {
+            for (let i = 0; i < ch.segments.length; i++) {
+              if (ch.segments[i]) merged.push(ch.segments[i]);
+            }
+          }
+        });
+      return merged;
+    }
+    return [];
+  }
+
+  function extractSummaryLanguages(project) {
+    if (!project || typeof project !== 'object') return [];
+    if (Array.isArray(project.languages)) return project.languages.slice();
+    const out = [];
+    const seen = new Set();
+    const pushLang = (val) => {
+      const clean = String(val || '').trim();
+      if (!clean || clean === 'null' || clean === 'undefined') return;
+      const key = clean.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(clean);
+    };
+    if (project.translations && typeof project.translations === 'object') {
+      Object.keys(project.translations).forEach(pushLang);
+    }
+    pushLang(project.activeLang);
+    return out;
+  }
+
+  function buildProjectSummary(project) {
+    if (!project || typeof project !== 'object') return null;
+    const hasPrecomputed = typeof project.preview === 'string' &&
+      typeof project.linesCount === 'number' &&
+      typeof project.durationSec === 'number' &&
+      Array.isArray(project.languages);
+
+    let linesCount = hasPrecomputed ? project.linesCount : 0;
+    let durationSec = hasPrecomputed ? project.durationSec : 0;
+    let languages = hasPrecomputed ? project.languages.slice() : extractSummaryLanguages(project);
+    let preview = hasPrecomputed ? project.preview : '';
+    let searchSnippet = hasPrecomputed && typeof project.searchSnippet === 'string' ? project.searchSnippet : '';
+
+    if (!hasPrecomputed) {
+      const cuesList = extractSummaryCues(project);
+      linesCount = cuesList.length;
+      const rawList = Array.isArray(project.rawSegments) ? project.rawSegments : [];
+      let maxEnd = 0;
+      for (let i = 0; i < cuesList.length; i++) {
+        const val = Number((cuesList[i] && (cuesList[i].end || cuesList[i].start)) || 0);
+        if (Number.isFinite(val) && val > maxEnd) maxEnd = val;
+      }
+      for (let i = 0; i < rawList.length; i++) {
+        const val = Number((rawList[i] && (rawList[i].end || rawList[i].start)) || 0);
+        if (Number.isFinite(val) && val > maxEnd) maxEnd = val;
+      }
+      durationSec = Math.max(0, Math.round(maxEnd));
+
+      const parts = [];
+      let charLen = 0;
+      for (let i = 0; i < cuesList.length && charLen < 820; i++) {
+        const txt = String((cuesList[i] && cuesList[i].text) || '').trim();
+        if (!txt) continue;
+        parts.push(txt);
+        charLen += txt.length + 1;
+      }
+      const joined = parts.join(' ').replace(/\s+/g, ' ').trim();
+      searchSnippet = joined.slice(0, 800);
+      preview = joined.length <= 130 ? joined : (joined.slice(0, 130).trimEnd() + '…');
+    }
+
+    return {
+      fileSig: project.fileSig,
+      fileName: project.fileName || '',
+      fileSize: Number(project.fileSize) || 0,
+      fileUri: project.fileUri || '',
+      fileMime: project.fileMime || '',
+      isStream: Boolean(project.isStream),
+      updatedAt: Number(project.updatedAt) || 0,
+      model: project.model || '',
+      isComplete: project.isComplete !== false,
+      activeLang: project.activeLang || '',
+      linesCount,
+      durationSec,
+      languages,
+      preview,
+      searchSnippet
+    };
+  }
+
   function writeProjectInternal(projectData) {
     return getHistoryDb().then((db) => {
       if (!db) return;
       return new Promise((resolve) => {
         try {
+          const summary = buildProjectSummary(projectData);
+          const recordToStore = summary
+            ? Object.assign({}, projectData, {
+                linesCount: summary.linesCount,
+                durationSec: summary.durationSec,
+                languages: summary.languages,
+                preview: summary.preview,
+                searchSnippet: summary.searchSnippet
+              })
+            : projectData;
+
           const tx = db.transaction(STORE_NAME, 'readwrite');
           const store = tx.objectStore(STORE_NAME);
-          store.put(projectData);
+          store.put(recordToStore);
 
           if (projectData.isComplete !== false) {
             const countReq = store.count();
@@ -185,7 +300,9 @@
           }
 
           tx.oncomplete = () => {
-            notifyHistoryUpdated();
+            if (projectData.isComplete !== false) {
+              notifyHistoryUpdated();
+            }
             resolve();
           };
           tx.onerror = () => resolve();
@@ -246,10 +363,20 @@
       return await new Promise((resolve) => {
         const tx = db.transaction(STORE_NAME, 'readonly');
         const store = tx.objectStore(STORE_NAME);
-        const req = store.getAll();
-        req.onsuccess = () => {
-          const items = Array.isArray(req.result) ? req.result.slice() : [];
-          items.sort((a, b) => (Number(b && b.updatedAt) || 0) - (Number(a && a.updatedAt) || 0));
+        const idx = store.indexNames.contains('updatedAt') ? store.index('updatedAt') : null;
+        const req = idx ? idx.openCursor(null, 'prev') : store.openCursor();
+        const items = [];
+        req.onsuccess = (ev) => {
+          const cursor = ev.target.result;
+          if (cursor) {
+            const summary = buildProjectSummary(cursor.value);
+            if (summary) items.push(summary);
+            cursor.continue();
+            return;
+          }
+          if (!idx) {
+            items.sort((a, b) => (Number(b && b.updatedAt) || 0) - (Number(a && a.updatedAt) || 0));
+          }
           resolve(items);
         };
         req.onerror = () => resolve([]);
@@ -314,6 +441,7 @@
     saveProjectToHistory,
     getProjectFromHistory,
     listHistoryProjects,
+    buildProjectSummary,
     deleteProjectFromHistory,
     clearHistoryProjects
   };

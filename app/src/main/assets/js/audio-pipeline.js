@@ -108,6 +108,7 @@
       if (targetLang && !streamingTranslate) return;
       while (liveChunkCuesMap.has(nextLiveChunk)) {
         const arr = liveChunkCuesMap.get(nextLiveChunk);
+        liveChunkCuesMap.delete(nextLiveChunk);
         nextLiveChunk++;
         if (arr && arr.length) liveCues.push(...arr);
       }
@@ -124,10 +125,13 @@
       while (completedChunkMap.has(nextChunkToStream)) {
         const cIdx = nextChunkToStream;
         const chunkItem = completedChunkMap.get(cIdx);
+        completedChunkMap.delete(cIdx);
         nextChunkToStream++;
 
         const chunkCues = sliceChunkToCues(chunkItem);
-        liveChunkCuesMap.set(cIdx, chunkCues);
+        if (!isBatchMode) {
+          liveChunkCuesMap.set(cIdx, chunkCues);
+        }
         if (chunkCues.length > 0) {
           const prevCtx = streamContextLines.slice(-2);
           streamContextLines = chunkCues.map((c) => c.text);
@@ -228,7 +232,7 @@
       }
     };
 
-    const getBatchConcurrency = () => BATCH_1024_CONCURRENCY;
+    const getBatchConcurrency = () => Math.min(12, Math.max(BATCH_1024_CONCURRENCY, Math.max(1, getApiKeys().length) * BATCH_1024_CONCURRENCY));
 
     let streamTranslatedChunks = 0;
     let updateStreamProgress = () => {};
@@ -313,7 +317,6 @@
         } catch (e) { diag.logWarn('gen.fgStart', e); }
       }
       setStatus(t('status.generating'), 5);
-      await requestWakeLock();
 
       setCurrentFileName(file.name.replace(/\.[^/.]+$/, '') + (langCode ? `_${langCode}` : ''));
       const isBatchMode = Boolean(genModeEl && genModeEl.value === 'all');
@@ -421,11 +424,10 @@
               (typeof bridge.readChunkBase64 === 'function' || typeof fetch === 'function') &&
               bridge.hasNativeVideo()
             );
-            // В точном режиме v1.0.24 (All at once) для локальных файлов сначала идёт WebAudio 12 кГц (или прямой upload),
-            // а нативный MediaExtractor подключается при внешних URI/потоках или если браузер не декодирует кодек.
-            const preferNativeFirst = canUseNativeExtractor && (isExtOrStream || (!isBatchMode && !isLocalModel));
+            // На Android для сжатия/нарезки всегда идём через потоковый нативный MediaExtractor (без загрузки всего файла в RAM WebView)
+            const preferNativeFirst = canUseNativeExtractor;
 
-            const streamingTranslate = !isBatchMode && !isLocalModel && Boolean(targetLang && !(cachedWhisper.translations && cachedWhisper.translations[targetLang]));
+            const streamingTranslate = !isLocalModel && Boolean(targetLang && !(cachedWhisper.translations && cachedWhisper.translations[targetLang]));
             const livePipeline = createLivePipeline({
               file,
               isBatchMode: isBatchMode || isLocalModel,
@@ -574,13 +576,14 @@
                   if (isLocalModel) {
                     r = await lwMod.transcribeBlob(model, wavBlob, { signal });
                   } else {
+                    const chunkPeak = typeof chunkObj.peak === 'number' ? chunkObj.peak : undefined;
                     r = await groqMod.sendToGroq(
                       wavBlob,
                       chunkObj.fileName || `chunk_${chunkObj.index}.wav`,
                       model,
                       customPrompt,
                       signal,
-                      groqCtx
+                      chunkPeak !== undefined ? Object.assign({}, groqCtx, { chunkPeak }) : groqCtx
                     );
                   }
                 }
@@ -619,7 +622,7 @@
                     fileSig,
                     fileName: file.name,
                     fileSize: file.size,
-                    fileUri: file.uri || '',
+                    fileUri: file.uri || (bridge && typeof bridge.getStoredMediaUri === 'function' ? bridge.getStoredMediaUri() : '') || '',
                     fileMime: file.type || '',
                     isStream: Boolean(file.isStream),
                     updatedAt: Date.now(),
@@ -637,7 +640,7 @@
               try {
                 const workerCount = isLocalModel
                   ? 1
-                  : (isBatchMode ? BATCH_1024_CONCURRENCY : Math.min(PARALLEL_CHUNK_CONCURRENCY, 10));
+                  : (isBatchMode ? getBatchConcurrency() : Math.min(PARALLEL_CHUNK_CONCURRENCY, 10));
                 const staggerMs = (isBatchMode || isLocalModel) ? 0 : 25;
                 const workers = Array.from({ length: workerCount }, async (_, workerSlot) => {
                   if (staggerMs > 0 && workerSlot > 0) await groqMod.abortableDelay(workerSlot * staggerMs, signal);
@@ -655,6 +658,7 @@
                 const merged = subtitlesMod.mergeChunkResults(nativeOrderedResults);
                 allSegments = merged.allSegments;
                 allWords = merged.allWords;
+                nativeOrderedResults.length = 0;
               } finally {
                 window.__onNativeChunkReady = null;
                 window.__onNativeChunkDone = null;
@@ -677,10 +681,11 @@
                   10
                 );
                 try {
-                  const ab = await file.arrayBuffer();
+                  let ab = await file.arrayBuffer();
                   const targetRate = (!isLocalModel && isBatchMode) ? 12000 : 16000;
                   const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: targetRate });
                   audioBuffer = await decodeCtx.decodeAudioData(ab);
+                  ab = null;
                   if (decodeCtx.close) decodeCtx.close();
                 } catch (e) {
                   diag.logWarn('gen.webAudioDecode', e);
@@ -697,6 +702,7 @@
                 if (signal.aborted) throw new Error('Cancelled by user.');
                 setStatus(t('status.offlineTranscribing', { model }), 35);
                 const monoData = extractMonoChannelData(audioBuffer);
+                audioBuffer = null;
                 const localRes = await lwMod.transcribeFloat32(model, monoData, { signal });
                 allSegments = localRes.segments || [];
                 allWords = localRes.words || [];
@@ -736,7 +742,7 @@
 
                 totalChunks = chunkTasks.length;
                 let completedChunks = 0;
-                const webConcurrency = isBatchMode ? BATCH_1024_CONCURRENCY : PARALLEL_CHUNK_CONCURRENCY;
+                const webConcurrency = isBatchMode ? getBatchConcurrency() : PARALLEL_CHUNK_CONCURRENCY;
                 setStatus(
                   t('status.parallelUpload', {
                     streams: Math.min(webConcurrency, Math.max(1, totalChunks)),
@@ -807,7 +813,7 @@
                           fileSig,
                           fileName: file.name,
                           fileSize: file.size,
-                          fileUri: file.uri || '',
+                          fileUri: file.uri || (bridge && typeof bridge.getStoredMediaUri === 'function' ? bridge.getStoredMediaUri() : '') || '',
                           fileMime: file.type || '',
                           isStream: Boolean(file.isStream),
                           updatedAt: Date.now(),
@@ -829,6 +835,8 @@
                 const merged = subtitlesMod.mergeChunkResults(orderedResults);
                 allSegments = merged.allSegments;
                 allWords = merged.allWords;
+                orderedResults.length = 0;
+                audioBuffer = null;
               }
             }
           }
@@ -860,6 +868,7 @@
             const chCues = pipelineTranslatedCuesMap.get(i);
             if (chCues && chCues.length) streamedCues.push(...chCues);
           }
+          pipelineTranslatedCuesMap.clear();
           const translateConcurrency = isBatchMode ? getBatchConcurrency() : 10;
           if (streamedCues.length > 0) {
             setCues(streamedCues);
@@ -881,6 +890,7 @@
           }
           setCues(freshCues);
         }
+        pipelineTranslatedCuesMap.clear();
 
         if (signal.aborted) throw new Error('Cancelled by user.');
         if (!getCues().length) throw new Error('Failed to build subtitles.');
@@ -896,7 +906,7 @@
             fileSig,
             fileName: file.name,
             fileSize: file.size,
-            fileUri: file.uri || '',
+            fileUri: file.uri || (bridge && typeof bridge.getStoredMediaUri === 'function' ? bridge.getStoredMediaUri() : '') || '',
             fileMime: file.type || '',
             isStream: Boolean(file.isStream),
             updatedAt: Date.now(),

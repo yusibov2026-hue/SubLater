@@ -106,7 +106,7 @@
 
   function syncAllM3Sliders() {
     document
-      .querySelectorAll('#globalSettings input[type="range"]:not(.cp-h):not(.cp-s):not(.cp-l), #settingsMenu input[type="range"]')
+      .querySelectorAll('#globalSettings input[type="range"]:not(.cp-h):not(.cp-s):not(.cp-l), #settingsMenu input[type="range"], #hubPanelLearn input[type="range"]')
       .forEach(syncM3RangeSlider);
   }
 
@@ -219,8 +219,9 @@
 
     document.querySelectorAll('.color-picker').forEach(initColorPicker);
 
-    function syncColorPickers() {
+    function syncColorPickers(exceptNative = null) {
       document.querySelectorAll('.cp-native').forEach((native) => {
+        if (exceptNative && native === exceptNative) return;
         const ctrl = colorPickerByNative.get(native);
         if (ctrl) ctrl.syncFromNative(false);
       });

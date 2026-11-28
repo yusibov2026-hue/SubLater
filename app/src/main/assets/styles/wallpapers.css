@@ -14,19 +14,33 @@
 }
 
 body.player-fullscreen-open #appWallpaper,
+body.player-playing #appWallpaper,
 body.global-settings-open #appWallpaper,
-body.welcome-modal-open #appWallpaper {
+body.welcome-modal-open #appWallpaper,
+body.app-hidden #appWallpaper {
   visibility: hidden;
   animation-play-state: paused;
 }
 
 body.player-fullscreen-open #appWallpaper .sf,
 body.player-fullscreen-open #appWallpaper .sfi,
+body.player-playing #appWallpaper .sf,
+body.player-playing #appWallpaper .sfi,
 body.global-settings-open #appWallpaper .sf,
 body.global-settings-open #appWallpaper .sfi,
 body.welcome-modal-open #appWallpaper .sf,
-body.welcome-modal-open #appWallpaper .sfi {
+body.welcome-modal-open #appWallpaper .sfi,
+body.app-hidden #appWallpaper .sf,
+body.app-hidden #appWallpaper .sfi {
   animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #appWallpaper,
+  #appWallpaper .sf,
+  #appWallpaper .sfi {
+    animation: none !important;
+  }
 }
 
 #appWallpaper[data-wallpaper="aurora"] {
@@ -270,7 +284,6 @@ body.welcome-modal-open #appWallpaper .sfi {
   height: var(--sz);
   pointer-events: none;
   contain: layout style;
-  will-change: transform;
   animation: sfFall var(--dur) linear var(--delay) infinite;
 }
 #appWallpaper .sfi {
@@ -280,7 +293,6 @@ body.welcome-modal-open #appWallpaper .sfi {
   border-radius: 50%;
   background: radial-gradient(circle, #ffffff 0%, color-mix(in srgb, var(--wall-col) 76%, transparent) 62%, transparent 100%);
   opacity: var(--op);
-  will-change: transform;
   animation: sfSway var(--sway-dur) ease-in-out var(--sway-delay) infinite alternate;
 }
 @keyframes sfFall {

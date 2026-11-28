@@ -4,8 +4,10 @@ import subtitles from '../app/src/main/assets/js/subtitles.js';
 
 const {
   parseSubtitleText,
+  extractSpeechSpans,
   distributeWords,
   buildCues,
+  smartSplitLongCues,
   findActiveCueIndex,
   mergeChunkResults,
   isWhisperHallucination,
@@ -181,4 +183,47 @@ test('distributeWords weights Cyrillic words with punctuation properly', () => {
   }
   assert.ok(Math.abs(cue.words[0].start - 10) < 1e-9);
   assert.ok(Math.abs(cue.words[3].end - 14) < 1e-9);
+});
+
+test('smartSplitLongCues splits cues across natural speech pauses >= 0.35s', () => {
+  const cues = [
+    {
+      start: 0,
+      end: 5.0,
+      text: 'One two three four five',
+      words: [
+        { word: 'One', start: 0.0, end: 0.4 },
+        { word: 'two', start: 0.45, end: 0.9 },
+        { word: 'three', start: 0.95, end: 1.4 },
+        { word: 'four', start: 2.2, end: 2.7 },
+        { word: 'five', start: 2.75, end: 3.3 }
+      ]
+    }
+  ];
+  const split = smartSplitLongCues(cues, 14, true);
+  assert.equal(split.length, 2);
+  assert.equal(split[0].text, 'One two three');
+  assert.equal(split[1].text, 'four five');
+  assert.ok(split[0].end <= 1.41);
+  assert.ok(split[1].start >= 2.19);
+});
+
+test('distributeWords with sourceWords maps translated words over active speech spans', () => {
+  const sourceWords = [
+    { word: 'Hello', start: 1.0, end: 1.5 },
+    { word: 'world', start: 1.55, end: 2.1 },
+    { word: 'later', start: 4.0, end: 4.8 }
+  ];
+  const spans = extractSpeechSpans(sourceWords, 1.0, 4.8, 0.35);
+  assert.equal(spans.length, 2);
+
+  // Weights 11 and 8 match span durations 1.1s and 0.8s proportionally
+  const translatedCue = { start: 1.0, end: 4.8, text: 'программист отдыхает' };
+  distributeWords(translatedCue, sourceWords);
+  assert.equal(translatedCue.words.length, 2);
+  for (const w of translatedCue.words) {
+    const mid = (w.start + w.end) * 0.5;
+    const inSpan = (mid >= 0.99 && mid <= 2.11) || (mid >= 3.99 && mid <= 4.81);
+    assert.ok(inSpan, `Word "${w.word}" midpoint ${mid} landed inside silent gap`);
+  }
 });

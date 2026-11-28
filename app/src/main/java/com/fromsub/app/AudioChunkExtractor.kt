@@ -32,6 +32,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -60,8 +61,38 @@ class AudioChunkExtractor(
     @Volatile
     private var captureSink: StreamAudioCaptureSink? = null
 
+    @Volatile
+    private var chunkPermits: Semaphore? = null
+
+    @Volatile
+    private var extractionRunning = false
+
+    fun isActive(): Boolean = extractionRunning || activeExecutor != null || capturePlayer != null
+
     private fun isSessionActive(sessionId: Long): Boolean {
         return !cancelRequested.get() && activeSessionId.get() == sessionId
+    }
+
+    private fun acquireChunkPermit(sessionId: Long): Boolean {
+        val sem = chunkPermits ?: return isSessionActive(sessionId)
+        while (isSessionActive(sessionId)) {
+            try {
+                if (sem.tryAcquire(250, TimeUnit.MILLISECONDS)) {
+                    if (isSessionActive(sessionId)) return true
+                    sem.release()
+                    return false
+                }
+            } catch (_: InterruptedException) {
+                return false
+            }
+        }
+        return false
+    }
+
+    private fun releaseAllChunkPermits() {
+        val sem = chunkPermits
+        chunkPermits = null
+        sem?.release(64)
     }
 
     fun startExtraction(uriString: String, startSec: Double = 0.0, batchMode: Boolean = false): Boolean {
@@ -74,6 +105,8 @@ class AudioChunkExtractor(
         val sessionId = activeSessionId.incrementAndGet()
         cancelRequested.set(false)
         stopActiveWorkersOnly()
+        chunkPermits = Semaphore(if (batchMode) 6 else 12)
+        extractionRunning = true
 
         // Механизм 1.0.24 ("All at once"): 12 кГц моно, нарезка по 5 минут (300 с) с перекрытием 6 с
         val targetSampleRate = if (batchMode) 12000 else 16000
@@ -106,6 +139,10 @@ class AudioChunkExtractor(
                     val errorMsg = JSONObject.quote(e.message ?: "Audio extraction error")
                     postJs("if (window.__onNativeChunkError) { window.__onNativeChunkError($errorMsg); }")
                 }
+            } finally {
+                if (activeSessionId.get() == sessionId) {
+                    extractionRunning = false
+                }
             }
         }, "SubLyter-AudioExtractor-$sessionId").start()
 
@@ -119,6 +156,8 @@ class AudioChunkExtractor(
     }
 
     private fun stopActiveWorkersOnly() {
+        extractionRunning = false
+        releaseAllChunkPermits()
         try { captureSink?.abort() } catch (_: Exception) {}
         try { activeExecutor?.shutdownNow() } catch (_: Exception) {}
         activeExecutor = null
@@ -131,6 +170,7 @@ class AudioChunkExtractor(
             if (chunkDir.exists()) {
                 chunkDir.listFiles()?.forEach { it.delete() }
             }
+            chunkPermits?.release(64)
             true
         } catch (_: Exception) {
             false
@@ -150,7 +190,11 @@ class AudioChunkExtractor(
     fun deleteChunkFile(filePath: String): Boolean {
         return try {
             val f = ChunkCachePaths.resolveSafeChunkFile(context, filePath) ?: return false
-            if (f.exists()) f.delete() else false
+            val deleted = if (f.exists()) f.delete() else false
+            if (f.name.startsWith("chunk_")) {
+                chunkPermits?.release()
+            }
+            deleted
         } catch (_: Exception) {
             false
         }
@@ -211,12 +255,18 @@ class AudioChunkExtractor(
                         }
                     },
                     onDone = { count ->
+                        if (activeSessionId.get() == sessionId) {
+                            extractionRunning = false
+                        }
                         if (isSessionActive(sessionId)) {
                             postJs("if (window.__onNativeChunkDone) { window.__onNativeChunkDone($count); }")
                         }
                         mainHandler.post { releaseCapturePlayer() }
                     },
                     onError = { message ->
+                        if (activeSessionId.get() == sessionId) {
+                            extractionRunning = false
+                        }
                         if (isSessionActive(sessionId)) {
                             val quoted = JSONObject.quote(message)
                             postJs("if (window.__onNativeChunkError) { window.__onNativeChunkError($quoted); }")
@@ -283,6 +333,9 @@ class AudioChunkExtractor(
                 player.prepare()
                 player.playWhenReady = true
             } catch (e: Exception) {
+                if (activeSessionId.get() == sessionId) {
+                    extractionRunning = false
+                }
                 if (isSessionActive(sessionId)) {
                     val quoted = JSONObject.quote(e.message ?: "Failed to open stream")
                     postJs("if (window.__onNativeChunkError) { window.__onNativeChunkError($quoted); }")
@@ -299,6 +352,9 @@ class AudioChunkExtractor(
         captureSink = null
         if (player != null) {
             try { player.release() } catch (_: Exception) {}
+        }
+        if (activeExecutor == null) {
+            extractionRunning = false
         }
     }
 
@@ -468,6 +524,7 @@ class AudioChunkExtractor(
         var codec: MediaCodec? = null
         val outFile = File(chunkDir, "chunk_s${sessionId}_${winIndex}.wav")
         val selectedAudioIdx = selectedAudioIndexProvider()
+        var permitAcquired = false
 
         try {
             extractor.setDataSource(context, uri, null)
@@ -499,6 +556,9 @@ class AudioChunkExtractor(
             val stopAtSec = if (isLastWindow) Double.MAX_VALUE else (winNomEndSec + overlapSec.toDouble() * 0.5 + 0.5)
             val extractorStopUs = if (isLastWindow) Long.MAX_VALUE else ((stopAtSec + 1.0) * 1_000_000.0).toLong()
 
+            if (!acquireChunkPermit(sessionId)) return null
+            permitAcquired = true
+
             val localCodec = MediaCodec.createDecoderByType(mimeType)
             codec = localCodec
             localCodec.configure(audioFormat, null, null, 0)
@@ -506,6 +566,7 @@ class AudioChunkExtractor(
 
             var pcmBytes = 0
             var actualChunkStartSec = seekLandedSec
+            var chunkPeak = 0
 
             BufferedOutputStream(FileOutputStream(outFile), 131072).use { stream ->
                 stream.write(ByteArray(44))
@@ -515,6 +576,8 @@ class AudioChunkExtractor(
                 var writtenSamples = 0L
                 var droppedPreSamples = 0L
                 var reachedWindowEnd = false
+                var currentBufStartSec = -1.0
+                var currentBufOutIdx = 0
 
                 fun flushIo() {
                     if (ioUsed > 0) {
@@ -526,7 +589,12 @@ class AudioChunkExtractor(
 
                 fun pushWindowSample(sample: Short) {
                     if (reachedWindowEnd) return
-                    val sampleTimeSec = seekLandedSec + (droppedPreSamples + writtenSamples).toDouble() / targetSampleRate.toDouble()
+                    val sampleTimeSec = if (currentBufStartSec >= 0.0) {
+                        currentBufStartSec + currentBufOutIdx.toDouble() / targetSampleRate.toDouble()
+                    } else {
+                        seekLandedSec + (droppedPreSamples + writtenSamples).toDouble() / targetSampleRate.toDouble()
+                    }
+                    currentBufOutIdx++
                     if (winIndex > 0 && sampleTimeSec < skipUntilSec) {
                         droppedPreSamples++
                         return
@@ -538,6 +606,8 @@ class AudioChunkExtractor(
                         reachedWindowEnd = true
                         return
                     }
+                    val absVal = if (sample < 0) -sample.toInt() else sample.toInt()
+                    if (absVal > chunkPeak) chunkPeak = absVal
                     ioBuf[ioUsed++] = (sample.toInt() and 0xFF).toByte()
                     ioBuf[ioUsed++] = ((sample.toInt() ushr 8) and 0xFF).toByte()
                     if (ioUsed >= ioBuf.size - 2) flushIo()
@@ -550,6 +620,7 @@ class AudioChunkExtractor(
                 var srcChannels = if (audioFormat.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
                     audioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
                 } else 2
+                var channelWeights = FloatArray(srcChannels) { ch -> WavChunkWriter.channelWeight(ch, srcChannels) }
                 var pcmEncoding = AudioFormat.ENCODING_PCM_16BIT
                 var resamplePos = 0.0
                 var resampleStep = srcSampleRate.toDouble() / targetSampleRate.toDouble()
@@ -585,7 +656,11 @@ class AudioChunkExtractor(
                                 srcSampleRate = newFmt.getInteger(MediaFormat.KEY_SAMPLE_RATE).coerceAtLeast(8000)
                             }
                             if (newFmt.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
-                                srcChannels = newFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
+                                val nextCh = newFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
+                                if (nextCh != srcChannels) {
+                                    srcChannels = nextCh
+                                    channelWeights = FloatArray(srcChannels) { ch -> WavChunkWriter.channelWeight(ch, srcChannels) }
+                                }
                             }
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && newFmt.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
                                 pcmEncoding = newFmt.getInteger(MediaFormat.KEY_PCM_ENCODING)
@@ -594,6 +669,12 @@ class AudioChunkExtractor(
                         } else if (outIndex >= 0) {
                             val outBuf = localCodec.getOutputBuffer(outIndex)
                             if (outBuf != null && bufferInfo.size > 0 && !reachedWindowEnd) {
+                                currentBufStartSec = if (bufferInfo.presentationTimeUs >= 0L) {
+                                    bufferInfo.presentationTimeUs.toDouble() / 1_000_000.0
+                                } else {
+                                    -1.0
+                                }
+                                currentBufOutIdx = 0
                                 outBuf.position(bufferInfo.offset)
                                 outBuf.limit(bufferInfo.offset + bufferInfo.size)
                                 outBuf.order(ByteOrder.LITTLE_ENDIAN)
@@ -601,6 +682,7 @@ class AudioChunkExtractor(
                                     outBuf = outBuf,
                                     pcmEncoding = pcmEncoding,
                                     srcChannels = srcChannels,
+                                    channelWeights = channelWeights,
                                     resamplePos = resamplePos,
                                     resampleStep = resampleStep,
                                     stopCheck = { reachedWindowEnd || !isSessionActive(sessionId) },
@@ -635,6 +717,7 @@ class AudioChunkExtractor(
             val cutoffSec = if (winIndex == 0) actualChunkStartSec else winNomStartSec
             val nextCutoffSec = if (isLastWindow) (endSec + 100.0) else winNomEndSec
 
+            permitAcquired = false
             return JSONObject().apply {
                 put("index", winIndex)
                 put("path", outFile.absolutePath)
@@ -648,12 +731,16 @@ class AudioChunkExtractor(
                 put("cutoffSec", cutoffSec)
                 put("nextCutoff", nextCutoffSec)
                 put("nextCutoffSec", nextCutoffSec)
+                put("peak", chunkPeak)
                 put("isLast", false)
             }
         } catch (e: Throwable) {
             try { outFile.delete() } catch (_: Exception) {}
             throw e
         } finally {
+            if (permitAcquired) {
+                chunkPermits?.release()
+            }
             try { codec?.stop() } catch (_: Exception) {}
             try { codec?.release() } catch (_: Exception) {}
             try { extractor.release() } catch (_: Exception) {}
@@ -745,6 +832,12 @@ class AudioChunkExtractor(
         var overlapFilled = 0
         var overlapWritePos = 0
 
+        if (!acquireChunkPermit(sessionId)) {
+            extractor.release()
+            return
+        }
+        var currentPermitHeld = true
+
         val codec = MediaCodec.createDecoderByType(mimeType)
         codec.configure(audioFormat, null, null, 0)
         codec.start()
@@ -752,6 +845,12 @@ class AudioChunkExtractor(
         var chunkIndex = 0
         var currentChunkStartSample = 0L
         var totalWrittenMonoSamples = 0L
+        var currentChunkStartSec = baseStartSec
+        var currentChunkPtsAnchored = false
+        var lastEmittedSamplePtsSec = baseStartSec
+        var currentBufStartSec = -1.0
+        var currentBufOutIdx = 0
+        var chunkPeak = 0
 
         var currentFile = File(chunkDir, "chunk_s${sessionId}_0.wav")
         var currentOut = BufferedOutputStream(FileOutputStream(currentFile), 131072)
@@ -769,6 +868,22 @@ class AudioChunkExtractor(
             }
         }
 
+        fun maxPeakInOverlapRing(): Int {
+            if (overlapFilled <= 0) return 0
+            var peak = 0
+            val start = if (overlapFilled < overlapBytesCount) 0 else overlapWritePos
+            var i = 0
+            while (i + 1 < overlapFilled) {
+                val lo = overlapRing[(start + i) % overlapBytesCount].toInt() and 0xFF
+                val hi = overlapRing[(start + i + 1) % overlapBytesCount].toInt()
+                val sample = ((hi shl 8) or lo).toShort()
+                val absVal = if (sample < 0) -sample.toInt() else sample.toInt()
+                if (absVal > peak) peak = absVal
+                i += 2
+            }
+            return peak
+        }
+
         fun finalizeChunk(isLast: Boolean) {
             flushIoBuf()
             currentOut.flush()
@@ -777,7 +892,11 @@ class AudioChunkExtractor(
                 RandomAccessFile(currentFile, "rw").use { raf ->
                     WavChunkWriter.writeWavHeader(raf, currentChunkPcmBytes, targetSampleRate, 1)
                 }
-                val startSec = baseStartSec + currentChunkStartSample.toDouble() / targetSampleRate.toDouble()
+                val startSec = if (currentChunkPtsAnchored) {
+                    currentChunkStartSec
+                } else {
+                    baseStartSec + currentChunkStartSample.toDouble() / targetSampleRate.toDouble()
+                }
                 val durationSec = (currentChunkPcmBytes / 2).toDouble() / targetSampleRate.toDouble()
                 val endSec = startSec + durationSec
                 val cutoffSec = if (chunkIndex == 0) baseStartSec else (startSec + overlapSec / 2.0)
@@ -796,11 +915,17 @@ class AudioChunkExtractor(
                     put("cutoffSec", cutoffSec)
                     put("nextCutoff", nextCutoffSec)
                     put("nextCutoffSec", nextCutoffSec)
+                    put("peak", chunkPeak)
                     put("isLast", isLast)
                 }
+                currentPermitHeld = false
                 onChunkReady(chunkObj, isLast)
             } else {
                 try { currentFile.delete() } catch (_: Exception) {}
+                if (currentPermitHeld) {
+                    currentPermitHeld = false
+                    chunkPermits?.release()
+                }
                 if (isLast && chunkIndex == 0 && isSessionActive(sessionId)) {
                     val err = JSONObject.quote("Failed to decode audio data")
                     postJs("if (window.__onNativeChunkError) { window.__onNativeChunkError($err); }")
@@ -811,6 +936,9 @@ class AudioChunkExtractor(
         fun rotateNextChunk() {
             finalizeChunk(isLast = false)
             if (!isSessionActive(sessionId)) return
+            if (!acquireChunkPermit(sessionId)) return
+            currentPermitHeld = true
+            chunkPeak = 0
             chunkIndex++
             currentFile = File(chunkDir, "chunk_s${sessionId}_${chunkIndex}.wav")
             currentOut = BufferedOutputStream(FileOutputStream(currentFile), 131072)
@@ -819,6 +947,9 @@ class AudioChunkExtractor(
 
             val overlapSamples = (overlapFilled / 2).toLong()
             currentChunkStartSample = (totalWrittenMonoSamples - overlapSamples).coerceAtLeast(0L)
+            if (currentChunkPtsAnchored) {
+                currentChunkStartSec = (lastEmittedSamplePtsSec - overlapSamples.toDouble() / targetSampleRate.toDouble()).coerceAtLeast(0.0)
+            }
             if (overlapFilled > 0) {
                 if (overlapFilled < overlapBytesCount) {
                     currentOut.write(overlapRing, 0, overlapFilled)
@@ -830,10 +961,28 @@ class AudioChunkExtractor(
                     }
                 }
                 currentChunkPcmBytes += overlapFilled
+                chunkPeak = maxPeakInOverlapRing()
             }
         }
 
         fun pushMonoSample(sample: Short) {
+            val samplePts = if (currentBufStartSec >= 0.0) {
+                currentBufStartSec + currentBufOutIdx.toDouble() / targetSampleRate.toDouble()
+            } else {
+                baseStartSec + totalWrittenMonoSamples.toDouble() / targetSampleRate.toDouble()
+            }
+            currentBufOutIdx++
+            if (totalWrittenMonoSamples == 0L && currentBufStartSec >= 0.0) {
+                currentChunkStartSec = samplePts
+                currentChunkPtsAnchored = true
+            } else if (currentBufStartSec >= 0.0) {
+                currentChunkPtsAnchored = true
+            }
+            lastEmittedSamplePtsSec = samplePts
+
+            val absVal = if (sample < 0) -sample.toInt() else sample.toInt()
+            if (absVal > chunkPeak) chunkPeak = absVal
+
             val lo = (sample.toInt() and 0xFF).toByte()
             val hi = ((sample.toInt() ushr 8) and 0xFF).toByte()
             ioChunkBuf[ioChunkBufUsed++] = lo
@@ -855,6 +1004,7 @@ class AudioChunkExtractor(
         var srcChannels = if (audioFormat.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
             audioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
         } else 2
+        var channelWeights = FloatArray(srcChannels) { ch -> WavChunkWriter.channelWeight(ch, srcChannels) }
         var pcmEncoding = AudioFormat.ENCODING_PCM_16BIT
         var resamplePos = 0.0
         var resampleStep = srcSampleRate.toDouble() / targetSampleRate.toDouble()
@@ -890,7 +1040,11 @@ class AudioChunkExtractor(
                             srcSampleRate = newFmt.getInteger(MediaFormat.KEY_SAMPLE_RATE).coerceAtLeast(8000)
                         }
                         if (newFmt.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
-                            srcChannels = newFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
+                            val nextCh = newFmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
+                            if (nextCh != srcChannels) {
+                                srcChannels = nextCh
+                                channelWeights = FloatArray(srcChannels) { ch -> WavChunkWriter.channelWeight(ch, srcChannels) }
+                            }
                         }
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && newFmt.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
                             pcmEncoding = newFmt.getInteger(MediaFormat.KEY_PCM_ENCODING)
@@ -899,6 +1053,12 @@ class AudioChunkExtractor(
                     } else if (outIndex >= 0) {
                         val outBuf = codec.getOutputBuffer(outIndex)
                         if (outBuf != null && bufferInfo.size > 0) {
+                            currentBufStartSec = if (bufferInfo.presentationTimeUs >= 0L) {
+                                bufferInfo.presentationTimeUs.toDouble() / 1_000_000.0
+                            } else {
+                                -1.0
+                            }
+                            currentBufOutIdx = 0
                             outBuf.position(bufferInfo.offset)
                             outBuf.limit(bufferInfo.offset + bufferInfo.size)
                             outBuf.order(ByteOrder.LITTLE_ENDIAN)
@@ -906,6 +1066,7 @@ class AudioChunkExtractor(
                                 outBuf = outBuf,
                                 pcmEncoding = pcmEncoding,
                                 srcChannels = srcChannels,
+                                channelWeights = channelWeights,
                                 resamplePos = resamplePos,
                                 resampleStep = resampleStep,
                                 stopCheck = { !isSessionActive(sessionId) },
@@ -924,10 +1085,18 @@ class AudioChunkExtractor(
             }
             if (!isSessionActive(sessionId)) {
                 try { currentFile.delete() } catch (_: Exception) {}
+                if (currentPermitHeld) {
+                    currentPermitHeld = false
+                    chunkPermits?.release()
+                }
             } else {
                 finalizeChunk(isLast = true)
             }
         } finally {
+            if (currentPermitHeld) {
+                currentPermitHeld = false
+                chunkPermits?.release()
+            }
             try { currentOut.close() } catch (_: Exception) {}
             try { codec.stop() } catch (_: Exception) {}
             try { codec.release() } catch (_: Exception) {}
@@ -940,50 +1109,118 @@ class AudioChunkExtractor(
         outBuf: ByteBuffer,
         pcmEncoding: Int,
         srcChannels: Int,
+        channelWeights: FloatArray,
         resamplePos: Double,
         resampleStep: Double,
         stopCheck: () -> Boolean,
         onSample: (Short) -> Unit
     ): Double {
         var pos = resamplePos
+        var checkCounter = 0
         if (pcmEncoding == AudioFormat.ENCODING_PCM_FLOAT) {
             val floatBuf = outBuf.asFloatBuffer()
             val totalFrames = floatBuf.remaining() / srcChannels
-            while (pos < totalFrames && !stopCheck()) {
-                val i0 = pos.toInt().coerceIn(0, (totalFrames - 1).coerceAtLeast(0))
-                val i1 = (i0 + 1).coerceAtMost((totalFrames - 1).coerceAtLeast(0))
-                val frac = (pos - i0).toFloat()
-                var s0 = 0f
-                var s1 = 0f
-                for (ch in 0 until srcChannels) {
-                    val w = WavChunkWriter.channelWeight(ch, srcChannels)
-                    if (w == 0f) continue
-                    s0 += floatBuf.get(i0 * srcChannels + ch) * w
-                    s1 += floatBuf.get(i1 * srcChannels + ch) * w
+            if (totalFrames <= 0) return 0.0
+            val maxIdx = totalFrames - 1
+            if (srcChannels == 1) {
+                while (pos < totalFrames) {
+                    if ((checkCounter++ and 0xFF) == 0 && stopCheck()) break
+                    val i0 = pos.toInt().coerceIn(0, maxIdx)
+                    val i1 = if (i0 < maxIdx) i0 + 1 else maxIdx
+                    val frac = (pos - i0).toFloat()
+                    val s0 = floatBuf.get(i0)
+                    val s1 = floatBuf.get(i1)
+                    val interp = s0 + (s1 - s0) * frac
+                    onSample((interp.coerceIn(-1f, 1f) * 32767f).toInt().toShort())
+                    pos += resampleStep
                 }
-                val interp = s0 + (s1 - s0) * frac
-                onSample((interp.coerceIn(-1f, 1f) * 32767f).toInt().toShort())
-                pos += resampleStep
+            } else if (srcChannels == 2) {
+                while (pos < totalFrames) {
+                    if ((checkCounter++ and 0xFF) == 0 && stopCheck()) break
+                    val i0 = pos.toInt().coerceIn(0, maxIdx)
+                    val i1 = if (i0 < maxIdx) i0 + 1 else maxIdx
+                    val frac = (pos - i0).toFloat()
+                    val b0 = i0 shl 1
+                    val b1 = i1 shl 1
+                    val s0 = (floatBuf.get(b0) + floatBuf.get(b0 + 1)) * 0.5f
+                    val s1 = (floatBuf.get(b1) + floatBuf.get(b1 + 1)) * 0.5f
+                    val interp = s0 + (s1 - s0) * frac
+                    onSample((interp.coerceIn(-1f, 1f) * 32767f).toInt().toShort())
+                    pos += resampleStep
+                }
+            } else {
+                while (pos < totalFrames) {
+                    if ((checkCounter++ and 0xFF) == 0 && stopCheck()) break
+                    val i0 = pos.toInt().coerceIn(0, maxIdx)
+                    val i1 = if (i0 < maxIdx) i0 + 1 else maxIdx
+                    val frac = (pos - i0).toFloat()
+                    var s0 = 0f
+                    var s1 = 0f
+                    val base0 = i0 * srcChannels
+                    val base1 = i1 * srcChannels
+                    for (ch in 0 until srcChannels) {
+                        val w = channelWeights[ch]
+                        if (w == 0f) continue
+                        s0 += floatBuf.get(base0 + ch) * w
+                        s1 += floatBuf.get(base1 + ch) * w
+                    }
+                    val interp = s0 + (s1 - s0) * frac
+                    onSample((interp.coerceIn(-1f, 1f) * 32767f).toInt().toShort())
+                    pos += resampleStep
+                }
             }
             return (pos - totalFrames.toDouble()).coerceAtLeast(0.0)
         } else {
             val shortBuf = outBuf.asShortBuffer()
             val totalFrames = shortBuf.remaining() / srcChannels
-            while (pos < totalFrames && !stopCheck()) {
-                val i0 = pos.toInt().coerceIn(0, (totalFrames - 1).coerceAtLeast(0))
-                val i1 = (i0 + 1).coerceAtMost((totalFrames - 1).coerceAtLeast(0))
-                val frac = (pos - i0).toFloat()
-                var s0 = 0f
-                var s1 = 0f
-                for (ch in 0 until srcChannels) {
-                    val w = WavChunkWriter.channelWeight(ch, srcChannels)
-                    if (w == 0f) continue
-                    s0 += shortBuf.get(i0 * srcChannels + ch).toFloat() * w
-                    s1 += shortBuf.get(i1 * srcChannels + ch).toFloat() * w
+            if (totalFrames <= 0) return 0.0
+            val maxIdx = totalFrames - 1
+            if (srcChannels == 1) {
+                while (pos < totalFrames) {
+                    if ((checkCounter++ and 0xFF) == 0 && stopCheck()) break
+                    val i0 = pos.toInt().coerceIn(0, maxIdx)
+                    val i1 = if (i0 < maxIdx) i0 + 1 else maxIdx
+                    val frac = (pos - i0).toFloat()
+                    val s0 = shortBuf.get(i0).toFloat()
+                    val s1 = shortBuf.get(i1).toFloat()
+                    val interp = (s0 + (s1 - s0) * frac).toInt().coerceIn(-32768, 32767).toShort()
+                    onSample(interp)
+                    pos += resampleStep
                 }
-                val interp = (s0 + (s1 - s0) * frac).toInt().coerceIn(-32768, 32767).toShort()
-                onSample(interp)
-                pos += resampleStep
+            } else if (srcChannels == 2) {
+                while (pos < totalFrames) {
+                    if ((checkCounter++ and 0xFF) == 0 && stopCheck()) break
+                    val i0 = pos.toInt().coerceIn(0, maxIdx)
+                    val i1 = if (i0 < maxIdx) i0 + 1 else maxIdx
+                    val frac = (pos - i0).toFloat()
+                    val b0 = i0 shl 1
+                    val b1 = i1 shl 1
+                    val s0 = (shortBuf.get(b0).toInt() + shortBuf.get(b0 + 1).toInt()) * 0.5f
+                    val s1 = (shortBuf.get(b1).toInt() + shortBuf.get(b1 + 1).toInt()) * 0.5f
+                    val interp = (s0 + (s1 - s0) * frac).toInt().coerceIn(-32768, 32767).toShort()
+                    onSample(interp)
+                    pos += resampleStep
+                }
+            } else {
+                while (pos < totalFrames) {
+                    if ((checkCounter++ and 0xFF) == 0 && stopCheck()) break
+                    val i0 = pos.toInt().coerceIn(0, maxIdx)
+                    val i1 = if (i0 < maxIdx) i0 + 1 else maxIdx
+                    val frac = (pos - i0).toFloat()
+                    var s0 = 0f
+                    var s1 = 0f
+                    val base0 = i0 * srcChannels
+                    val base1 = i1 * srcChannels
+                    for (ch in 0 until srcChannels) {
+                        val w = channelWeights[ch]
+                        if (w == 0f) continue
+                        s0 += shortBuf.get(base0 + ch).toFloat() * w
+                        s1 += shortBuf.get(base1 + ch).toFloat() * w
+                    }
+                    val interp = (s0 + (s1 - s0) * frac).toInt().coerceIn(-32768, 32767).toShort()
+                    onSample(interp)
+                    pos += resampleStep
+                }
             }
             return (pos - totalFrames.toDouble()).coerceAtLeast(0.0)
         }
