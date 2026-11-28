@@ -424,7 +424,7 @@
 
     /* ---- Шрифт и размер заголовка SubLyter ---- */
     const DEFAULT_TITLE_FONT = "'Outfit', 'Inter', sans-serif";
-    const DEFAULT_TITLE_SIZE = 30;
+    const DEFAULT_TITLE_SIZE = 34;
     const titleFontFamilyEl = $('titleFontFamily');
     const titleFontSizeEl = $('titleFontSize');
     const titleFontSizeValEl = $('titleFontSizeVal');
@@ -441,9 +441,9 @@
       }
     }
 
-    if (storageMod.safeGetStorage('sublater_title_size_v30', '') !== '1') {
+    if (storageMod.safeGetStorage('sublater_title_size_v34', '') !== '1') {
       storageMod.safeSetStorage('sublater_title_size', String(DEFAULT_TITLE_SIZE));
-      storageMod.safeSetStorage('sublater_title_size_v30', '1');
+      storageMod.safeSetStorage('sublater_title_size_v34', '1');
     }
 
     const savedTitleFont = storageMod.safeGetStorage('sublater_title_font', DEFAULT_TITLE_FONT);

@@ -31,6 +31,8 @@ body[data-m3-mode="light"] #settingsBackdrop {
   height: min(680px, 86vh);
   max-height: 87vh;
   overflow: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -78,13 +80,13 @@ body[data-m3-mode="light"] #globalSettings {
   top: 4px;
   bottom: 4px;
   left: 0;
-  width: 25%;
+  width: calc((100% - 14px) / 4);
   border-radius: 16px;
   background: var(--md-primary-container);
   pointer-events: none;
-  will-change: transform, width;
+  will-change: transform;
   transform: translate3d(4px, 0, 0);
-  transition: transform 0.30s cubic-bezier(0.2, 0.9, 0.2, 1), width 0.30s cubic-bezier(0.2, 0.9, 0.2, 1), background-color 0.2s ease;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.2s ease;
   z-index: 0;
 }
 .m3-settings-tab-indicator.dragging {
@@ -153,6 +155,7 @@ body[data-m3-mode="light"] .m3-settings-tab.active {
 }
 
 .m3-settings-viewport {
+  position: relative;
   direction: ltr;
   flex: 1 1 auto;
   min-height: 0;
@@ -168,7 +171,7 @@ body[data-m3-mode="light"] .m3-settings-tab.active {
   width: 100%;
   height: 100%;
   will-change: transform;
-  transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.2, 1);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .m3-settings-track.dragging {
   transition: none !important;
@@ -182,18 +185,85 @@ body[data-m3-mode="light"] .m3-settings-tab.active {
   overflow-x: hidden;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  touch-action: pan-y;
+  contain: layout style;
+  backface-visibility: hidden;
+  will-change: transform;
+  transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 2px 2px 10px;
 }
+.m3-settings-panel.pulling {
+  transition: none !important;
+}
 html[dir="rtl"] .m3-settings-panel {
   direction: rtl;
 }
-.m3-settings-panel::-webkit-scrollbar { width: 4px; }
-.m3-settings-panel::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--md-primary) 38%, var(--md-surface-container-highest));
-  border-radius: 4px;
+#globalSettings::-webkit-scrollbar,
+.m3-settings-panel::-webkit-scrollbar,
+#globalSettings textarea::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+#globalSettings textarea {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.m3-settings-pull-pill {
+  position: absolute;
+  left: 50%;
+  z-index: 5;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--md-surface-container-highest);
+  color: var(--md-on-surface);
+  opacity: 0;
+  will-change: transform, opacity;
+  transition: background-color 0.16s ease, color 0.16s ease, opacity 0.18s ease, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.m3-settings-pull-pill.dragging {
+  transition: background-color 0.16s ease, color 0.16s ease !important;
+}
+.m3-settings-pull-top {
+  top: 8px;
+  transform: translate3d(-50%, -12px, 0) scale(0.92);
+}
+.m3-settings-pull-bottom {
+  bottom: 8px;
+  transform: translate3d(-50%, 12px, 0) scale(0.92);
+}
+.m3-settings-pull-pill svg {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.18s ease;
+}
+.m3-settings-pull-pill.ready {
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--md-primary) 34%, transparent);
+}
+.m3-settings-pull-top.ready svg {
+  transform: translateY(-2px);
+}
+.m3-settings-pull-bottom.ready svg {
+  transform: translateY(2px);
 }
 
 #globalSettings select,
@@ -446,7 +516,7 @@ body[data-m3-mode="light"] .m3-count-pill.keys-ready { background: rgba(22, 163,
 }
 #titleFontPreview {
   font-family: var(--title-font, 'Outfit', 'Inter', sans-serif);
-  font-size: var(--title-size, 30px);
+  font-size: var(--title-size, 34px);
   font-weight: 700;
   font-synthesis: none;
   color: var(--md-primary);

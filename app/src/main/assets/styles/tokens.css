@@ -5,7 +5,7 @@
   --sub-bottom: 12%;
   --sub-font: 'Inter', -apple-system, sans-serif;
   --title-font: 'Outfit', 'Inter', sans-serif;
-  --title-size: 30px;
+  --title-size: 34px;
   --bg-opacity: 62;
   --accent: #1b8ef2;
   --on-accent: #041016;
@@ -84,7 +84,7 @@ body {
 .app-header h2 {
   font-family: var(--title-font, 'Plus Jakarta Sans', 'Inter', sans-serif);
   font-weight: 700;
-  font-size: var(--title-size, 30px);
+  font-size: var(--title-size, 34px);
   font-synthesis: none;
   letter-spacing: -0.025em;
   line-height: 1.1;

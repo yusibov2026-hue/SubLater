@@ -190,11 +190,24 @@
 
   /* ---- Модальное окно настроек и 4 вкладки Material You ---- */
   const SETTINGS_TABS = ['design', 'subtitles', 'style', 'advanced'];
+  const SETTINGS_TAB_KEYS = {
+    design: 'settings.tabDesign',
+    subtitles: 'settings.tabSubtitles',
+    style: 'settings.tabStyle',
+    advanced: 'settings.tabAdvanced'
+  };
   let activeSettingsTab = 'design';
   const settingsTabsEl = $('settingsTabs');
   const settingsTabIndicator = $('settingsTabIndicator');
   const settingsViewport = $('settingsViewport');
   const settingsTrack = $('settingsTrack');
+  const settingsPullTop = $('settingsPullTop');
+  const settingsPullTopLabel = $('settingsPullTopLabel');
+  const settingsPullBottom = $('settingsPullBottom');
+  const settingsPullBottomLabel = $('settingsPullBottomLabel');
+  const settingsTabButtons = settingsTabsEl ? Array.from(settingsTabsEl.querySelectorAll('.m3-settings-tab')) : [];
+  const settingsPanels = settingsTrack ? Array.from(settingsTrack.querySelectorAll('.m3-settings-panel')) : [];
+  let cachedTabRects = [];
 
   if (settingsViewport) {
     settingsViewport.addEventListener('scroll', () => {
@@ -202,27 +215,55 @@
     }, { passive: true });
   }
 
+  function cacheSettingsTabMetrics() {
+    if (!settingsTabsEl || !settingsTabButtons.length) return;
+    cachedTabRects = settingsTabButtons.map((btn) => ({
+      left: btn.offsetLeft,
+      width: btn.offsetWidth
+    }));
+    const w0 = cachedTabRects[0] && cachedTabRects[0].width;
+    if (settingsTabIndicator && w0 > 0) {
+      settingsTabIndicator.style.width = `${w0}px`;
+    }
+  }
+
+  function resetPullIndicators() {
+    if (settingsPullTop) {
+      settingsPullTop.classList.remove('dragging', 'ready');
+      settingsPullTop.style.opacity = '';
+      settingsPullTop.style.transform = '';
+    }
+    if (settingsPullBottom) {
+      settingsPullBottom.classList.remove('dragging', 'ready');
+      settingsPullBottom.style.opacity = '';
+      settingsPullBottom.style.transform = '';
+    }
+    settingsPanels.forEach((panel) => {
+      panel.classList.remove('pulling');
+      if (panel.style.transform) panel.style.transform = '';
+    });
+  }
+
   function positionSettingsIndicator(floatIdx, instant = false) {
-    if (!settingsTabIndicator || !settingsTabsEl) return;
-    const buttons = Array.from(settingsTabsEl.querySelectorAll('.m3-settings-tab'));
-    if (!buttons.length) return;
-    const maxIdx = buttons.length - 1;
+    if (!settingsTabIndicator || !settingsTabButtons.length) return;
+    if (!cachedTabRects.length || !(cachedTabRects[0] && cachedTabRects[0].width > 0)) {
+      cacheSettingsTabMetrics();
+    }
+    if (!cachedTabRects.length) return;
+    const maxIdx = cachedTabRects.length - 1;
     const clamped = Math.max(0, Math.min(maxIdx, Number(floatIdx) || 0));
     const i0 = Math.floor(clamped);
     const i1 = Math.min(maxIdx, i0 + 1);
     const frac = clamped - i0;
-    const b0 = buttons[i0];
-    const b1 = buttons[i1];
-    const x = b0.offsetLeft + (b1.offsetLeft - b0.offsetLeft) * frac;
-    const w = b0.offsetWidth + (b1.offsetWidth - b0.offsetWidth) * frac;
-    if (w > 0) {
-      if (instant) settingsTabIndicator.classList.add('dragging');
-      settingsTabIndicator.style.width = `${w}px`;
-      settingsTabIndicator.style.transform = `translate3d(${x}px, 0, 0)`;
-      if (instant) {
-        void settingsTabIndicator.offsetWidth;
-        settingsTabIndicator.classList.remove('dragging');
-      }
+    const r0 = cachedTabRects[i0];
+    const r1 = cachedTabRects[i1];
+    if (!r0 || !(r0.width > 0)) return;
+    const x = r0.left + ((r1 ? r1.left : r0.left) - r0.left) * frac;
+    if (instant) settingsTabIndicator.classList.add('dragging');
+    settingsTabIndicator.style.transform = `translate3d(${x}px, 0, 0)`;
+    if (instant) {
+      void settingsTabIndicator.offsetWidth;
+      settingsTabIndicator.classList.remove('dragging');
     }
   }
 
@@ -232,17 +273,23 @@
     activeSettingsTab = next;
     if (settingsViewport && settingsViewport.scrollLeft !== 0) settingsViewport.scrollLeft = 0;
 
-    if (settingsTabsEl) {
-      settingsTabsEl.querySelectorAll('.m3-settings-tab').forEach((tabBtn) => {
-        const on = tabBtn.dataset.settingsTab === next;
-        tabBtn.classList.toggle('active', on);
-        tabBtn.setAttribute('aria-selected', on ? 'true' : 'false');
-      });
-    }
+    settingsTabButtons.forEach((tabBtn) => {
+      const on = tabBtn.dataset.settingsTab === next;
+      tabBtn.classList.toggle('active', on);
+      tabBtn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+
+    settingsPanels.forEach((panel) => {
+      const isNext = panel.dataset.settingsPanel === next;
+      panel.classList.toggle('active', isNext);
+      panel.classList.remove('pulling');
+      if (panel.style.transform) panel.style.transform = '';
+      if (isNext && opts && opts.scrollTop === 0) {
+        panel.scrollTop = 0;
+      }
+    });
+
     if (settingsTrack) {
-      settingsTrack.querySelectorAll('.m3-settings-panel').forEach((panel) => {
-        panel.classList.toggle('active', panel.dataset.settingsPanel === next);
-      });
       if (opts && opts.instant) {
         settingsTrack.classList.add('dragging');
         if (settingsTabIndicator) settingsTabIndicator.classList.add('dragging');
@@ -260,73 +307,127 @@
     } else {
       positionSettingsIndicator(nextIdx, Boolean(opts && opts.instant));
     }
-
-    if (next === 'style') {
-      themeCtrl.syncAllM3Sliders();
-    }
   }
 
-  if (settingsTabsEl) {
-    settingsTabsEl.querySelectorAll('.m3-settings-tab').forEach((tabBtn) => {
-      tabBtn.addEventListener('click', () => switchSettingsTab(tabBtn.dataset.settingsTab));
-    });
-  }
+  settingsTabButtons.forEach((tabBtn) => {
+    tabBtn.addEventListener('click', () => switchSettingsTab(tabBtn.dataset.settingsTab));
+  });
 
   (function setupSettingsSwipe() {
-    if (!settingsViewport || !settingsTrack) return;
+    if (!globalSettings || !settingsViewport || !settingsTrack) return;
     let startX = 0;
     let startY = 0;
     let startT = 0;
     let lockStartX = 0;
+    let lockStartY = 0;
     let lastX = 0;
-    let lastT = 0;
     let prevX = 0;
+    let lastY = 0;
+    let prevY = 0;
+    let lastT = 0;
     let prevT = 0;
-    let tracking = false;
-    let horizLock = false;
+    let dragBasePx = 0;
     let viewportW = 360;
+    let mode = 'none';
+    let startedInViewport = false;
+    let wasReady = false;
+    let activePanel = null;
 
     function isSettingsSwipeBlocked(target) {
-      return Boolean(
-        target &&
-        target.closest &&
-        target.closest('input[type="range"], input[type="text"], input[type="password"], textarea, select, .color-picker')
-      );
+      if (!target || !target.closest) return false;
+      if (target.closest('input[type="range"]')) return true;
+      const activeEl = document.activeElement;
+      if (activeEl && target === activeEl && activeEl.matches && activeEl.matches('input[type="text"], input[type="password"], textarea')) {
+        return true;
+      }
+      return false;
     }
 
-    settingsViewport.addEventListener('touchstart', (e) => {
+    function readLiveTrackX(fallbackIdx) {
+      try {
+        const tf = getComputedStyle(settingsTrack).transform;
+        if (tf && tf !== 'none') {
+          if (typeof DOMMatrix === 'function') {
+            const m = new DOMMatrix(tf);
+            if (Number.isFinite(m.m41)) return m.m41;
+          }
+          const match = tf.match(/matrix\([^,]+,[^,]+,[^,]+,[^,]+,\s*([^,]+),/);
+          if (match) {
+            const v = parseFloat(match[1]);
+            if (Number.isFinite(v)) return v;
+          }
+        }
+      } catch (_) {}
+      return -fallbackIdx * viewportW;
+    }
+
+    globalSettings.addEventListener('touchstart', (e) => {
+      if (!globalSettings.classList.contains('show')) return;
       if (!e.touches || e.touches.length !== 1) return;
       if (isSettingsSwipeBlocked(e.target)) return;
       const touch = e.touches[0];
       startX = touch.clientX;
       startY = touch.clientY;
       startT = Date.now();
-      lockStartX = touch.clientX;
-      prevX = lastX = touch.clientX;
+      lockStartX = startX;
+      lockStartY = startY;
+      prevX = lastX = startX;
+      prevY = lastY = startY;
       prevT = lastT = startT;
-      tracking = true;
-      horizLock = false;
       viewportW = Math.max(200, settingsViewport.clientWidth || 360);
+      const curIdx = SETTINGS_TABS.indexOf(activeSettingsTab);
+      dragBasePx = readLiveTrackX(curIdx);
+      startedInViewport = Boolean(e.target && e.target.closest && e.target.closest('#settingsViewport'));
+      activePanel = settingsPanels[curIdx] || null;
+      mode = 'none';
+      wasReady = false;
     }, { passive: true });
 
-    settingsViewport.addEventListener('touchmove', (e) => {
-      if (!tracking || !e.touches || e.touches.length !== 1) return;
+    globalSettings.addEventListener('touchmove', (e) => {
+      if (!globalSettings.classList.contains('show')) return;
+      if (!e.touches || e.touches.length !== 1) return;
+      if (mode === 'scroll') return;
       const touch = e.touches[0];
       const dx = touch.clientX - startX;
       const dy = touch.clientY - startY;
 
-      if (!horizLock) {
-        if (Math.abs(dy) >= Math.abs(dx) * 0.9 && Math.abs(dy) > 10) {
-          tracking = false;
-          return;
-        }
-        if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.15) {
-          horizLock = true;
+      if (mode === 'none') {
+        if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.05) {
+          mode = 'horiz';
           lockStartX = touch.clientX;
           prevX = lastX = touch.clientX;
           prevT = lastT = Date.now();
           settingsTrack.classList.add('dragging');
           if (settingsTabIndicator) settingsTabIndicator.classList.add('dragging');
+        } else if (startedInViewport && Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx) * 1.15) {
+          const curIdx = SETTINGS_TABS.indexOf(activeSettingsTab);
+          const panel = settingsPanels[curIdx] || activePanel;
+          const atTop = !panel || panel.scrollTop <= 2;
+          const atBottom = !panel || (panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 3);
+          if (dy > 0 && atTop && curIdx > 0) {
+            mode = 'pull-prev';
+            activePanel = panel;
+            lockStartY = touch.clientY;
+            prevY = lastY = touch.clientY;
+            prevT = lastT = Date.now();
+            if (settingsPullTopLabel) settingsPullTopLabel.textContent = t(SETTINGS_TAB_KEYS[SETTINGS_TABS[curIdx - 1]]);
+            if (activePanel) activePanel.classList.add('pulling');
+            if (settingsPullTop) settingsPullTop.classList.add('dragging');
+            if (settingsTabIndicator) settingsTabIndicator.classList.add('dragging');
+          } else if (dy < 0 && atBottom && curIdx < SETTINGS_TABS.length - 1) {
+            mode = 'pull-next';
+            activePanel = panel;
+            lockStartY = touch.clientY;
+            prevY = lastY = touch.clientY;
+            prevT = lastT = Date.now();
+            if (settingsPullBottomLabel) settingsPullBottomLabel.textContent = t(SETTINGS_TAB_KEYS[SETTINGS_TABS[curIdx + 1]]);
+            if (activePanel) activePanel.classList.add('pulling');
+            if (settingsPullBottom) settingsPullBottom.classList.add('dragging');
+            if (settingsTabIndicator) settingsTabIndicator.classList.add('dragging');
+          } else {
+            mode = 'scroll';
+            return;
+          }
         } else {
           return;
         }
@@ -334,53 +435,146 @@
 
       if (e.cancelable) e.preventDefault();
       const now = Date.now();
-      if (now - lastT >= 16) {
-        prevX = lastX;
-        prevT = lastT;
-        lastX = touch.clientX;
-        lastT = now;
-      } else {
-        lastX = touch.clientX;
-        lastT = now;
+
+      if (mode === 'horiz') {
+        if (now - lastT >= 16) {
+          prevX = lastX;
+          prevT = lastT;
+          lastX = touch.clientX;
+          lastT = now;
+        } else {
+          lastX = touch.clientX;
+          lastT = now;
+        }
+        const rawOffset = dragBasePx + (touch.clientX - lockStartX);
+        const minOffset = -(SETTINGS_TABS.length - 1) * viewportW;
+        let offsetPx = rawOffset;
+        if (rawOffset > 0) {
+          offsetPx = rawOffset * 0.24;
+        } else if (rawOffset < minOffset) {
+          offsetPx = minOffset + (rawOffset - minOffset) * 0.24;
+        }
+        settingsTrack.style.transform = `translate3d(${offsetPx}px, 0, 0)`;
+        positionSettingsIndicator(-offsetPx / viewportW);
+        return;
       }
 
-      const curIdx = SETTINGS_TABS.indexOf(activeSettingsTab);
-      const dragDx = touch.clientX - lockStartX;
-      const atEdge = (curIdx === 0 && dragDx > 0) || (curIdx === SETTINGS_TABS.length - 1 && dragDx < 0);
-      const effectiveDx = atEdge ? dragDx * 0.24 : dragDx;
-      const offsetPx = -curIdx * viewportW + effectiveDx;
-      settingsTrack.style.transform = `translate3d(${offsetPx}px, 0, 0)`;
-      if (settingsTabIndicator) {
-        positionSettingsIndicator(curIdx - effectiveDx / viewportW);
+      if (mode === 'pull-prev' || mode === 'pull-next') {
+        if (now - lastT >= 16) {
+          prevY = lastY;
+          prevT = lastT;
+          lastY = touch.clientY;
+          lastT = now;
+        } else {
+          lastY = touch.clientY;
+          lastT = now;
+        }
+        const pullRaw = mode === 'pull-prev'
+          ? Math.max(0, touch.clientY - lockStartY)
+          : Math.max(0, lockStartY - touch.clientY);
+        const damped = Math.min(84, pullRaw * 0.48);
+        const ready = pullRaw >= 72;
+        if (ready && !wasReady && typeof navigator !== 'undefined' && navigator.vibrate) {
+          try { navigator.vibrate(8); } catch (_) {}
+        }
+        wasReady = ready;
+
+        if (activePanel) {
+          const sign = mode === 'pull-prev' ? damped : -damped;
+          activePanel.style.transform = `translate3d(0, ${sign}px, 0)`;
+        }
+
+        const pill = mode === 'pull-prev' ? settingsPullTop : settingsPullBottom;
+        if (pill) {
+          const opacity = Math.min(1, pullRaw / 28);
+          const shift = Math.min(6, pullRaw * 0.08);
+          const py = mode === 'pull-prev' ? (-10 + shift * 1.6) : (10 - shift * 1.6);
+          const sc = ready ? 1 : (0.92 + Math.min(0.08, pullRaw / 900));
+          pill.style.opacity = opacity.toFixed(3);
+          pill.style.transform = `translate3d(-50%, ${py.toFixed(1)}px, 0) scale(${sc.toFixed(3)})`;
+          pill.classList.toggle('ready', ready);
+        }
+
+        const curIdx = SETTINGS_TABS.indexOf(activeSettingsTab);
+        const nudge = (mode === 'pull-next' ? 1 : -1) * Math.min(0.22, pullRaw / 420);
+        positionSettingsIndicator(curIdx + nudge);
       }
     }, { passive: false });
 
     function endSettingsSwipe(e) {
-      if (!tracking) return;
-      tracking = false;
-      if (!horizLock) return;
-      horizLock = false;
+      const curMode = mode;
+      mode = 'none';
+      if (curMode === 'none' || curMode === 'scroll') return;
+
       const touch = e.changedTouches && e.changedTouches[0];
-      const endX = touch ? touch.clientX : lastX;
-      const dragDx = endX - lockStartX;
-      const recentDt = lastT - prevT;
-      const vel = recentDt > 0
-        ? Math.abs(lastX - prevX) / recentDt
-        : Math.abs(dragDx) / Math.max(1, Date.now() - startT);
       const curIdx = SETTINGS_TABS.indexOf(activeSettingsTab);
-      let nextIdx = curIdx;
-      if (Math.abs(dragDx) > Math.max(40, viewportW * 0.20) || (Math.abs(dragDx) > 18 && vel > 0.30)) {
-        nextIdx = dragDx < 0 ? Math.min(SETTINGS_TABS.length - 1, curIdx + 1) : Math.max(0, curIdx - 1);
+
+      if (curMode === 'horiz') {
+        const endX = touch ? touch.clientX : lastX;
+        const dragDx = endX - lockStartX;
+        const recentDt = lastT - prevT;
+        const vel = recentDt > 0
+          ? Math.abs(lastX - prevX) / recentDt
+          : Math.abs(dragDx) / Math.max(1, Date.now() - startT);
+        const baseIdx = Math.round(-dragBasePx / viewportW);
+        let nextIdx = Math.max(0, Math.min(SETTINGS_TABS.length - 1, baseIdx));
+        const distThreshold = Math.max(36, viewportW * 0.18);
+        if (Math.abs(dragDx) > distThreshold || (Math.abs(dragDx) > 14 && vel > 0.25)) {
+          nextIdx = dragDx < 0
+            ? Math.min(SETTINGS_TABS.length - 1, nextIdx + 1)
+            : Math.max(0, nextIdx - 1);
+        } else {
+          const liveIdx = Math.round(-(dragBasePx + dragDx) / viewportW);
+          nextIdx = Math.max(0, Math.min(SETTINGS_TABS.length - 1, liveIdx));
+        }
+        switchSettingsTab(SETTINGS_TABS[nextIdx]);
+        return;
       }
-      switchSettingsTab(SETTINGS_TABS[nextIdx]);
+
+      if (curMode === 'pull-prev' || curMode === 'pull-next') {
+        const endY = touch ? touch.clientY : lastY;
+        const pullRaw = curMode === 'pull-prev'
+          ? Math.max(0, endY - lockStartY)
+          : Math.max(0, lockStartY - endY);
+        const recentDt = lastT - prevT;
+        const vVel = recentDt > 0
+          ? Math.abs(lastY - prevY) / recentDt
+          : pullRaw / Math.max(1, Date.now() - startT);
+        const commit = pullRaw >= 72 || (pullRaw >= 36 && vVel > 0.35);
+
+        if (settingsPullTop) {
+          settingsPullTop.classList.remove('dragging', 'ready');
+          settingsPullTop.style.opacity = '';
+          settingsPullTop.style.transform = '';
+        }
+        if (settingsPullBottom) {
+          settingsPullBottom.classList.remove('dragging', 'ready');
+          settingsPullBottom.style.opacity = '';
+          settingsPullBottom.style.transform = '';
+        }
+        if (activePanel) {
+          activePanel.classList.remove('pulling');
+          activePanel.style.transform = '';
+        }
+
+        if (commit && curMode === 'pull-next' && curIdx < SETTINGS_TABS.length - 1) {
+          switchSettingsTab(SETTINGS_TABS[curIdx + 1], { scrollTop: 0 });
+        } else if (commit && curMode === 'pull-prev' && curIdx > 0) {
+          switchSettingsTab(SETTINGS_TABS[curIdx - 1]);
+        } else {
+          if (settingsTabIndicator) settingsTabIndicator.classList.remove('dragging');
+          positionSettingsIndicator(curIdx);
+        }
+      }
     }
 
-    settingsViewport.addEventListener('touchend', endSettingsSwipe, { passive: true });
-    settingsViewport.addEventListener('touchcancel', endSettingsSwipe, { passive: true });
+    globalSettings.addEventListener('touchend', endSettingsSwipe, { passive: true });
+    globalSettings.addEventListener('touchcancel', endSettingsSwipe, { passive: true });
   })();
 
   window.addEventListener('resize', () => {
     if (globalSettings && globalSettings.classList.contains('show')) {
+      cacheSettingsTabMetrics();
       positionSettingsIndicator(SETTINGS_TABS.indexOf(activeSettingsTab), true);
     }
   });
@@ -395,11 +589,13 @@
       switchSettingsTab(initialTab, { instant: true });
     }
     requestAnimationFrame(() => {
+      cacheSettingsTabMetrics();
       positionSettingsIndicator(SETTINGS_TABS.indexOf(activeSettingsTab), true);
       themeCtrl.syncAllM3Sliders();
     });
   }
   function closeSettings() {
+    resetPullIndicators();
     document.body.classList.remove('global-settings-open');
     if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
     globalSettings.classList.remove('show');
@@ -1925,7 +2121,10 @@
     applySettings();
     if (studioCtrl && typeof studioCtrl.onLanguageChanged === 'function') studioCtrl.onLanguageChanged();
     if (globalSettings && globalSettings.classList.contains('show')) {
-      requestAnimationFrame(() => positionSettingsIndicator(SETTINGS_TABS.indexOf(activeSettingsTab), true));
+      requestAnimationFrame(() => {
+        cacheSettingsTabMetrics();
+        positionSettingsIndicator(SETTINGS_TABS.indexOf(activeSettingsTab), true);
+      });
     }
   }
 
