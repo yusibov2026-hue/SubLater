@@ -46,7 +46,6 @@ body[data-m3-mode="light"] #settingsBackdrop {
   opacity: 0;
   pointer-events: none;
   box-shadow: 0 22px 48px rgba(0, 0, 0, 0.56);
-  contain: layout style paint;
   will-change: transform, opacity;
   transition: opacity 0.2s cubic-bezier(0.2, 0, 0, 1), transform 0.22s cubic-bezier(0.2, 0, 0, 1), visibility 0s linear 0.22s;
 }
@@ -174,6 +173,25 @@ body[data-m3-mode="light"] .m3-settings-tab.active {
   touch-action: pan-y;
   border-radius: 24px;
 }
+.m3-settings-viewport::before,
+.m3-settings-viewport::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.m3-settings-viewport::before {
+  top: 0;
+  height: 6px;
+  background: linear-gradient(to bottom, var(--md-surface-container-low), transparent);
+}
+.m3-settings-viewport::after {
+  bottom: 0;
+  height: 10px;
+  background: linear-gradient(to top, var(--md-surface-container-low), transparent);
+}
 .m3-settings-track {
   display: flex;
   align-items: stretch;
@@ -181,8 +199,6 @@ body[data-m3-mode="light"] .m3-settings-tab.active {
   height: 100%;
   will-change: transform;
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 10px), transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 10px), transparent 100%);
 }
 .m3-settings-track.dragging {
   transition: none !important;
@@ -199,10 +215,8 @@ body[data-m3-mode="light"] .m3-settings-tab.active {
   scrollbar-width: none;
   -ms-overflow-style: none;
   touch-action: pan-y;
-  contain: layout style;
   backface-visibility: hidden;
-  will-change: transform, opacity;
-  transition: transform 0.30s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.20s ease;
   display: flex;
   flex-direction: column;
   gap: 10px;

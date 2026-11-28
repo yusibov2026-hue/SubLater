@@ -306,14 +306,16 @@
         if (settingsTabIndicator) settingsTabIndicator.classList.remove('dragging');
         positionSettingsIndicator(nextIdx);
         if (nextPanelEl) {
-          const offsetY = opts.verticalDir === 'next' ? 34 : -34;
+          const offsetY = opts.verticalDir === 'next' ? 28 : -28;
           nextPanelEl.classList.add('pulling');
           nextPanelEl.style.transform = `translate3d(0, ${offsetY}px, 0)`;
-          nextPanelEl.style.opacity = '0';
+          nextPanelEl.style.opacity = '0.18';
           void nextPanelEl.offsetWidth;
-          nextPanelEl.classList.remove('pulling');
-          nextPanelEl.style.transform = '';
-          nextPanelEl.style.opacity = '';
+          requestAnimationFrame(() => {
+            nextPanelEl.classList.remove('pulling');
+            nextPanelEl.style.transform = '';
+            nextPanelEl.style.opacity = '';
+          });
         }
       } else if (opts && opts.instant) {
         settingsTrack.classList.add('dragging');
@@ -611,14 +613,17 @@
   });
 
   function openSettings(initialTab) {
+    resetPullIndicators();
+    if (settingsViewport) settingsViewport.scrollLeft = 0;
     document.body.classList.add('global-settings-open');
     if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
     globalSettings.classList.add('show');
     settingsBackdrop.classList.add('show');
     settingsToggle.classList.add('open');
-    if (typeof initialTab === 'string' && SETTINGS_TABS.includes(initialTab)) {
-      switchSettingsTab(initialTab, { instant: true });
-    }
+    const targetTab = (typeof initialTab === 'string' && SETTINGS_TABS.includes(initialTab))
+      ? initialTab
+      : activeSettingsTab;
+    switchSettingsTab(targetTab, { instant: true });
     requestAnimationFrame(() => {
       cacheSettingsTabMetrics();
       positionSettingsIndicator(SETTINGS_TABS.indexOf(activeSettingsTab), true);
