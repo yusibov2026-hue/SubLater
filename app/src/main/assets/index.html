@@ -214,281 +214,60 @@
   </div>
   </div><!-- /#hubPanelVideo -->
 
-  <!-- Feature 1: Language Studio + Subtitle Style Designer -->
+  <!-- Feature 1: Language Studio -->
   <div id="hubPanelLearn" class="m3-hub-panel">
-    <div class="m3-learn-subtabs" id="learnSubTabs" role="tablist">
-      <button type="button" class="m3-learn-subtab active" id="learnSubTabLearn" data-learn-subtab="learn" role="tab" aria-selected="true" data-i18n="learn.subTabLearn">Learn</button>
-      <button type="button" class="m3-learn-subtab" id="learnSubTabStyle" data-learn-subtab="style" role="tab" aria-selected="false" data-i18n="learn.subTabStyle">Style</button>
+    <div class="m3-studio-card">
+      <div class="m3-studio-card-head">
+        <h3 class="m3-studio-title" data-i18n="learn.kicker">Language Studio</h3>
+      </div>
+      <div class="m3-studio-row">
+        <div class="m3-studio-row-text">
+          <span class="m3-studio-row-title" data-i18n="learn.dualTitle">Dual Subtitles</span>
+          <span class="m3-studio-row-desc" data-i18n="learn.dualDesc">Show original line underneath translation</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="dualSubToggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="m3-studio-field">
+        <label class="m3-studio-row-desc" for="learnDualLangSelect" data-i18n="learn.dualLangLabel">Second subtitle language</label>
+        <select id="learnDualLangSelect" class="m3-studio-select"></select>
+      </div>
+      <div class="m3-status-line" id="learnStatus"></div>
     </div>
 
-    <div id="learnStudyView" class="m3-learn-subview active">
-      <div class="m3-studio-card">
-        <div class="m3-studio-card-head">
-          <h3 class="m3-studio-title" data-i18n="learn.kicker">Language Studio</h3>
-        </div>
-        <div class="m3-studio-row">
-          <div class="m3-studio-row-text">
-            <span class="m3-studio-row-title" data-i18n="learn.dualTitle">Dual Subtitles</span>
-            <span class="m3-studio-row-desc" data-i18n="learn.dualDesc">Show original line underneath translation</span>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="dualSubToggle" checked>
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div class="m3-studio-field">
-          <label class="m3-studio-row-desc" for="learnDualLangSelect" data-i18n="learn.dualLangLabel">Second subtitle language</label>
-          <select id="learnDualLangSelect" class="m3-studio-select"></select>
-        </div>
-        <div class="m3-status-line" id="learnStatus"></div>
+    <div class="m3-studio-card">
+      <div class="m3-studio-card-head">
+        <span class="m3-studio-title" data-i18n="learn.flashTitle">Flashcard Review</span>
+        <span class="m3-studio-row-desc" id="flashcardProgress" data-i18n="learn.dueZero">0 due</span>
       </div>
-
-      <div class="m3-studio-card">
-        <div class="m3-studio-card-head">
-          <span class="m3-studio-title" data-i18n="learn.flashTitle">Flashcard Review</span>
-          <span class="m3-studio-row-desc" id="flashcardProgress" data-i18n="learn.dueZero">0 due</span>
-        </div>
-        <div id="flashcardEmpty" class="m3-empty-state" data-i18n="learn.empty">Tap any word on a playing subtitle to look it up and save flashcards.</div>
-        <div id="flashcardDeckBox" style="display:none;flex-direction:column;gap:10px;">
-          <div class="m3-flashcard" id="flashcardCard">
-            <span class="m3-flashcard-pos" id="flashcardPosPill">Word</span>
-            <div class="m3-flashcard-word" id="flashcardFrontWord">Word</div>
-            <div class="m3-flashcard-hint" data-i18n="learn.cardHint">Tap card to reveal meaning &amp; context</div>
-            <div class="m3-flashcard-answer">
-              <div class="m3-flashcard-trans" id="flashcardBackTrans"></div>
-              <div class="m3-flashcard-meaning" id="flashcardBackMeaning"></div>
-              <div class="m3-flashcard-ctx" id="flashcardBackCtx"></div>
-            </div>
-          </div>
-          <div class="m3-flashcard-rating-row" id="flashcardRatingRow">
-            <button type="button" class="m3-rate-btn again" data-rate="again" data-i18n="learn.rateAgain">Again · 10m</button>
-            <button type="button" class="m3-rate-btn good" data-rate="good" data-i18n="learn.rateGood">Good · 1d+</button>
-            <button type="button" class="m3-rate-btn easy" data-rate="easy" data-i18n="learn.rateEasy">Easy · 4d+</button>
+      <div id="flashcardEmpty" class="m3-empty-state" data-i18n="learn.empty">Tap any word on a playing subtitle to look it up and save flashcards.</div>
+      <div id="flashcardDeckBox" style="display:none;flex-direction:column;gap:10px;">
+        <div class="m3-flashcard" id="flashcardCard">
+          <span class="m3-flashcard-pos" id="flashcardPosPill">Word</span>
+          <div class="m3-flashcard-word" id="flashcardFrontWord">Word</div>
+          <div class="m3-flashcard-hint" data-i18n="learn.cardHint">Tap card to reveal meaning &amp; context</div>
+          <div class="m3-flashcard-answer">
+            <div class="m3-flashcard-trans" id="flashcardBackTrans"></div>
+            <div class="m3-flashcard-meaning" id="flashcardBackMeaning"></div>
+            <div class="m3-flashcard-ctx" id="flashcardBackCtx"></div>
           </div>
         </div>
-      </div>
-
-      <div class="m3-studio-card" id="savedWordsCard">
-        <div class="m3-studio-card-head">
-          <span class="m3-studio-title" data-i18n="learn.savedWords">Saved Words</span>
-          <button type="button" class="m3-icon-mini" id="clearVocabBtn" data-i18n="learn.clear">Clear</button>
+        <div class="m3-flashcard-rating-row" id="flashcardRatingRow">
+          <button type="button" class="m3-rate-btn again" data-rate="again" data-i18n="learn.rateAgain">Again · 10m</button>
+          <button type="button" class="m3-rate-btn good" data-rate="good" data-i18n="learn.rateGood">Good · 1d+</button>
+          <button type="button" class="m3-rate-btn easy" data-rate="easy" data-i18n="learn.rateEasy">Easy · 4d+</button>
         </div>
-        <div class="m3-vocab-list" id="vocabList"></div>
       </div>
     </div>
 
-    <div id="learnStyleView" class="m3-learn-subview">
-      <div class="m3-studio-card">
-        <div class="m3-studio-card-head">
-          <h3 class="m3-studio-title" data-i18n="style.previewTitle">Live Preview</h3>
-          <button type="button" class="m3-icon-mini" id="styleResetBtn" data-i18n="style.reset">Reset</button>
-        </div>
-        <div class="m3-style-preview-stage" id="stylePreviewStage">
-          <div class="m3-style-preview-bars" aria-hidden="true"></div>
-          <div class="m3-style-preview-overlay pos-bottom" id="stylePreviewOverlay">
-            <div class="m3-style-preview-text bg-on bg-style-black" id="stylePreviewText">
-              <div class="sub-main-line">
-                <span class="word spoken" data-i18n="style.previewMainWord1">Words</span>
-                <span class="word spoken" data-i18n="style.previewMainWord2">appear</span>
-                <span class="word" data-i18n="style.previewMainWord3">in</span>
-                <span class="word" data-i18n="style.previewMainWord4">sync</span>
-              </div>
-              <div class="sub-dual-orig" data-i18n="style.previewDual">Original speech line underneath</div>
-            </div>
-            <div class="m3-style-preview-text m3-style-preview-secondary bg-on bg-style-black" id="stylePreviewSecondaryText">
-              <div class="sub-dual-orig" data-i18n="style.previewDual">Original speech line underneath</div>
-            </div>
-          </div>
-        </div>
+    <div class="m3-studio-card" id="savedWordsCard">
+      <div class="m3-studio-card-head">
+        <span class="m3-studio-title" data-i18n="learn.savedWords">Saved Words</span>
+        <button type="button" class="m3-icon-mini" id="clearVocabBtn" data-i18n="learn.clear">Clear</button>
       </div>
-
-      <div class="m3-studio-card">
-        <div class="m3-studio-card-head">
-          <span class="m3-studio-title" data-i18n="style.presetsTitle">Presets</span>
-        </div>
-        <div class="m3-style-presets-grid" id="stylePresetsGrid">
-          <button type="button" class="m3-style-preset-btn active" data-style-preset="classic">
-            <span class="m3-preset-chip classic">Aa</span>
-            <span class="m3-preset-name" data-i18n="style.preset.classic">Classic</span>
-          </button>
-          <button type="button" class="m3-style-preset-btn" data-style-preset="cinema">
-            <span class="m3-preset-chip cinema">Aa</span>
-            <span class="m3-preset-name" data-i18n="style.preset.cinema">Cinema</span>
-          </button>
-          <button type="button" class="m3-style-preset-btn" data-style-preset="minimal">
-            <span class="m3-preset-chip minimal">Aa</span>
-            <span class="m3-preset-name" data-i18n="style.preset.minimal">Clean</span>
-          </button>
-          <button type="button" class="m3-style-preset-btn" data-style-preset="glass">
-            <span class="m3-preset-chip glass">Aa</span>
-            <span class="m3-preset-name" data-i18n="style.preset.glass">Glass</span>
-          </button>
-          <button type="button" class="m3-style-preset-btn" data-style-preset="karaoke">
-            <span class="m3-preset-chip karaoke">Aa</span>
-            <span class="m3-preset-name" data-i18n="style.preset.karaoke">Karaoke</span>
-          </button>
-          <button type="button" class="m3-style-preset-btn" data-style-preset="bold">
-            <span class="m3-preset-chip bold">Aa</span>
-            <span class="m3-preset-name" data-i18n="style.preset.bold">Large</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="m3-studio-card">
-        <div class="m3-studio-card-head">
-          <span class="m3-studio-title" data-i18n="style.layoutTitle">Size &amp; Position</span>
-        </div>
-
-        <div class="m3-style-slider-block">
-          <div class="m3-style-slider-head">
-            <span class="m3-studio-row-title" data-i18n="player.size">Size</span>
-            <span class="m3-style-val-pill" id="styleSubSizeVal">18px</span>
-          </div>
-          <input type="range" id="styleSubSize" min="12" max="48" step="1" value="18">
-        </div>
-
-        <div class="m3-style-slider-block">
-          <div class="m3-style-slider-head">
-            <span class="m3-studio-row-title" data-i18n="player.width">Width</span>
-            <span class="m3-style-val-pill" id="styleSubWidthVal">85%</span>
-          </div>
-          <input type="range" id="styleSubWidth" min="30" max="100" step="1" value="85">
-        </div>
-
-        <div class="m3-style-slider-block">
-          <div class="m3-style-slider-head">
-            <span class="m3-studio-row-title" data-i18n="player.height">Height</span>
-            <span class="m3-style-val-pill" id="styleSubBottomVal">12%</span>
-          </div>
-          <input type="range" id="styleSubBottom" min="5" max="35" step="1" value="12">
-        </div>
-
-        <div class="m3-studio-field">
-          <span class="m3-studio-row-desc" data-i18n="style.align">Alignment</span>
-          <div class="m3-style-seg-group" id="styleAlignGroup" role="group">
-            <button type="button" class="m3-style-seg-btn" data-sub-align="left" data-i18n="style.alignLeft">Left</button>
-            <button type="button" class="m3-style-seg-btn active" data-sub-align="center" data-i18n="style.alignCenter">Center</button>
-            <button type="button" class="m3-style-seg-btn" data-sub-align="right" data-i18n="style.alignRight">Right</button>
-          </div>
-        </div>
-
-        <div class="m3-studio-field">
-          <span class="m3-studio-row-desc" data-i18n="style.posTitle">Vertical position</span>
-          <div class="m3-style-seg-group" id="stylePosGroup" role="group">
-            <button type="button" class="m3-style-seg-btn active" data-sub-pos="bottom" data-i18n="style.posBottom">Bottom</button>
-            <button type="button" class="m3-style-seg-btn" data-sub-pos="middle" data-i18n="style.posMiddle">Middle</button>
-            <button type="button" class="m3-style-seg-btn" data-sub-pos="top" data-i18n="style.posTop">Top</button>
-          </div>
-        </div>
-
-        <div class="m3-studio-field">
-          <span class="m3-studio-row-desc" data-i18n="style.dualOrderTitle">Translation &amp; original layout</span>
-          <div class="m3-style-seg-group m3-style-seg-grid-2" id="styleDualOrderGroup" role="group">
-            <button type="button" class="m3-style-seg-btn active" data-dual-order="trans-top" data-i18n="style.dualTransTop">Translation top</button>
-            <button type="button" class="m3-style-seg-btn" data-dual-order="orig-top" data-i18n="style.dualOrigTop">Swap lines</button>
-            <button type="button" class="m3-style-seg-btn" data-dual-order="split-orig-top" data-i18n="style.dualSplitOrigTop">Orig. top · Trans. bottom</button>
-            <button type="button" class="m3-style-seg-btn" data-dual-order="split-trans-top" data-i18n="style.dualSplitTransTop">Trans. top · Orig. bottom</button>
-          </div>
-        </div>
-
-        <div class="m3-studio-field">
-          <span class="m3-studio-row-desc" data-i18n="player.wordMode">Word mode</span>
-          <div class="m3-style-seg-group" id="styleWordModeGroup" role="group">
-            <button type="button" class="m3-style-seg-btn active" data-word-mode="hidden" data-i18n="player.wordMode.hidden">Word-by-word</button>
-            <button type="button" class="m3-style-seg-btn" data-word-mode="karaoke" data-i18n="player.wordMode.karaoke">Karaoke</button>
-            <button type="button" class="m3-style-seg-btn" data-word-mode="full" data-i18n="player.wordMode.full">Full line</button>
-          </div>
-        </div>
-
-        <div class="m3-studio-field">
-          <label class="m3-studio-row-desc" for="styleSubFont" data-i18n="style.font">Subtitle font</label>
-          <select id="styleSubFont" class="m3-studio-select">
-            <option value="'Inter', -apple-system, sans-serif">Inter</option>
-            <option value="'Outfit', 'Inter', sans-serif">Outfit</option>
-            <option value="'Plus Jakarta Sans', 'Inter', sans-serif">Plus Jakarta Sans</option>
-            <option value="'DM Sans', 'Inter', sans-serif">DM Sans</option>
-            <option value="'Sora', 'Inter', sans-serif">Sora</option>
-            <option value="'Montserrat', 'Inter', sans-serif">Montserrat</option>
-            <option value="'Poppins', 'Inter', sans-serif">Poppins</option>
-            <option value="'Playfair Display', 'Inter', serif">Playfair Display</option>
-            <option value="'Bebas Neue', 'Inter', sans-serif">Bebas Neue</option>
-            <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="m3-studio-card">
-        <div class="m3-studio-card-head">
-          <span class="m3-studio-title" data-i18n="style.colorsTitle">Colors &amp; Backdrop</span>
-        </div>
-
-        <div class="m3-studio-field">
-          <span class="m3-studio-row-desc" data-i18n="settings.subColor">Subtitle text color</span>
-          <div class="m3-style-swatches" id="styleColorSwatches">
-            <button type="button" class="m3-style-swatch active" data-sub-color="#ffffff" style="background:#ffffff" aria-label="White"></button>
-            <button type="button" class="m3-style-swatch" data-sub-color="#fde047" style="background:#fde047" aria-label="Yellow"></button>
-            <button type="button" class="m3-style-swatch" data-sub-color="#38bdf8" style="background:#38bdf8" aria-label="Sky"></button>
-            <button type="button" class="m3-style-swatch" data-sub-color="#34d399" style="background:#34d399" aria-label="Mint"></button>
-            <button type="button" class="m3-style-swatch" data-sub-color="#f472b6" style="background:#f472b6" aria-label="Pink"></button>
-            <button type="button" class="m3-style-swatch" data-sub-color="#fb923c" style="background:#fb923c" aria-label="Orange"></button>
-            <button type="button" class="cp-toggle m3-style-cp-toggle" data-cp-target="styleSubTextPicker" aria-expanded="false">
-              <span class="cp-toggle-dot"></span>
-              <span data-i18n="settings.colorBtn">Color</span>
-              <span class="cp-toggle-chevron">▾</span>
-            </button>
-          </div>
-          <div class="color-picker" id="styleSubTextPicker" data-picker="stylesubtext">
-            <input type="color" id="styleSubColorCustom" class="cp-native" value="#ffffff">
-            <div class="cp-head">
-              <span class="cp-swatch"></span>
-              <input type="text" class="cp-hex" value="#ffffff" maxlength="7" spellcheck="false" autocomplete="off">
-            </div>
-            <div class="cp-row"><span class="cp-lbl">H</span><input type="range" class="cp-h" min="0" max="360" step="1"><b class="cp-val cp-h-val">0</b></div>
-            <div class="cp-row"><span class="cp-lbl">S</span><input type="range" class="cp-s" min="0" max="100" step="1"><b class="cp-val cp-s-val">0</b></div>
-            <div class="cp-row"><span class="cp-lbl">L</span><input type="range" class="cp-l" min="0" max="100" step="1"><b class="cp-val cp-l-val">0</b></div>
-            <div class="cp-presets"></div>
-          </div>
-        </div>
-
-        <div class="m3-studio-row">
-          <div class="m3-studio-row-text">
-            <span class="m3-studio-row-title" data-i18n="player.background">Background</span>
-            <span class="m3-studio-row-desc" data-i18n="style.bgDesc">Backdrop behind subtitle text</span>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="styleBgToggle" checked>
-            <span class="slider"></span>
-          </label>
-        </div>
-
-        <div class="m3-style-slider-block" id="styleBgOpacityBlock">
-          <div class="m3-style-slider-head">
-            <span class="m3-studio-row-title" data-i18n="style.bgOpacity">Background opacity</span>
-            <span class="m3-style-val-pill" id="styleBgOpacityVal">62%</span>
-          </div>
-          <input type="range" id="styleBgOpacity" min="10" max="95" step="1" value="62">
-        </div>
-
-        <div class="m3-studio-field" id="styleBgStyleBlock">
-          <span class="m3-studio-row-desc" data-i18n="style.bgStyle">Backdrop style</span>
-          <div class="m3-style-seg-group" id="styleBgStyleGroup" role="group">
-            <button type="button" class="m3-style-seg-btn active" data-bg-style="black" data-i18n="style.bgBlack">Dark</button>
-            <button type="button" class="m3-style-seg-btn" data-bg-style="glass" data-i18n="style.bgGlass">Glass</button>
-            <button type="button" class="m3-style-seg-btn" data-bg-style="accent" data-i18n="style.bgAccent">Accent</button>
-          </div>
-        </div>
-
-        <div class="m3-studio-row">
-          <div class="m3-studio-row-text">
-            <span class="m3-studio-row-title" data-i18n="style.outline">Text shadow</span>
-            <span class="m3-studio-row-desc" data-i18n="style.outlineDesc">Crisp legibility over bright scenes</span>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="styleOutlineToggle" checked>
-            <span class="slider"></span>
-          </label>
-        </div>
-      </div>
+      <div class="m3-vocab-list" id="vocabList"></div>
     </div>
   </div><!-- /#hubPanelLearn -->
 
@@ -723,291 +502,516 @@
       </button>
     </div>
 
-    <div class="m3-card">
-      <div class="m3-card-title" data-i18n="settings.cardTheme">Material You &amp; Theme</div>
+    <nav class="m3-settings-tabs" id="settingsTabs" role="tablist" aria-label="Settings sections">
+      <div class="m3-settings-tab-indicator" id="settingsTabIndicator" aria-hidden="true"></div>
+      <button type="button" class="m3-settings-tab active" data-settings-tab="design" role="tab" aria-selected="true" aria-controls="settingsPanelDesign">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+        <span data-i18n="settings.tabDesign">Design</span>
+      </button>
+      <button type="button" class="m3-settings-tab" data-settings-tab="subtitles" role="tab" aria-selected="false" aria-controls="settingsPanelSubtitles">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="4"/><path d="M7 13h4"/><path d="M14 13h3"/><path d="M7 16h10"/></svg>
+        <span data-i18n="settings.tabSubtitles">Subtitles</span>
+      </button>
+      <button type="button" class="m3-settings-tab" data-settings-tab="style" role="tab" aria-selected="false" aria-controls="settingsPanelStyle">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+        <span data-i18n="settings.tabStyle">Style</span>
+      </button>
+      <button type="button" class="m3-settings-tab" data-settings-tab="advanced" role="tab" aria-selected="false" aria-controls="settingsPanelAdvanced">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z"/></svg>
+        <span data-i18n="settings.tabAdvanced">Advanced</span>
+      </button>
+    </nav>
 
-      <div class="global-row">
-        <span data-i18n="settings.language">Language</span>
-        <select id="appLangSelect" aria-label="App language"></select>
-      </div>
+    <input type="hidden" id="subTextColor" value="#ffffff">
 
-      <div class="global-row">
-        <span data-i18n="settings.appearance">Appearance</span>
-        <div class="m3-seg-group" id="m3ThemeModeGroup" role="group" aria-label="Appearance mode">
-          <button type="button" class="m3-seg-btn" data-theme-mode="dark" data-i18n="settings.dark">Dark</button>
-          <button type="button" class="m3-seg-btn" data-theme-mode="light" data-i18n="settings.light">Light</button>
-          <button type="button" class="m3-seg-btn active" data-theme-mode="system" data-i18n="settings.auto">Auto</button>
-        </div>
-        <input type="hidden" id="m3ThemeMode" value="system">
-      </div>
+    <div class="m3-settings-viewport" id="settingsViewport">
+      <div class="m3-settings-track" id="settingsTrack">
+        <!-- Tab 1: Design -->
+        <div class="m3-settings-panel active" id="settingsPanelDesign" data-settings-panel="design" role="tabpanel">
+          <div class="m3-card">
+            <div class="m3-card-title" data-i18n="settings.cardTheme">Material You &amp; Theme</div>
 
-      <div class="global-row">
-        <span data-i18n="settings.accentColor">Accent color</span>
-        <button type="button" class="cp-toggle" data-cp-target="accentPicker" aria-expanded="false">
-          <span class="cp-toggle-dot"></span>
-          <span data-i18n="settings.colorBtn">Color</span>
-          <span class="cp-toggle-chevron">▾</span>
-        </button>
-        <div class="m3-seed-row" id="m3SeedSwatches" aria-label="Material You seed presets"></div>
-        <div class="color-picker" id="accentPicker" data-picker="accent">
-          <input type="color" id="accentColor" class="cp-native" value="#1b8ef2">
-          <div class="cp-head">
-            <span class="cp-swatch"></span>
-            <input type="text" class="cp-hex" value="#1b8ef2" maxlength="7" spellcheck="false" autocomplete="off">
+            <div class="global-row">
+              <span data-i18n="settings.language">Language</span>
+              <select id="appLangSelect" aria-label="App language"></select>
+            </div>
+
+            <div class="global-row">
+              <span data-i18n="settings.appearance">Appearance</span>
+              <div class="m3-seg-group" id="m3ThemeModeGroup" role="group" aria-label="Appearance mode">
+                <button type="button" class="m3-seg-btn" data-theme-mode="dark" data-i18n="settings.dark">Dark</button>
+                <button type="button" class="m3-seg-btn" data-theme-mode="light" data-i18n="settings.light">Light</button>
+                <button type="button" class="m3-seg-btn active" data-theme-mode="system" data-i18n="settings.auto">Auto</button>
+              </div>
+              <input type="hidden" id="m3ThemeMode" value="system">
+            </div>
+
+            <div class="global-row">
+              <span data-i18n="settings.accentColor">Accent color</span>
+              <button type="button" class="cp-toggle" data-cp-target="accentPicker" aria-expanded="false">
+                <span class="cp-toggle-dot"></span>
+                <span data-i18n="settings.colorBtn">Color</span>
+                <span class="cp-toggle-chevron">▾</span>
+              </button>
+              <div class="m3-seed-row" id="m3SeedSwatches" aria-label="Material You seed presets"></div>
+              <div class="color-picker" id="accentPicker" data-picker="accent">
+                <input type="color" id="accentColor" class="cp-native" value="#1b8ef2">
+                <div class="cp-head">
+                  <span class="cp-swatch"></span>
+                  <input type="text" class="cp-hex" value="#1b8ef2" maxlength="7" spellcheck="false" autocomplete="off">
+                </div>
+                <div class="cp-row"><span class="cp-lbl">H</span><input type="range" class="cp-h" min="0" max="360" step="1"><b class="cp-val cp-h-val">0</b></div>
+                <div class="cp-row"><span class="cp-lbl">S</span><input type="range" class="cp-s" min="0" max="100" step="1"><b class="cp-val cp-s-val">0</b></div>
+                <div class="cp-row"><span class="cp-lbl">L</span><input type="range" class="cp-l" min="0" max="100" step="1"><b class="cp-val cp-l-val">0</b></div>
+                <div class="cp-presets"></div>
+              </div>
+            </div>
+
+            <div class="global-row">
+              <span data-i18n="settings.themeBg">Theme background</span>
+              <select id="appThemeBg">
+                <option value="dark-gray" selected>Dark Gray</option>
+                <option value="gray">Gray</option>
+                <option value="light-slate">Light Slate</option>
+                <option value="warm-gray">Warm Gray</option>
+              </select>
+            </div>
+
+            <div class="m3-divider"></div>
+
+            <div class="global-row">
+              <span data-i18n="settings.accentWallpaper">Accent wallpaper</span>
+              <select id="accentWallpaper">
+                <option value="aurora">Aurora (Glow)</option>
+                <option value="nebula">Cosmic Nebula</option>
+                <option value="mesh">Neon Mesh</option>
+                <option value="plasma">Plasma</option>
+                <option value="sunset">Sunset</option>
+                <option value="ocean">Ocean</option>
+                <option value="soundwaves">Sound Waves</option>
+                <option value="hexagons">Neon Hexagons</option>
+                <option value="bokeh">Bokeh</option>
+                <option value="grid">Cyber Grid</option>
+                <option value="matrix">Digital Matrix</option>
+                <option value="dots">Dot Matrix</option>
+                <option value="ripples">Concentric Ripples</option>
+                <option value="stardust">Stardust</option>
+                <option value="circuit">Tech Circuit</option>
+                <option value="prisms">Geometric Prisms</option>
+                <option value="checker">Checkerboard</option>
+                <option value="beams">Light Beams</option>
+                <option value="diagonal">Diagonal Stripes</option>
+                <option value="graytiles">Gray Tiles (Blur)</option>
+                <option value="galaxy">Galaxy</option>
+                <option value="lava">Lava</option>
+                <option value="snow">Snowfall</option>
+                <option value="rain">Rain</option>
+                <option value="silk">Silk Waves</option>
+                <option value="triangles">Triangles</option>
+                <option value="skyline">Night Skyline</option>
+                <option value="confetti">Confetti</option>
+                <option value="vortex">Vortex</option>
+                <option value="fireflies">Fireflies</option>
+                <option value="none">No Wallpaper (Solid)</option>
+              </select>
+            </div>
+
+            <div class="global-row" id="wallpaperColorRow">
+              <span data-i18n="settings.wallpaperColor">Wallpaper color</span>
+              <label class="m3-check-pill">
+                <input type="checkbox" id="wallpaperFollowAccent" checked> <span data-i18n="settings.matchAccent">Match accent</span>
+              </label>
+              <button type="button" class="cp-toggle" data-cp-target="wallpaperPicker" aria-expanded="false">
+                <span class="cp-toggle-dot"></span>
+                <span data-i18n="settings.colorBtn">Color</span>
+                <span class="cp-toggle-chevron">▾</span>
+              </button>
+              <div class="color-picker" id="wallpaperPicker" data-picker="wallpaper">
+                <input type="color" id="wallpaperColor" class="cp-native" value="#1b8ef2">
+                <div class="cp-head">
+                  <span class="cp-swatch"></span>
+                  <input type="text" class="cp-hex" value="#1b8ef2" maxlength="7" spellcheck="false" autocomplete="off">
+                </div>
+                <div class="cp-row"><span class="cp-lbl">H</span><input type="range" class="cp-h" min="0" max="360" step="1"><b class="cp-val cp-h-val">0</b></div>
+                <div class="cp-row"><span class="cp-lbl">S</span><input type="range" class="cp-s" min="0" max="100" step="1"><b class="cp-val cp-s-val">0</b></div>
+                <div class="cp-row"><span class="cp-lbl">L</span><input type="range" class="cp-l" min="0" max="100" step="1"><b class="cp-val cp-l-val">0</b></div>
+                <div class="cp-presets"></div>
+              </div>
+            </div>
+
+            <div class="global-row" id="wallpaperOpacityRow">
+              <span data-i18n="settings.wallpaperOpacity">Wallpaper opacity</span>
+              <input type="range" id="wallpaperOpacity" min="10" max="100" value="45" style="width: 120px;">
+            </div>
           </div>
-          <div class="cp-row"><span class="cp-lbl">H</span><input type="range" class="cp-h" min="0" max="360" step="1"><b class="cp-val cp-h-val">0</b></div>
-          <div class="cp-row"><span class="cp-lbl">S</span><input type="range" class="cp-s" min="0" max="100" step="1"><b class="cp-val cp-s-val">0</b></div>
-          <div class="cp-row"><span class="cp-lbl">L</span><input type="range" class="cp-l" min="0" max="100" step="1"><b class="cp-val cp-l-val">0</b></div>
-          <div class="cp-presets"></div>
-        </div>
-      </div>
 
-      <div class="global-row">
-        <span data-i18n="settings.themeBg">Theme background</span>
-        <select id="appThemeBg">
-          <option value="dark-gray" selected>Dark Gray</option>
-          <option value="gray">Gray</option>
-          <option value="light-slate">Light Slate</option>
-          <option value="warm-gray">Warm Gray</option>
-        </select>
-      </div>
+          <div class="m3-card">
+            <div class="m3-card-title" data-i18n="settings.titleFont">Title font</div>
 
-      <div class="m3-divider"></div>
+            <div class="global-row">
+              <span data-i18n="settings.titleFont">Title font</span>
+              <select id="titleFontFamily">
+                <option value="'Plus Jakarta Sans', 'Inter', sans-serif">Plus Jakarta Sans</option>
+                <option value="'Inter', sans-serif">Inter</option>
+                <option value="'Outfit', 'Inter', sans-serif" selected>Outfit</option>
+                <option value="'DM Sans', 'Inter', sans-serif">DM Sans</option>
+                <option value="'Sora', 'Inter', sans-serif">Sora</option>
+                <option value="'Space Grotesk', 'Inter', sans-serif">Space Grotesk</option>
+                <option value="'Poppins', 'Inter', sans-serif">Poppins</option>
+                <option value="'Montserrat', 'Inter', sans-serif">Montserrat</option>
+                <option value="'Raleway', 'Inter', sans-serif">Raleway</option>
+                <option value="'Manrope', 'Inter', sans-serif">Manrope</option>
+                <option value="'Urbanist', 'Inter', sans-serif">Urbanist</option>
+                <option value="'Quicksand', 'Inter', sans-serif">Quicksand</option>
+                <option value="'Comfortaa', 'Inter', sans-serif">Comfortaa</option>
+                <option value="'Syne', 'Inter', sans-serif">Syne</option>
+                <option value="'Unbounded', 'Inter', sans-serif">Unbounded</option>
+                <option value="'Orbitron', 'Inter', sans-serif">Orbitron</option>
+                <option value="'Audiowide', 'Inter', sans-serif">Audiowide</option>
+                <option value="'Bebas Neue', 'Inter', sans-serif">Bebas Neue</option>
+                <option value="'Oswald', 'Inter', sans-serif">Oswald</option>
+                <option value="'Playfair Display', 'Inter', serif">Playfair Display</option>
+                <option value="'Cinzel', 'Inter', serif">Cinzel</option>
+                <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+                <option value="'Pacifico', cursive">Pacifico</option>
+                <option value="'Righteous', 'Inter', sans-serif">Righteous</option>
+              </select>
+            </div>
 
-      <div class="global-row">
-        <span data-i18n="settings.accentWallpaper">Accent wallpaper</span>
-        <select id="accentWallpaper">
-          <option value="aurora">Aurora (Glow)</option>
-          <option value="nebula">Cosmic Nebula</option>
-          <option value="mesh">Neon Mesh</option>
-          <option value="plasma">Plasma</option>
-          <option value="sunset">Sunset</option>
-          <option value="ocean">Ocean</option>
-          <option value="soundwaves">Sound Waves</option>
-          <option value="hexagons">Neon Hexagons</option>
-          <option value="bokeh">Bokeh</option>
-          <option value="grid">Cyber Grid</option>
-          <option value="matrix">Digital Matrix</option>
-          <option value="dots">Dot Matrix</option>
-          <option value="ripples">Concentric Ripples</option>
-          <option value="stardust">Stardust</option>
-          <option value="circuit">Tech Circuit</option>
-          <option value="prisms">Geometric Prisms</option>
-          <option value="checker">Checkerboard</option>
-          <option value="beams">Light Beams</option>
-          <option value="diagonal">Diagonal Stripes</option>
-          <option value="graytiles">Gray Tiles (Blur)</option>
-          <option value="galaxy">Galaxy</option>
-          <option value="lava">Lava</option>
-          <option value="snow">Snowfall</option>
-          <option value="rain">Rain</option>
-          <option value="silk">Silk Waves</option>
-          <option value="triangles">Triangles</option>
-          <option value="skyline">Night Skyline</option>
-          <option value="confetti">Confetti</option>
-          <option value="vortex">Vortex</option>
-          <option value="fireflies">Fireflies</option>
-          <option value="none">No Wallpaper (Solid)</option>
-        </select>
-      </div>
-
-      <div class="global-row" id="wallpaperColorRow">
-        <span data-i18n="settings.wallpaperColor">Wallpaper color</span>
-        <label class="m3-check-pill">
-          <input type="checkbox" id="wallpaperFollowAccent" checked> <span data-i18n="settings.matchAccent">Match accent</span>
-        </label>
-        <button type="button" class="cp-toggle" data-cp-target="wallpaperPicker" aria-expanded="false">
-          <span class="cp-toggle-dot"></span>
-          <span data-i18n="settings.colorBtn">Color</span>
-          <span class="cp-toggle-chevron">▾</span>
-        </button>
-        <div class="color-picker" id="wallpaperPicker" data-picker="wallpaper">
-          <input type="color" id="wallpaperColor" class="cp-native" value="#1b8ef2">
-          <div class="cp-head">
-            <span class="cp-swatch"></span>
-            <input type="text" class="cp-hex" value="#1b8ef2" maxlength="7" spellcheck="false" autocomplete="off">
+            <div class="global-row">
+              <span><span data-i18n="settings.titleSize">Title size</span> <small id="titleFontSizeVal" style="color:var(--md-primary);font-weight:700;margin-left:4px;">30px</small></span>
+              <input type="range" id="titleFontSize" min="18" max="38" step="1" value="30" style="width: 120px;">
+            </div>
+            <div class="title-font-preview-row">
+              <span style="font-size:11px;color:var(--md-on-surface-variant);flex-shrink:0;" data-i18n="settings.preview">Preview</span>
+              <span id="titleFontPreview">SubLyter</span>
+            </div>
           </div>
-          <div class="cp-row"><span class="cp-lbl">H</span><input type="range" class="cp-h" min="0" max="360" step="1"><b class="cp-val cp-h-val">0</b></div>
-          <div class="cp-row"><span class="cp-lbl">S</span><input type="range" class="cp-s" min="0" max="100" step="1"><b class="cp-val cp-s-val">0</b></div>
-          <div class="cp-row"><span class="cp-lbl">L</span><input type="range" class="cp-l" min="0" max="100" step="1"><b class="cp-val cp-l-val">0</b></div>
-          <div class="cp-presets"></div>
-        </div>
-      </div>
+        </div><!-- /#settingsPanelDesign -->
 
-      <div class="global-row" id="wallpaperOpacityRow">
-        <span data-i18n="settings.wallpaperOpacity">Wallpaper opacity</span>
-        <input type="range" id="wallpaperOpacity" min="10" max="100" value="45" style="width: 120px;">
-      </div>
-    </div>
+        <!-- Tab 2: Subtitles -->
+        <div class="m3-settings-panel" id="settingsPanelSubtitles" data-settings-panel="subtitles" role="tabpanel">
+          <div class="m3-card">
+            <div class="m3-card-title" data-i18n="settings.cardGeneration">Generation &amp; Subtitles</div>
 
-    <div class="m3-card">
-      <div class="m3-card-title" data-i18n="settings.cardPlayback">Title &amp; Playback</div>
-
-      <div class="global-row">
-        <span data-i18n="settings.titleFont">Title font</span>
-        <select id="titleFontFamily">
-          <option value="'Plus Jakarta Sans', 'Inter', sans-serif">Plus Jakarta Sans</option>
-          <option value="'Inter', sans-serif">Inter</option>
-          <option value="'Outfit', 'Inter', sans-serif" selected>Outfit</option>
-          <option value="'DM Sans', 'Inter', sans-serif">DM Sans</option>
-          <option value="'Sora', 'Inter', sans-serif">Sora</option>
-          <option value="'Space Grotesk', 'Inter', sans-serif">Space Grotesk</option>
-          <option value="'Poppins', 'Inter', sans-serif">Poppins</option>
-          <option value="'Montserrat', 'Inter', sans-serif">Montserrat</option>
-          <option value="'Raleway', 'Inter', sans-serif">Raleway</option>
-          <option value="'Manrope', 'Inter', sans-serif">Manrope</option>
-          <option value="'Urbanist', 'Inter', sans-serif">Urbanist</option>
-          <option value="'Quicksand', 'Inter', sans-serif">Quicksand</option>
-          <option value="'Comfortaa', 'Inter', sans-serif">Comfortaa</option>
-          <option value="'Syne', 'Inter', sans-serif">Syne</option>
-          <option value="'Unbounded', 'Inter', sans-serif">Unbounded</option>
-          <option value="'Orbitron', 'Inter', sans-serif">Orbitron</option>
-          <option value="'Audiowide', 'Inter', sans-serif">Audiowide</option>
-          <option value="'Bebas Neue', 'Inter', sans-serif">Bebas Neue</option>
-          <option value="'Oswald', 'Inter', sans-serif">Oswald</option>
-          <option value="'Playfair Display', 'Inter', serif">Playfair Display</option>
-          <option value="'Cinzel', 'Inter', serif">Cinzel</option>
-          <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
-          <option value="'Pacifico', cursive">Pacifico</option>
-          <option value="'Righteous', 'Inter', sans-serif">Righteous</option>
-        </select>
-      </div>
-
-      <div class="global-row">
-        <span><span data-i18n="settings.titleSize">Title size</span> <small id="titleFontSizeVal" style="color:var(--md-primary);font-weight:700;margin-left:4px;">30px</small></span>
-        <input type="range" id="titleFontSize" min="18" max="38" step="1" value="30" style="width: 120px;">
-      </div>
-      <div class="title-font-preview-row">
-        <span style="font-size:11px;color:var(--md-on-surface-variant);flex-shrink:0;" data-i18n="settings.preview">Preview</span>
-        <span id="titleFontPreview">SubLyter</span>
-      </div>
-
-      <div class="m3-divider"></div>
-
-      <div class="global-row">
-        <span data-i18n="settings.subColor">Subtitle text color</span>
-        <button type="button" class="cp-toggle" data-cp-target="subTextPicker" aria-expanded="false">
-          <span class="cp-toggle-dot"></span>
-          <span data-i18n="settings.colorBtn">Color</span>
-          <span class="cp-toggle-chevron">▾</span>
-        </button>
-        <div class="color-picker" id="subTextPicker" data-picker="subtext">
-          <input type="color" id="subTextColor" class="cp-native" value="#ffffff">
-          <div class="cp-head">
-            <span class="cp-swatch"></span>
-            <input type="text" class="cp-hex" value="#ffffff" maxlength="7" spellcheck="false" autocomplete="off">
+            <div class="global-row">
+              <span data-i18n="settings.hallucination">Hallucination filter</span>
+              <label class="switch">
+                <input type="checkbox" id="hallucinationFilter" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="global-row">
+              <span data-i18n="settings.smartSplit">Auto-split long phrases</span>
+              <label class="switch">
+                <input type="checkbox" id="smartSplitToggle" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="global-row">
+              <span data-i18n="settings.fastAudio">Fast audio compression (16 kHz)</span>
+              <label class="switch">
+                <input type="checkbox" id="fastAudioCompress" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="global-row">
+              <span data-i18n="settings.genMode">Generation mode</span>
+              <div class="gen-mode-group" role="group" aria-label="Generation mode">
+                <button type="button" class="gen-mode-btn" id="genModeAllBtn" data-mode="all" data-i18n="settings.genAll">All at once</button>
+                <button type="button" class="gen-mode-btn active" id="genModeProgressiveBtn" data-mode="progressive" data-i18n="settings.genProgressive">Progressive</button>
+              </div>
+              <input type="hidden" id="genMode" value="progressive">
+            </div>
+            <div class="global-row">
+              <span data-i18n="settings.autoplay">Autoplay</span>
+              <label class="switch">
+                <input type="checkbox" id="autoPlayToggle" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+            <input type="text" id="whisperPrompt" data-i18n-placeholder="settings.glossaryPlaceholder" placeholder="Glossary / custom names (optional)" style="margin:0; padding:10px 12px; font-size:12px; border-radius:14px;" />
+            <div class="global-row">
+              <span data-i18n="settings.loadSub">Load existing (.vtt / .srt)</span>
+              <label for="subFile" class="file-pill" style="padding: 7px 16px; font-size: 12px;" data-i18n="settings.choose">Choose</label>
+              <input type="file" id="subFile" accept=".vtt,.srt" style="display:none" />
+            </div>
           </div>
-          <div class="cp-row"><span class="cp-lbl">H</span><input type="range" class="cp-h" min="0" max="360" step="1"><b class="cp-val cp-h-val">0</b></div>
-          <div class="cp-row"><span class="cp-lbl">S</span><input type="range" class="cp-s" min="0" max="100" step="1"><b class="cp-val cp-s-val">0</b></div>
-          <div class="cp-row"><span class="cp-lbl">L</span><input type="range" class="cp-l" min="0" max="100" step="1"><b class="cp-val cp-l-val">0</b></div>
-          <div class="cp-presets"></div>
-        </div>
-      </div>
-      <div class="global-row">
-        <span data-i18n="settings.autoplay">Autoplay</span>
-        <label class="switch">
-          <input type="checkbox" id="autoPlayToggle" checked>
-          <span class="slider"></span>
-        </label>
-      </div>
-    </div>
+        </div><!-- /#settingsPanelSubtitles -->
 
-    <div class="m3-card">
-      <div class="m3-card-title" data-i18n="settings.cardApi">API Keys &amp; AI Models</div>
+        <!-- Tab 3: Style -->
+        <div class="m3-settings-panel" id="settingsPanelStyle" data-settings-panel="style" role="tabpanel">
+          <div class="m3-card">
+            <div class="m3-studio-card-head">
+              <div class="m3-card-title" data-i18n="style.previewTitle">Live Preview</div>
+              <button type="button" class="m3-icon-mini" id="styleResetBtn" data-i18n="style.reset">Reset</button>
+            </div>
+            <div class="m3-style-preview-stage" id="stylePreviewStage">
+              <div class="m3-style-preview-bars" aria-hidden="true"></div>
+              <div class="m3-style-preview-overlay pos-bottom" id="stylePreviewOverlay">
+                <div class="m3-style-preview-text bg-on bg-style-black" id="stylePreviewText">
+                  <div class="sub-main-line">
+                    <span class="word spoken" data-i18n="style.previewMainWord1">Words</span>
+                    <span class="word spoken" data-i18n="style.previewMainWord2">appear</span>
+                    <span class="word" data-i18n="style.previewMainWord3">in</span>
+                    <span class="word" data-i18n="style.previewMainWord4">sync</span>
+                  </div>
+                  <div class="sub-dual-orig" data-i18n="style.previewDual">Original speech line underneath</div>
+                </div>
+                <div class="m3-style-preview-text m3-style-preview-secondary bg-on bg-style-black" id="stylePreviewSecondaryText">
+                  <div class="sub-dual-orig" data-i18n="style.previewDual">Original speech line underneath</div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      <div class="global-row api-key-row">
-        <span data-i18n="settings.groqKeys">Groq API Keys</span>
-        <div class="api-row-actions">
-          <span id="keysCountBadge" class="m3-count-pill">0 keys</span>
-          <a class="api-get-link" href="https://console.groq.com/keys" target="_blank" rel="noopener">
-            <span data-i18n="settings.getApi">Get API</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          </a>
-        </div>
-      </div>
-      <textarea id="apiKeysList" rows="3" autocomplete="off" spellcheck="false" data-i18n-placeholder="settings.groqPlaceholder" placeholder="Paste one or more Groq keys (one per line or comma-separated — gsk_...)" style="margin:0; width:100%; border-radius:14px; font-family:monospace; font-size:12px; padding:10px 12px; resize:vertical;"></textarea>
-      <input type="hidden" id="apiKey" />
-      <input type="hidden" id="apiKey2" />
+          <div class="m3-card">
+            <div class="m3-card-title" data-i18n="style.presetsTitle">Presets</div>
+            <div class="m3-style-presets-grid" id="stylePresetsGrid">
+              <button type="button" class="m3-style-preset-btn active" data-style-preset="classic">
+                <span class="m3-preset-chip classic">Aa</span>
+                <span class="m3-preset-name" data-i18n="style.preset.classic">Classic</span>
+              </button>
+              <button type="button" class="m3-style-preset-btn" data-style-preset="cinema">
+                <span class="m3-preset-chip cinema">Aa</span>
+                <span class="m3-preset-name" data-i18n="style.preset.cinema">Cinema</span>
+              </button>
+              <button type="button" class="m3-style-preset-btn" data-style-preset="minimal">
+                <span class="m3-preset-chip minimal">Aa</span>
+                <span class="m3-preset-name" data-i18n="style.preset.minimal">Clean</span>
+              </button>
+              <button type="button" class="m3-style-preset-btn" data-style-preset="glass">
+                <span class="m3-preset-chip glass">Aa</span>
+                <span class="m3-preset-name" data-i18n="style.preset.glass">Glass</span>
+              </button>
+              <button type="button" class="m3-style-preset-btn" data-style-preset="karaoke">
+                <span class="m3-preset-chip karaoke">Aa</span>
+                <span class="m3-preset-name" data-i18n="style.preset.karaoke">Karaoke</span>
+              </button>
+              <button type="button" class="m3-style-preset-btn" data-style-preset="bold">
+                <span class="m3-preset-chip bold">Aa</span>
+                <span class="m3-preset-name" data-i18n="style.preset.bold">Large</span>
+              </button>
+            </div>
+          </div>
 
-      <div class="m3-divider"></div>
+          <div class="m3-card">
+            <div class="m3-card-title" data-i18n="style.layoutTitle">Size &amp; Position</div>
 
-      <div class="global-row api-key-row">
-        <span data-i18n="settings.geminiKey">Gemini API Key</span>
-        <div class="api-row-actions">
-          <a class="api-get-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">
-            <span data-i18n="settings.getApi">Get API</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          </a>
-        </div>
-      </div>
-      <input type="password" id="geminiApiKey" autocomplete="off" spellcheck="false" data-i18n-placeholder="settings.geminiPlaceholder" placeholder="Enter Gemini key" style="margin:0; border-radius:14px; padding:10px 12px;" />
+            <div class="m3-style-slider-block">
+              <div class="m3-style-slider-head">
+                <span class="m3-studio-row-title" data-i18n="player.size">Size</span>
+                <span class="m3-style-val-pill" id="styleSubSizeVal">18px</span>
+              </div>
+              <input type="range" id="styleSubSize" min="12" max="48" step="1" value="18">
+            </div>
 
-      <div class="global-row">
-        <span data-i18n="settings.geminiModel">Gemini model</span>
-        <select id="geminiModel">
-          <option value="gemini-4-hydrogen" selected>Gemini 4 Hydrogen</option>
-          <option value="gemini-4-argon">Gemini 4 Argon</option>
-          <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
-          <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-          <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-        </select>
-      </div>
+            <div class="m3-style-slider-block">
+              <div class="m3-style-slider-head">
+                <span class="m3-studio-row-title" data-i18n="player.width">Width</span>
+                <span class="m3-style-val-pill" id="styleSubWidthVal">85%</span>
+              </div>
+              <input type="range" id="styleSubWidth" min="30" max="100" step="1" value="85">
+            </div>
 
-      <div class="global-row global-row-stack">
-        <span data-i18n="settings.translationModel">Translation model</span>
-        <select id="llmModel">
-          <option value="openai/gpt-oss-120b">GPT-OSS 120B (Accurate)</option>
-          <option value="openai/gpt-oss-20b">GPT-OSS 20B (Fast)</option>
-          <option value="qwen/qwen3.6-27b">Qwen 3.6 27B (Fallback)</option>
-        </select>
-      </div>
-    </div>
+            <div class="m3-style-slider-block">
+              <div class="m3-style-slider-head">
+                <span class="m3-studio-row-title" data-i18n="player.height">Height</span>
+                <span class="m3-style-val-pill" id="styleSubBottomVal">12%</span>
+              </div>
+              <input type="range" id="styleSubBottom" min="5" max="35" step="1" value="12">
+            </div>
 
-    <div class="m3-card">
-      <div class="m3-card-title" data-i18n="settings.cardGeneration">Generation &amp; Subtitles</div>
+            <div class="m3-studio-field">
+              <span class="m3-studio-row-desc" data-i18n="style.align">Alignment</span>
+              <div class="m3-style-seg-group" id="styleAlignGroup" role="group">
+                <button type="button" class="m3-style-seg-btn" data-sub-align="left" data-i18n="style.alignLeft">Left</button>
+                <button type="button" class="m3-style-seg-btn active" data-sub-align="center" data-i18n="style.alignCenter">Center</button>
+                <button type="button" class="m3-style-seg-btn" data-sub-align="right" data-i18n="style.alignRight">Right</button>
+              </div>
+            </div>
 
-      <div class="global-row">
-        <span data-i18n="settings.hallucination">Hallucination filter</span>
-        <label class="switch">
-          <input type="checkbox" id="hallucinationFilter" checked>
-          <span class="slider"></span>
-        </label>
-      </div>
-      <div class="global-row">
-        <span data-i18n="settings.smartSplit">Auto-split long phrases</span>
-        <label class="switch">
-          <input type="checkbox" id="smartSplitToggle" checked>
-          <span class="slider"></span>
-        </label>
-      </div>
-      <div class="global-row">
-        <span data-i18n="settings.fastAudio">Fast audio compression (16 kHz)</span>
-        <label class="switch">
-          <input type="checkbox" id="fastAudioCompress" checked>
-          <span class="slider"></span>
-        </label>
-      </div>
-      <div class="global-row">
-        <span data-i18n="settings.genMode">Generation mode</span>
-        <div class="gen-mode-group" role="group" aria-label="Generation mode">
-          <button type="button" class="gen-mode-btn" id="genModeAllBtn" data-mode="all" data-i18n="settings.genAll">All at once</button>
-          <button type="button" class="gen-mode-btn active" id="genModeProgressiveBtn" data-mode="progressive" data-i18n="settings.genProgressive">Progressive</button>
-        </div>
-        <input type="hidden" id="genMode" value="progressive">
-      </div>
-      <input type="text" id="whisperPrompt" data-i18n-placeholder="settings.glossaryPlaceholder" placeholder="Glossary / custom names (optional)" style="margin:0; padding:10px 12px; font-size:12px; border-radius:14px;" />
-      <div class="global-row">
-        <span data-i18n="settings.loadSub">Load existing (.vtt / .srt)</span>
-        <label for="subFile" class="file-pill" style="padding: 7px 16px; font-size: 12px;" data-i18n="settings.choose">Choose</label>
-        <input type="file" id="subFile" accept=".vtt,.srt" style="display:none" />
-      </div>
-      <div class="global-row">
-        <span data-i18n="settings.diagLog">Diagnostics log</span>
-        <button type="button" class="file-pill" id="copyDiagLogBtn" style="padding: 7px 16px; font-size: 12px; border: none; cursor: pointer;" data-i18n="settings.copyLog">Copy log</button>
-      </div>
-      <div class="global-row">
-        <span data-i18n="settings.welcomeTour">Welcome feature tour</span>
-        <button type="button" class="file-pill" id="openWelcomeGuideBtn" style="padding: 7px 16px; font-size: 12px; border: none; cursor: pointer;" data-i18n="settings.show">Show</button>
+            <div class="m3-studio-field">
+              <span class="m3-studio-row-desc" data-i18n="style.posTitle">Vertical position</span>
+              <div class="m3-style-seg-group" id="stylePosGroup" role="group">
+                <button type="button" class="m3-style-seg-btn active" data-sub-pos="bottom" data-i18n="style.posBottom">Bottom</button>
+                <button type="button" class="m3-style-seg-btn" data-sub-pos="middle" data-i18n="style.posMiddle">Middle</button>
+                <button type="button" class="m3-style-seg-btn" data-sub-pos="top" data-i18n="style.posTop">Top</button>
+              </div>
+            </div>
+
+            <div class="m3-studio-field">
+              <span class="m3-studio-row-desc" data-i18n="style.dualOrderTitle">Translation &amp; original layout</span>
+              <div class="m3-style-seg-group m3-style-seg-grid-2" id="styleDualOrderGroup" role="group">
+                <button type="button" class="m3-style-seg-btn active" data-dual-order="trans-top" data-i18n="style.dualTransTop">Translation top</button>
+                <button type="button" class="m3-style-seg-btn" data-dual-order="orig-top" data-i18n="style.dualOrigTop">Swap lines</button>
+                <button type="button" class="m3-style-seg-btn" data-dual-order="split-orig-top" data-i18n="style.dualSplitOrigTop">Orig. top · Trans. bottom</button>
+                <button type="button" class="m3-style-seg-btn" data-dual-order="split-trans-top" data-i18n="style.dualSplitTransTop">Trans. top · Orig. bottom</button>
+              </div>
+            </div>
+
+            <div class="m3-studio-field">
+              <span class="m3-studio-row-desc" data-i18n="player.wordMode">Word mode</span>
+              <div class="m3-style-seg-group" id="styleWordModeGroup" role="group">
+                <button type="button" class="m3-style-seg-btn active" data-word-mode="hidden" data-i18n="player.wordMode.hidden">Word-by-word</button>
+                <button type="button" class="m3-style-seg-btn" data-word-mode="karaoke" data-i18n="player.wordMode.karaoke">Karaoke</button>
+                <button type="button" class="m3-style-seg-btn" data-word-mode="full" data-i18n="player.wordMode.full">Full line</button>
+              </div>
+            </div>
+
+            <div class="m3-studio-field">
+              <label class="m3-studio-row-desc" for="styleSubFont" data-i18n="style.font">Subtitle font</label>
+              <select id="styleSubFont" class="m3-studio-select">
+                <option value="'Inter', -apple-system, sans-serif">Inter</option>
+                <option value="'Outfit', 'Inter', sans-serif">Outfit</option>
+                <option value="'Plus Jakarta Sans', 'Inter', sans-serif">Plus Jakarta Sans</option>
+                <option value="'DM Sans', 'Inter', sans-serif">DM Sans</option>
+                <option value="'Sora', 'Inter', sans-serif">Sora</option>
+                <option value="'Montserrat', 'Inter', sans-serif">Montserrat</option>
+                <option value="'Poppins', 'Inter', sans-serif">Poppins</option>
+                <option value="'Playfair Display', 'Inter', serif">Playfair Display</option>
+                <option value="'Bebas Neue', 'Inter', sans-serif">Bebas Neue</option>
+                <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="m3-card">
+            <div class="m3-card-title" data-i18n="style.colorsTitle">Colors &amp; Backdrop</div>
+
+            <div class="m3-studio-field">
+              <span class="m3-studio-row-desc" data-i18n="settings.subColor">Subtitle text color</span>
+              <div class="m3-style-swatches" id="styleColorSwatches">
+                <button type="button" class="m3-style-swatch active" data-sub-color="#ffffff" style="background:#ffffff" aria-label="White"></button>
+                <button type="button" class="m3-style-swatch" data-sub-color="#fde047" style="background:#fde047" aria-label="Yellow"></button>
+                <button type="button" class="m3-style-swatch" data-sub-color="#38bdf8" style="background:#38bdf8" aria-label="Sky"></button>
+                <button type="button" class="m3-style-swatch" data-sub-color="#34d399" style="background:#34d399" aria-label="Mint"></button>
+                <button type="button" class="m3-style-swatch" data-sub-color="#f472b6" style="background:#f472b6" aria-label="Pink"></button>
+                <button type="button" class="m3-style-swatch" data-sub-color="#fb923c" style="background:#fb923c" aria-label="Orange"></button>
+                <button type="button" class="cp-toggle m3-style-cp-toggle" data-cp-target="styleSubTextPicker" aria-expanded="false">
+                  <span class="cp-toggle-dot"></span>
+                  <span data-i18n="settings.colorBtn">Color</span>
+                  <span class="cp-toggle-chevron">▾</span>
+                </button>
+              </div>
+              <div class="color-picker" id="styleSubTextPicker" data-picker="stylesubtext">
+                <input type="color" id="styleSubColorCustom" class="cp-native" value="#ffffff">
+                <div class="cp-head">
+                  <span class="cp-swatch"></span>
+                  <input type="text" class="cp-hex" value="#ffffff" maxlength="7" spellcheck="false" autocomplete="off">
+                </div>
+                <div class="cp-row"><span class="cp-lbl">H</span><input type="range" class="cp-h" min="0" max="360" step="1"><b class="cp-val cp-h-val">0</b></div>
+                <div class="cp-row"><span class="cp-lbl">S</span><input type="range" class="cp-s" min="0" max="100" step="1"><b class="cp-val cp-s-val">0</b></div>
+                <div class="cp-row"><span class="cp-lbl">L</span><input type="range" class="cp-l" min="0" max="100" step="1"><b class="cp-val cp-l-val">0</b></div>
+                <div class="cp-presets"></div>
+              </div>
+            </div>
+
+            <div class="m3-studio-row">
+              <div class="m3-studio-row-text">
+                <span class="m3-studio-row-title" data-i18n="player.background">Background</span>
+                <span class="m3-studio-row-desc" data-i18n="style.bgDesc">Backdrop behind subtitle text</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="styleBgToggle" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <div class="m3-style-slider-block" id="styleBgOpacityBlock">
+              <div class="m3-style-slider-head">
+                <span class="m3-studio-row-title" data-i18n="style.bgOpacity">Background opacity</span>
+                <span class="m3-style-val-pill" id="styleBgOpacityVal">62%</span>
+              </div>
+              <input type="range" id="styleBgOpacity" min="10" max="95" step="1" value="62">
+            </div>
+
+            <div class="m3-studio-field" id="styleBgStyleBlock">
+              <span class="m3-studio-row-desc" data-i18n="style.bgStyle">Backdrop style</span>
+              <div class="m3-style-seg-group" id="styleBgStyleGroup" role="group">
+                <button type="button" class="m3-style-seg-btn active" data-bg-style="black" data-i18n="style.bgBlack">Dark</button>
+                <button type="button" class="m3-style-seg-btn" data-bg-style="glass" data-i18n="style.bgGlass">Glass</button>
+                <button type="button" class="m3-style-seg-btn" data-bg-style="accent" data-i18n="style.bgAccent">Accent</button>
+              </div>
+            </div>
+
+            <div class="m3-studio-row">
+              <div class="m3-studio-row-text">
+                <span class="m3-studio-row-title" data-i18n="style.outline">Text shadow</span>
+                <span class="m3-studio-row-desc" data-i18n="style.outlineDesc">Crisp legibility over bright scenes</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="styleOutlineToggle" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+        </div><!-- /#settingsPanelStyle -->
+
+        <!-- Tab 4: Advanced -->
+        <div class="m3-settings-panel" id="settingsPanelAdvanced" data-settings-panel="advanced" role="tabpanel">
+          <div class="m3-card">
+            <div class="m3-card-title" data-i18n="settings.cardApi">API Keys &amp; AI Models</div>
+
+            <div class="global-row api-key-row">
+              <span data-i18n="settings.groqKeys">Groq API Keys</span>
+              <div class="api-row-actions">
+                <span id="keysCountBadge" class="m3-count-pill">0 keys</span>
+                <a class="api-get-link" href="https://console.groq.com/keys" target="_blank" rel="noopener">
+                  <span data-i18n="settings.getApi">Get API</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </a>
+              </div>
+            </div>
+            <textarea id="apiKeysList" rows="3" autocomplete="off" spellcheck="false" data-i18n-placeholder="settings.groqPlaceholder" placeholder="Paste one or more Groq keys (one per line or comma-separated — gsk_...)" style="margin:0; width:100%; border-radius:14px; font-family:monospace; font-size:12px; padding:10px 12px; resize:vertical;"></textarea>
+            <input type="hidden" id="apiKey" />
+            <input type="hidden" id="apiKey2" />
+
+            <div class="m3-divider"></div>
+
+            <div class="global-row api-key-row">
+              <span data-i18n="settings.geminiKey">Gemini API Key</span>
+              <div class="api-row-actions">
+                <a class="api-get-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">
+                  <span data-i18n="settings.getApi">Get API</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </a>
+              </div>
+            </div>
+            <input type="password" id="geminiApiKey" autocomplete="off" spellcheck="false" data-i18n-placeholder="settings.geminiPlaceholder" placeholder="Enter Gemini key" style="margin:0; border-radius:14px; padding:10px 12px;" />
+
+            <div class="global-row">
+              <span data-i18n="settings.geminiModel">Gemini model</span>
+              <select id="geminiModel">
+                <option value="gemini-4-hydrogen" selected>Gemini 4 Hydrogen</option>
+                <option value="gemini-4-argon">Gemini 4 Argon</option>
+                <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              </select>
+            </div>
+
+            <div class="global-row global-row-stack">
+              <span data-i18n="settings.translationModel">Translation model</span>
+              <select id="llmModel">
+                <option value="openai/gpt-oss-120b">GPT-OSS 120B (Accurate)</option>
+                <option value="openai/gpt-oss-20b">GPT-OSS 20B (Fast)</option>
+                <option value="qwen/qwen3.6-27b">Qwen 3.6 27B (Fallback)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="m3-card">
+            <div class="global-row">
+              <span data-i18n="settings.diagLog">Diagnostics log</span>
+              <button type="button" class="file-pill" id="copyDiagLogBtn" style="padding: 7px 16px; font-size: 12px; border: none; cursor: pointer;" data-i18n="settings.copyLog">Copy log</button>
+            </div>
+            <div class="global-row">
+              <span data-i18n="settings.welcomeTour">Welcome feature tour</span>
+              <button type="button" class="file-pill" id="openWelcomeGuideBtn" style="padding: 7px 16px; font-size: 12px; border: none; cursor: pointer;" data-i18n="settings.show">Show</button>
+            </div>
+          </div>
+        </div><!-- /#settingsPanelAdvanced -->
       </div>
     </div>
   </div>

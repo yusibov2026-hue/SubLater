@@ -375,10 +375,6 @@
       const prevEl = panelMap[prev];
       const nextEl = panelMap[next];
 
-      if (next === 'learn' && activeLearnSubTab === 'style' && typeof deps.onStyleTabOpened === 'function') {
-        setTimeout(() => deps.onStyleTabOpened(), 40);
-      }
-
       if (prev === next || !prevEl || !nextEl) {
         activeTab = next;
         TABS.forEach((k) => {
@@ -448,28 +444,6 @@
 
     document.querySelectorAll('#hubTabs .m3-hub-tab').forEach((btn) => {
       btn.addEventListener('click', () => switchTab(btn.dataset.hubTab));
-    });
-
-    let activeLearnSubTab = 'learn';
-    function setLearnSubTab(subTab) {
-      activeLearnSubTab = subTab === 'style' ? 'style' : 'learn';
-      document.querySelectorAll('#learnSubTabs [data-learn-subtab]').forEach((btn) => {
-        const on = btn.dataset.learnSubtab === activeLearnSubTab;
-        btn.classList.toggle('active', on);
-        btn.setAttribute('aria-selected', on ? 'true' : 'false');
-      });
-      const studyView = $('learnStudyView');
-      const styleView = $('learnStyleView');
-      if (studyView) studyView.classList.toggle('active', activeLearnSubTab === 'learn');
-      if (styleView) styleView.classList.toggle('active', activeLearnSubTab === 'style');
-      if (hubViewport) hubViewport.style.height = '';
-      syncBoundsSoon();
-      if (activeLearnSubTab === 'style' && typeof deps.onStyleTabOpened === 'function') {
-        requestAnimationFrame(() => deps.onStyleTabOpened());
-      }
-    }
-    document.querySelectorAll('#learnSubTabs [data-learn-subtab]').forEach((btn) => {
-      btn.addEventListener('click', () => setLearnSubTab(btn.dataset.learnSubtab));
     });
 
     /* ---- Плавный свайп вкладок по всему экрану ---- */

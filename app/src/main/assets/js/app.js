@@ -188,13 +188,216 @@
     return info.file;
   }
 
-  /* ---- Модальное окно настроек ---- */
-  function openSettings() {
+  /* ---- Модальное окно настроек и 4 вкладки Material You ---- */
+  const SETTINGS_TABS = ['design', 'subtitles', 'style', 'advanced'];
+  let activeSettingsTab = 'design';
+  const settingsTabsEl = $('settingsTabs');
+  const settingsTabIndicator = $('settingsTabIndicator');
+  const settingsViewport = $('settingsViewport');
+  const settingsTrack = $('settingsTrack');
+
+  if (settingsViewport) {
+    settingsViewport.addEventListener('scroll', () => {
+      if (settingsViewport.scrollLeft !== 0) settingsViewport.scrollLeft = 0;
+    }, { passive: true });
+  }
+
+  function positionSettingsIndicator(floatIdx, instant = false) {
+    if (!settingsTabIndicator || !settingsTabsEl) return;
+    const buttons = Array.from(settingsTabsEl.querySelectorAll('.m3-settings-tab'));
+    if (!buttons.length) return;
+    const maxIdx = buttons.length - 1;
+    const clamped = Math.max(0, Math.min(maxIdx, Number(floatIdx) || 0));
+    const i0 = Math.floor(clamped);
+    const i1 = Math.min(maxIdx, i0 + 1);
+    const frac = clamped - i0;
+    const b0 = buttons[i0];
+    const b1 = buttons[i1];
+    const x = b0.offsetLeft + (b1.offsetLeft - b0.offsetLeft) * frac;
+    const w = b0.offsetWidth + (b1.offsetWidth - b0.offsetWidth) * frac;
+    if (w > 0) {
+      if (instant) settingsTabIndicator.classList.add('dragging');
+      settingsTabIndicator.style.width = `${w}px`;
+      settingsTabIndicator.style.transform = `translate3d(${x}px, 0, 0)`;
+      if (instant) {
+        void settingsTabIndicator.offsetWidth;
+        settingsTabIndicator.classList.remove('dragging');
+      }
+    }
+  }
+
+  function switchSettingsTab(tabName, opts = {}) {
+    const next = SETTINGS_TABS.includes(tabName) ? tabName : 'design';
+    const nextIdx = SETTINGS_TABS.indexOf(next);
+    activeSettingsTab = next;
+    if (settingsViewport && settingsViewport.scrollLeft !== 0) settingsViewport.scrollLeft = 0;
+
+    if (settingsTabsEl) {
+      settingsTabsEl.querySelectorAll('.m3-settings-tab').forEach((tabBtn) => {
+        const on = tabBtn.dataset.settingsTab === next;
+        tabBtn.classList.toggle('active', on);
+        tabBtn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+    }
+    if (settingsTrack) {
+      settingsTrack.querySelectorAll('.m3-settings-panel').forEach((panel) => {
+        panel.classList.toggle('active', panel.dataset.settingsPanel === next);
+      });
+      if (opts && opts.instant) {
+        settingsTrack.classList.add('dragging');
+        if (settingsTabIndicator) settingsTabIndicator.classList.add('dragging');
+        settingsTrack.style.transform = `translate3d(-${nextIdx * 100}%, 0, 0)`;
+        positionSettingsIndicator(nextIdx, true);
+        void settingsTrack.offsetWidth;
+        settingsTrack.classList.remove('dragging');
+        if (settingsTabIndicator) settingsTabIndicator.classList.remove('dragging');
+      } else {
+        settingsTrack.classList.remove('dragging');
+        if (settingsTabIndicator) settingsTabIndicator.classList.remove('dragging');
+        settingsTrack.style.transform = `translate3d(-${nextIdx * 100}%, 0, 0)`;
+        positionSettingsIndicator(nextIdx);
+      }
+    } else {
+      positionSettingsIndicator(nextIdx, Boolean(opts && opts.instant));
+    }
+
+    if (next === 'style') {
+      themeCtrl.syncAllM3Sliders();
+    }
+  }
+
+  if (settingsTabsEl) {
+    settingsTabsEl.querySelectorAll('.m3-settings-tab').forEach((tabBtn) => {
+      tabBtn.addEventListener('click', () => switchSettingsTab(tabBtn.dataset.settingsTab));
+    });
+  }
+
+  (function setupSettingsSwipe() {
+    if (!settingsViewport || !settingsTrack) return;
+    let startX = 0;
+    let startY = 0;
+    let startT = 0;
+    let lockStartX = 0;
+    let lastX = 0;
+    let lastT = 0;
+    let prevX = 0;
+    let prevT = 0;
+    let tracking = false;
+    let horizLock = false;
+    let viewportW = 360;
+
+    function isSettingsSwipeBlocked(target) {
+      return Boolean(
+        target &&
+        target.closest &&
+        target.closest('input[type="range"], input[type="text"], input[type="password"], textarea, select, .color-picker')
+      );
+    }
+
+    settingsViewport.addEventListener('touchstart', (e) => {
+      if (!e.touches || e.touches.length !== 1) return;
+      if (isSettingsSwipeBlocked(e.target)) return;
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+      startT = Date.now();
+      lockStartX = touch.clientX;
+      prevX = lastX = touch.clientX;
+      prevT = lastT = startT;
+      tracking = true;
+      horizLock = false;
+      viewportW = Math.max(200, settingsViewport.clientWidth || 360);
+    }, { passive: true });
+
+    settingsViewport.addEventListener('touchmove', (e) => {
+      if (!tracking || !e.touches || e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - startX;
+      const dy = touch.clientY - startY;
+
+      if (!horizLock) {
+        if (Math.abs(dy) >= Math.abs(dx) * 0.9 && Math.abs(dy) > 10) {
+          tracking = false;
+          return;
+        }
+        if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+          horizLock = true;
+          lockStartX = touch.clientX;
+          prevX = lastX = touch.clientX;
+          prevT = lastT = Date.now();
+          settingsTrack.classList.add('dragging');
+          if (settingsTabIndicator) settingsTabIndicator.classList.add('dragging');
+        } else {
+          return;
+        }
+      }
+
+      if (e.cancelable) e.preventDefault();
+      const now = Date.now();
+      if (now - lastT >= 16) {
+        prevX = lastX;
+        prevT = lastT;
+        lastX = touch.clientX;
+        lastT = now;
+      } else {
+        lastX = touch.clientX;
+        lastT = now;
+      }
+
+      const curIdx = SETTINGS_TABS.indexOf(activeSettingsTab);
+      const dragDx = touch.clientX - lockStartX;
+      const atEdge = (curIdx === 0 && dragDx > 0) || (curIdx === SETTINGS_TABS.length - 1 && dragDx < 0);
+      const effectiveDx = atEdge ? dragDx * 0.24 : dragDx;
+      const offsetPx = -curIdx * viewportW + effectiveDx;
+      settingsTrack.style.transform = `translate3d(${offsetPx}px, 0, 0)`;
+      if (settingsTabIndicator) {
+        positionSettingsIndicator(curIdx - effectiveDx / viewportW);
+      }
+    }, { passive: false });
+
+    function endSettingsSwipe(e) {
+      if (!tracking) return;
+      tracking = false;
+      if (!horizLock) return;
+      horizLock = false;
+      const touch = e.changedTouches && e.changedTouches[0];
+      const endX = touch ? touch.clientX : lastX;
+      const dragDx = endX - lockStartX;
+      const recentDt = lastT - prevT;
+      const vel = recentDt > 0
+        ? Math.abs(lastX - prevX) / recentDt
+        : Math.abs(dragDx) / Math.max(1, Date.now() - startT);
+      const curIdx = SETTINGS_TABS.indexOf(activeSettingsTab);
+      let nextIdx = curIdx;
+      if (Math.abs(dragDx) > Math.max(40, viewportW * 0.20) || (Math.abs(dragDx) > 18 && vel > 0.30)) {
+        nextIdx = dragDx < 0 ? Math.min(SETTINGS_TABS.length - 1, curIdx + 1) : Math.max(0, curIdx - 1);
+      }
+      switchSettingsTab(SETTINGS_TABS[nextIdx]);
+    }
+
+    settingsViewport.addEventListener('touchend', endSettingsSwipe, { passive: true });
+    settingsViewport.addEventListener('touchcancel', endSettingsSwipe, { passive: true });
+  })();
+
+  window.addEventListener('resize', () => {
+    if (globalSettings && globalSettings.classList.contains('show')) {
+      positionSettingsIndicator(SETTINGS_TABS.indexOf(activeSettingsTab), true);
+    }
+  });
+
+  function openSettings(initialTab) {
     document.body.classList.add('global-settings-open');
     if (window.__syncNativePlayerBounds) window.__syncNativePlayerBounds();
     globalSettings.classList.add('show');
     settingsBackdrop.classList.add('show');
     settingsToggle.classList.add('open');
+    if (typeof initialTab === 'string' && SETTINGS_TABS.includes(initialTab)) {
+      switchSettingsTab(initialTab, { instant: true });
+    }
+    requestAnimationFrame(() => {
+      positionSettingsIndicator(SETTINGS_TABS.indexOf(activeSettingsTab), true);
+      themeCtrl.syncAllM3Sliders();
+    });
   }
   function closeSettings() {
     document.body.classList.remove('global-settings-open');
@@ -203,16 +406,23 @@
     settingsBackdrop.classList.remove('show');
     settingsToggle.classList.remove('open');
   }
-  settingsToggle.addEventListener('click', openSettings);
+  settingsToggle.addEventListener('click', () => openSettings());
   settingsBackdrop.addEventListener('click', closeSettings);
   closeSettingsBtn.addEventListener('click', closeSettings);
 
   function openApiSettingsFocus() {
-    openSettings();
+    openSettings('advanced');
     setTimeout(() => {
+      const advPanel = $('settingsPanelAdvanced');
+      if (advPanel) advPanel.scrollTop = 0;
+      if (settingsViewport && settingsViewport.scrollLeft !== 0) settingsViewport.scrollLeft = 0;
       if (apiKeysListEl) {
-        try { apiKeysListEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
-        try { apiKeysListEl.focus(); } catch (_) {}
+        try {
+          apiKeysListEl.focus({ preventScroll: true });
+        } catch (_) {
+          try { apiKeysListEl.focus(); } catch (__) {}
+        }
+        if (settingsViewport && settingsViewport.scrollLeft !== 0) settingsViewport.scrollLeft = 0;
       }
     }, 180);
   }
@@ -962,7 +1172,6 @@
     onDualSubLangChanged: ensureDualSubTrackReady,
     onOpenHistoryProject: openHistoryProject,
     onExportHistoryProject: exportHistoryProject,
-    onStyleTabOpened: () => themeCtrl.syncAllM3Sliders(),
     showMissingApiStatus,
     openApiSettingsFocus,
     formatTime: playerCtrl.formatTime
@@ -988,7 +1197,7 @@
     syncTimeUI: playerCtrl.syncTimeUI,
     updateSubtitleFrame: playerCtrl.updateSubtitleFrame,
     togglePlay: playerCtrl.togglePlay,
-    openSettings,
+    openSettings: () => openSettings('advanced'),
     getGeminiKeyFromKeystore: storageMod.getGeminiKeyFromKeystore
   });
   $('closeAiBox').addEventListener('click', () => aiSummaryBox.classList.remove('show'));
@@ -1024,8 +1233,8 @@
     if ($('styleSubColorCustom')) $('styleSubColorCustom').value = p.textColor;
     if (playerCtrl) playerCtrl.resetCueCursor();
     themeCtrl.syncColorPickers();
-    themeCtrl.syncAllM3Sliders();
     applySettings();
+    themeCtrl.syncAllM3Sliders();
   }
 
   (function loadSettings() {
@@ -1715,6 +1924,9 @@
     if (openBtn) openBtn.innerText = vttPanel.classList.contains('hidden') ? t('btn.text') : t('btn.hide');
     applySettings();
     if (studioCtrl && typeof studioCtrl.onLanguageChanged === 'function') studioCtrl.onLanguageChanged();
+    if (globalSettings && globalSettings.classList.contains('show')) {
+      requestAnimationFrame(() => positionSettingsIndicator(SETTINGS_TABS.indexOf(activeSettingsTab), true));
+    }
   }
 
   if (appLangSelect) {

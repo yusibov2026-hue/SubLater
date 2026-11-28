@@ -106,7 +106,7 @@
 
   function syncAllM3Sliders() {
     document
-      .querySelectorAll('#globalSettings input[type="range"]:not(.cp-h):not(.cp-s):not(.cp-l), #settingsMenu input[type="range"], #hubPanelLearn input[type="range"]')
+      .querySelectorAll('#globalSettings input[type="range"]:not(.cp-h):not(.cp-s):not(.cp-l), #settingsMenu input[type="range"]')
       .forEach(syncM3RangeSlider);
   }
 
