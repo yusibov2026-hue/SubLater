@@ -84,6 +84,7 @@ body[data-m3-mode="light"] #globalSettings {
   border-radius: 16px;
   background: var(--md-primary-container);
   pointer-events: none;
+  transform-origin: left center;
   will-change: transform;
   transform: translate3d(4px, 0, 0);
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.2s ease;
@@ -116,6 +117,10 @@ body[data-m3-mode="light"] #globalSettings {
   user-select: none;
   transition: color 0.18s ease, transform 0.12s ease;
 }
+.m3-settings-tab[data-settings-tab="design"] { flex: 0.96 1 0; }
+.m3-settings-tab[data-settings-tab="subtitles"] { flex: 1.02 1 0; }
+.m3-settings-tab[data-settings-tab="style"] { flex: 0.88 1 0; }
+.m3-settings-tab[data-settings-tab="advanced"] { flex: 1.14 1 0; }
 .m3-settings-tab:active {
   transform: scale(0.95);
 }
@@ -128,6 +133,10 @@ body[data-m3-mode="light"] #globalSettings {
   stroke-linecap: round;
   stroke-linejoin: round;
   flex-shrink: 0;
+}
+.m3-settings-tab[data-settings-tab="advanced"] svg {
+  width: 17px;
+  height: 17px;
 }
 .m3-settings-tab span {
   display: block;
@@ -172,6 +181,8 @@ body[data-m3-mode="light"] .m3-settings-tab.active {
   height: 100%;
   will-change: transform;
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 10px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 10px), transparent 100%);
 }
 .m3-settings-track.dragging {
   transition: none !important;
@@ -190,12 +201,12 @@ body[data-m3-mode="light"] .m3-settings-tab.active {
   touch-action: pan-y;
   contain: layout style;
   backface-visibility: hidden;
-  will-change: transform;
-  transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity;
+  transition: transform 0.30s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 2px 2px 10px;
+  padding: 6px 2px 14px;
 }
 .m3-settings-panel.pulling {
   transition: none !important;

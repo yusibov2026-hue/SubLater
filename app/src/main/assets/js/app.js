@@ -208,6 +208,7 @@
   const settingsTabButtons = settingsTabsEl ? Array.from(settingsTabsEl.querySelectorAll('.m3-settings-tab')) : [];
   const settingsPanels = settingsTrack ? Array.from(settingsTrack.querySelectorAll('.m3-settings-panel')) : [];
   let cachedTabRects = [];
+  let baseIndicatorW = 0;
 
   if (settingsViewport) {
     settingsViewport.addEventListener('scroll', () => {
@@ -223,6 +224,7 @@
     }));
     const w0 = cachedTabRects[0] && cachedTabRects[0].width;
     if (settingsTabIndicator && w0 > 0) {
+      baseIndicatorW = w0;
       settingsTabIndicator.style.width = `${w0}px`;
     }
   }
@@ -241,6 +243,7 @@
     settingsPanels.forEach((panel) => {
       panel.classList.remove('pulling');
       if (panel.style.transform) panel.style.transform = '';
+      if (panel.style.opacity) panel.style.opacity = '';
     });
   }
 
@@ -256,11 +259,13 @@
     const i1 = Math.min(maxIdx, i0 + 1);
     const frac = clamped - i0;
     const r0 = cachedTabRects[i0];
-    const r1 = cachedTabRects[i1];
+    const r1 = cachedTabRects[i1] || r0;
     if (!r0 || !(r0.width > 0)) return;
-    const x = r0.left + ((r1 ? r1.left : r0.left) - r0.left) * frac;
+    const x = r0.left + (r1.left - r0.left) * frac;
+    const w = r0.width + (r1.width - r0.width) * frac;
+    const sx = baseIndicatorW > 0 ? (w / baseIndicatorW) : 1;
     if (instant) settingsTabIndicator.classList.add('dragging');
-    settingsTabIndicator.style.transform = `translate3d(${x}px, 0, 0)`;
+    settingsTabIndicator.style.transform = `translate3d(${x.toFixed(2)}px, 0, 0) scaleX(${sx.toFixed(4)})`;
     if (instant) {
       void settingsTabIndicator.offsetWidth;
       settingsTabIndicator.classList.remove('dragging');
@@ -279,18 +284,38 @@
       tabBtn.setAttribute('aria-selected', on ? 'true' : 'false');
     });
 
+    let nextPanelEl = null;
     settingsPanels.forEach((panel) => {
       const isNext = panel.dataset.settingsPanel === next;
+      if (isNext) nextPanelEl = panel;
       panel.classList.toggle('active', isNext);
       panel.classList.remove('pulling');
       if (panel.style.transform) panel.style.transform = '';
+      if (panel.style.opacity) panel.style.opacity = '';
       if (isNext && opts && opts.scrollTop === 0) {
         panel.scrollTop = 0;
       }
     });
 
     if (settingsTrack) {
-      if (opts && opts.instant) {
+      if (opts && opts.verticalDir) {
+        settingsTrack.classList.add('dragging');
+        settingsTrack.style.transform = `translate3d(-${nextIdx * 100}%, 0, 0)`;
+        void settingsTrack.offsetWidth;
+        settingsTrack.classList.remove('dragging');
+        if (settingsTabIndicator) settingsTabIndicator.classList.remove('dragging');
+        positionSettingsIndicator(nextIdx);
+        if (nextPanelEl) {
+          const offsetY = opts.verticalDir === 'next' ? 34 : -34;
+          nextPanelEl.classList.add('pulling');
+          nextPanelEl.style.transform = `translate3d(0, ${offsetY}px, 0)`;
+          nextPanelEl.style.opacity = '0';
+          void nextPanelEl.offsetWidth;
+          nextPanelEl.classList.remove('pulling');
+          nextPanelEl.style.transform = '';
+          nextPanelEl.style.opacity = '';
+        }
+      } else if (opts && opts.instant) {
         settingsTrack.classList.add('dragging');
         if (settingsTabIndicator) settingsTabIndicator.classList.add('dragging');
         settingsTrack.style.transform = `translate3d(-${nextIdx * 100}%, 0, 0)`;
@@ -378,6 +403,10 @@
       const curIdx = SETTINGS_TABS.indexOf(activeSettingsTab);
       dragBasePx = readLiveTrackX(curIdx);
       startedInViewport = Boolean(e.target && e.target.closest && e.target.closest('#settingsViewport'));
+      settingsPanels.forEach((panel) => {
+        if (panel.style.opacity) panel.style.opacity = '';
+        if (panel.style.transform) panel.style.transform = '';
+      });
       activePanel = settingsPanels[curIdx] || null;
       mode = 'none';
       wasReady = false;
@@ -482,6 +511,7 @@
         if (activePanel) {
           const sign = mode === 'pull-prev' ? damped : -damped;
           activePanel.style.transform = `translate3d(0, ${sign}px, 0)`;
+          activePanel.style.opacity = (1 - Math.min(0.32, pullRaw / 240)).toFixed(3);
         }
 
         const pill = mode === 'pull-prev' ? settingsPullTop : settingsPullBottom;
@@ -555,12 +585,13 @@
         if (activePanel) {
           activePanel.classList.remove('pulling');
           activePanel.style.transform = '';
+          activePanel.style.opacity = '';
         }
 
         if (commit && curMode === 'pull-next' && curIdx < SETTINGS_TABS.length - 1) {
-          switchSettingsTab(SETTINGS_TABS[curIdx + 1], { scrollTop: 0 });
+          switchSettingsTab(SETTINGS_TABS[curIdx + 1], { scrollTop: 0, verticalDir: 'next' });
         } else if (commit && curMode === 'pull-prev' && curIdx > 0) {
-          switchSettingsTab(SETTINGS_TABS[curIdx - 1]);
+          switchSettingsTab(SETTINGS_TABS[curIdx - 1], { verticalDir: 'prev' });
         } else {
           if (settingsTabIndicator) settingsTabIndicator.classList.remove('dragging');
           positionSettingsIndicator(curIdx);
